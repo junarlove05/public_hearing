@@ -1,0 +1,156 @@
+
+CREATE TABLE IF NOT EXISTS roles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  full_name VARCHAR(150) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  role_id INT NOT NULL,
+  status VARCHAR(50) DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (role_id) REFERENCES roles(id)
+);
+
+CREATE TABLE IF NOT EXISTS committees (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS hearing_types (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS hearings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  hearing_type_id INT,
+  committee_id INT,
+  venue VARCHAR(255),
+  hearing_date DATE NOT NULL,
+  hearing_time TIME NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'Upcoming',
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (hearing_type_id) REFERENCES hearing_types(id),
+  FOREIGN KEY (committee_id) REFERENCES committees(id)
+);
+
+CREATE TABLE IF NOT EXISTS hearing_documents (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  hearing_id INT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_path VARCHAR(500) NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (hearing_id) REFERENCES hearings(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS stakeholder_categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS stakeholders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  full_name VARCHAR(150) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  phone VARCHAR(50),
+  organization VARCHAR(255),
+  category_id INT,
+  status VARCHAR(50) DEFAULT 'Pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES stakeholder_categories(id)
+);
+
+CREATE TABLE IF NOT EXISTS invitations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  stakeholder_id INT NOT NULL,
+  hearing_id INT,
+  status VARCHAR(50) DEFAULT 'Pending',
+  invitation_code VARCHAR(100) UNIQUE,
+  sent_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (stakeholder_id) REFERENCES stakeholders(id) ON DELETE CASCADE,
+  FOREIGN KEY (hearing_id) REFERENCES hearings(id)
+);
+
+CREATE TABLE IF NOT EXISTS registrations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  stakeholder_id INT NOT NULL,
+  hearing_id INT,
+  registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (stakeholder_id) REFERENCES stakeholders(id) ON DELETE CASCADE,
+  FOREIGN KEY (hearing_id) REFERENCES hearings(id)
+);
+
+CREATE TABLE IF NOT EXISTS qr_codes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  stakeholder_id INT NOT NULL,
+  code_value VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (stakeholder_id) REFERENCES stakeholders(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS attendance (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  stakeholder_id INT NOT NULL,
+  hearing_id INT NOT NULL,
+  status VARCHAR(50) DEFAULT 'Present',
+  checked_in_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (stakeholder_id) REFERENCES stakeholders(id) ON DELETE CASCADE,
+  FOREIGN KEY (hearing_id) REFERENCES hearings(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS attendance_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  stakeholder_id INT NOT NULL,
+  hearing_id INT NOT NULL,
+  action VARCHAR(100) NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (stakeholder_id) REFERENCES stakeholders(id) ON DELETE CASCADE,
+  FOREIGN KEY (hearing_id) REFERENCES hearings(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS feedback_categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS feedback (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(150) NOT NULL,
+  category_id INT,
+  subject VARCHAR(255),
+  message TEXT NOT NULL,
+  status VARCHAR(50) DEFAULT 'New',
+  submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES feedback_categories(id)
+);
+
+CREATE TABLE IF NOT EXISTS surveys (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  status VARCHAR(50) DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS survey_responses (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  survey_id INT NOT NULL,
+  respondent_name VARCHAR(150),
+  respondent_email VARCHAR(150),
+  response_text TEXT NOT NULL,
+  submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+  

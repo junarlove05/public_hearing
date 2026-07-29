@@ -1,0 +1,55 @@
+[19-Jul-2026 16:07:16 Asia/Manila] PHP Fatal error:  Maximum execution time of 120 seconds exceeded in C:\xampp\htdocs\lph\includes\AI\OllamaService.php on line 314
+[19-Jul-2026 16:07:17 Asia/Manila] Fatal error: Maximum execution time of 120 seconds exceeded in C:\xampp\htdocs\lph\includes\AI\OllamaService.php:314
+[20-Jul-2026 09:01:26 Asia/Manila] PHP Fatal error:  Maximum execution time of 120 seconds exceeded in C:\xampp\htdocs\lph\includes\AI\AIAnalysisManager.php on line 176
+[20-Jul-2026 09:01:26 Asia/Manila] Fatal error: Maximum execution time of 120 seconds exceeded in C:\xampp\htdocs\lph\includes\AI\AIAnalysisManager.php:176
+[21-Jul-2026 13:59:52 Asia/Manila] PHP Warning:  Undefined variable $response in C:\xampp\htdocs\lph\modules\feedback\ajax_ai_trend.php on line 110
+[21-Jul-2026 13:59:52 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\lph\modules\feedback\ajax_ai_trend.php on line 110
+[21-Jul-2026 13:59:53 Asia/Manila] Uncaught exception: array_sum(): Argument #1 ($array) must be of type array, null given in C:\xampp\htdocs\lph\modules\feedback\ajax_ai_trend.php:110
+[27-Jul-2026 10:35:37 Asia/Manila] Activity log failed: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_public_hearing_db.activity_logs' doesn't exist
+[27-Jul-2026 10:35:50 Asia/Manila] Activity log failed: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_public_hearing_db.activity_logs' doesn't exist
+[27-Jul-2026 10:36:11 Asia/Manila] Activity log failed: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_public_hearing_db.activity_logs' doesn't exist
+[29-Jul-2026 13:50:45 Asia/Manila] Activity log failed: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist
+[29-Jul-2026 13:50:45 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:30
+[29-Jul-2026 13:56:57 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:176
+[29-Jul-2026 13:56:59 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:176
+[29-Jul-2026 13:57:02 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:176
+[29-Jul-2026 13:57:06 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:176
+[29-Jul-2026 13:57:19 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:176
+[29-Jul-2026 13:57:21 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:176
+[29-Jul-2026 13:57:22 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:176
+[29-Jul-2026 13:57:24 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.activity_logs' doesn't exist in C:\xampp\htdocs\lph\dashboard.php:176
+[29-Jul-2026 14:00:16 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:00:27 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:00:32 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:00:39 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:00:58 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issue_categories' doesn't exist in C:\xampp\htdocs\lph\modules\issues\index.php:16
+[29-Jul-2026 14:01:07 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:01:24 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:01:41 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issue_categories' doesn't exist in C:\xampp\htdocs\lph\modules\issues\index.php:16
+[29-Jul-2026 14:10:44 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:10:50 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:10:58 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:10:59 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:11:00 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:11:42 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:11:47 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:14:06 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issue_categories' doesn't exist in C:\xampp\htdocs\lph\modules\issues\report.php:18
+[29-Jul-2026 14:15:21 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:15:24 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:15:40 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:16:32 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:16:54 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:17:11 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist in C:\xampp\htdocs\lph\modules\issues\print.php:28
+[29-Jul-2026 14:17:17 Asia/Manila] Issue delete error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:19:38 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:19:43 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:28:02 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist in C:\xampp\htdocs\lph\reports\index.php:25
+[29-Jul-2026 14:28:15 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issue_categories' doesn't exist in C:\xampp\htdocs\lph\modules\issues\report.php:18
+[29-Jul-2026 14:28:18 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist in C:\xampp\htdocs\lph\modules\issues\print.php:28
+[29-Jul-2026 14:28:29 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issue_categories' doesn't exist in C:\xampp\htdocs\lph\modules\issues\report.php:18
+[29-Jul-2026 14:28:44 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist in C:\xampp\htdocs\lph\modules\issues\print.php:28
+[29-Jul-2026 14:34:27 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:34:29 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:34:34 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:35:48 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
+[29-Jul-2026 14:35:50 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
