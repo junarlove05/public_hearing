@@ -43,7 +43,7 @@ define('ALLOWED_UPLOAD_EXT', ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg']);
 
 // ---- Session settings -----------------------------------------------
 define('SESSION_NAME', 'lph_session');
-define('SESSION_LIFETIME', 60 * 60 * 8); // 8 hours
+define('SESSION_LIFETIME', 60 * 60 * 8);
 
 // FIX (network-error root cause #3): PHP's own session garbage collector
 // has its own separate lifetime setting (session.gc_maxlifetime), which

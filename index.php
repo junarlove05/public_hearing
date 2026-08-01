@@ -35,9 +35,9 @@ $subsystems = [
         'short_title' => 'Ordinance and Resolution',
         'description' => 'Manage the complete life cycle of ordinances and resolutions, from drafting and committee review to enactment, publication, implementation, and amendment tracking.',
         'icon'        => 'bi-file-earmark-text',
-        'url'         => 'http://localhost/ordinance-resolution/',
-        'enabled'     => false,
-        'status'      => 'Coming Soon',
+        'url'         => 'http://localhost/orlms/',
+        'enabled'     => true,
+        'status'      => 'Available',
         'modules'     => [
             'Ordinance Drafting and Encoding',
             'Resolution Drafting and Submission',
