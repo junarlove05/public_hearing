@@ -73,9 +73,9 @@ $subsystems = [
         'short_title' => 'Voting and Quorum',
         'description' => 'Support quorum verification, legislative voting, vote tallying, decision recording, validation, and official reporting.',
         'icon'        => 'bi-check2-square',
-        'url'         => 'http://localhost/voting-quorum/',
-        'enabled'     => false,
-        'status'      => 'Coming Soon',
+        'url'         => 'http://localhost/vqdss/',
+        'enabled'     => true,
+        'status'      => 'Available',
         'modules'     => [
             'Quorum Verification',
             'Voting Management — Manual and Electronic',
