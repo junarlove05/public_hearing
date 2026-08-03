@@ -55,9 +55,9 @@ $subsystems = [
         'short_title' => 'Agenda and Calendar',
         'description' => 'Manage legislative priorities, schedules, meetings, deadlines, and coordination between the executive and legislative offices.',
         'icon'        => 'bi-calendar3',
-        'url'         => 'http://localhost/legislative-agenda/',
-        'enabled'     => false,
-        'status'      => 'Coming Soon',
+        'url'         => 'http://localhost/lacms/',
+        'enabled'     => true,
+        'status'      => 'Available',
         'modules'     => [
             'Legislative Priority Setting',
             'Calendar Scheduling',
