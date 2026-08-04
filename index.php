@@ -112,9 +112,9 @@ $subsystems = [
         'short_title' => 'Citizen Engagement',
         'description' => 'Manage public feedback, citizen proposals, complaints, moderation, official responses, and engagement analytics.',
         'icon'        => 'bi-chat-square-heart',
-        'url'         => 'http://localhost/citizen-engagement/',
-        'enabled'     => false,
-        'status'      => 'Coming Soon',
+        'url'         => 'http://localhost/cepfms/',
+        'enabled'     => true,
+        'status'      => 'Available',
         'modules'     => [
             'Public Feedback Submission',
             'Proposal and Suggestion Management',
