@@ -33,6 +33,7 @@ $offices = $pdo->query(
 )->fetchAll();
 
 include __DIR__ . '/../../layouts/header.php';
+$issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
 ?>
 <style>
     /* Issues - Dark Cards, Gray Labels, Colored Icons */
@@ -680,5 +681,12 @@ include __DIR__ . '/../../layouts/header.php';
 
 <?php
 $extraJs = [APP_URL . '/assets/js/issues.js'];
+?>
+<div class="position-fixed bottom-0 end-0 p-3 no-print" style="z-index:1040">
+  <a class="btn btn-warning shadow" href="<?= e(APP_URL) ?>/modules/issues/feedback_handoff.php">
+    <i class="bi bi-arrow-left-right"></i> Feedback Handoff
+  </a>
+</div>
+<?php
 include __DIR__ . '/../../layouts/footer.php';
 ?>

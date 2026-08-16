@@ -14,26 +14,33 @@ $pageTitle  = 'Action Reports';
 $activeMenu = 'actions';
 $pdo = db();
 
-$byStatus = $pdo->query("SELECT status, COUNT(*) AS total FROM actions GROUP BY status")->fetchAll();
+$byStatus = $pdo->query(
+    "SELECT status, COUNT(*) AS total FROM hearing_actions GROUP BY status ORDER BY total DESC"
+)->fetchAll();
 
 $byOffice = $pdo->query(
-    "SELECT aa.assigned_office AS office, COUNT(DISTINCT aa.action_id) AS total
-     FROM action_assignments aa
-     INNER JOIN (
-         SELECT action_id, MAX(assigned_at) AS max_at FROM action_assignments GROUP BY action_id
-     ) latest ON latest.action_id = aa.action_id AND latest.max_at = aa.assigned_at
-     GROUP BY aa.assigned_office ORDER BY total DESC LIMIT 10"
+    "SELECT COALESCE(o.name, 'Unassigned') AS office, COUNT(*) AS total
+     FROM hearing_actions a
+     LEFT JOIN offices o ON o.id = a.assigned_office_id
+     GROUP BY COALESCE(o.name, 'Unassigned')
+     ORDER BY total DESC LIMIT 10"
 )->fetchAll();
 
 $byMonth = $pdo->query(
     "SELECT DATE_FORMAT(created_at, '%Y-%m') AS ym, COUNT(*) AS total
-     FROM actions WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-     GROUP BY ym ORDER BY ym"
+     FROM hearing_actions
+     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+     GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+     ORDER BY ym"
 )->fetchAll();
 
-$total = (int)$pdo->query('SELECT COUNT(*) FROM actions')->fetchColumn();
-$overdue = (int)$pdo->query("SELECT COUNT(*) FROM actions WHERE deadline IS NOT NULL AND deadline < CURDATE() AND status NOT IN ('Completed','Cancelled')")->fetchColumn();
-$completed = (int)$pdo->query("SELECT COUNT(*) FROM actions WHERE status = 'Completed'")->fetchColumn();
+$total = (int)$pdo->query('SELECT COUNT(*) FROM hearing_actions')->fetchColumn();
+$overdue = (int)$pdo->query(
+    "SELECT COUNT(*) FROM hearing_actions
+     WHERE deadline IS NOT NULL AND deadline < CURDATE()
+       AND status NOT IN ('Completed','Cancelled')"
+)->fetchColumn();
+$completed = (int)$pdo->query("SELECT COUNT(*) FROM hearing_actions WHERE status = 'Completed'")->fetchColumn();
 
 include __DIR__ . '/../../layouts/header.php';
 ?>

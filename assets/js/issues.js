@@ -106,7 +106,8 @@
       document.getElementById('is_hearing').value = iss.hearing_id || '';
       document.getElementById('is_priority').value = iss.priority || 'Medium';
       document.getElementById('is_status').value = iss.status || 'Open';
-      document.getElementById('is_office').value = iss.assigned_office || '';
+      document.getElementById('is_due_at').value = iss.due_at ? String(iss.due_at).replace(' ', 'T').slice(0, 16) : '';
+      document.getElementById('is_office').value = iss.assigned_office_id || '';
       document.getElementById('issueModalTitle').innerHTML = '<i class="bi bi-pencil-square"></i> Edit Issue';
       modal.show();
     });

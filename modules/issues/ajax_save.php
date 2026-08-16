@@ -386,4 +386,3 @@ try {
     error_log('Hearing issue save error: ' . $e->getMessage());
     jsonResponse(false, 'A database error occurred while saving the issue.');
 }
-

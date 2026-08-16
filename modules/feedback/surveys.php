@@ -1,512 +1,76 @@
 <?php
-/**
- * modules/feedback/surveys.php
- * ------------------------------------------------------------------
- * Survey Management (Module 4, part 2 of 2). CRUD for surveys; each
- * survey has a shareable public response form (survey_form.php) and
- * a management view of its responses (survey_responses.php).
- * ------------------------------------------------------------------
- */
+declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/lph_module_helpers.php';
+
 requireLogin();
 
-$pageTitle  = 'Surveys';
-$activeMenu = 'feedback';
-$activeTab  = 'surveys';
+$pdo=db();$pageTitle='Consultation Surveys';$activeMenu='feedback';
+$canManageSurveys=hasPermission('lph.surveys.manage');
 
-include __DIR__ . '/../../layouts/header.php';
+$hearings=$pdo->query("SELECT id,reference_number,title FROM hearings ORDER BY hearing_date DESC LIMIT 200")->fetchAll();
+$items=$pdo->query("SELECT id,reference_number,title FROM legislative_items WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 300")->fetchAll();
+
+$surveys=$pdo->query(
+ "SELECT s.*,h.reference_number hearing_reference,h.title hearing_title,
+  li.reference_number legislative_reference,
+  (SELECT COUNT(*) FROM survey_questions q WHERE q.survey_id=s.id) question_count,
+  (SELECT COUNT(*) FROM survey_submissions ss WHERE ss.survey_id=s.id) submission_count
+  FROM surveys s
+  LEFT JOIN hearings h ON h.id=s.hearing_id
+  LEFT JOIN legislative_items li ON li.id=s.legislative_item_id
+  ORDER BY s.created_at DESC,s.id DESC"
+)->fetchAll();
+
+include __DIR__.'/../../layouts/header.php';
 ?>
-<style>
-    /* Surveys - Dark Cards, Gray Labels, Colored Icons */
-    :root {
-        --sv-dark-900: #0F172A;
-        --sv-dark-800: #1E293B;
-        --sv-dark-700: #334155;
-        --sv-amber: #F59E0B;
-        --sv-amber-light: #FBBF24;
-        --sv-white: #FFFFFF;
-        --sv-gray-100: #F1F5F9;
-        --sv-gray-200: #E2E8F0;
-        --sv-gray-300: #CBD5E1;
-        --sv-gray-400: #94A3B8;
-        --sv-gray-500: #64748B;
-        --sv-gray-600: #475569;
-        --sv-emerald: #10B981;
-        --sv-rose: #F43F5E;
-        --sv-violet: #8B5CF6;
-        --sv-cyan: #06B6D4;
-        --sv-indigo: #6366F1;
-        --sv-orange: #F97316;
-        --sv-teal: #14B8A6;
-    }
+<link rel="stylesheet" href="<?= e(APP_URL.'/assets/css/lph-complete-modules.css') ?>">
+<div class="app-wrapper"><?php include __DIR__.'/../../layouts/sidebar.php'; ?><div class="main-content">
+<div class="lphx-head"><div><div class="lphx-eyebrow"><i class="bi bi-ui-checks-grid"></i> Step 5 · Surveys</div><h1>Consultation Surveys</h1><p>Create structured questionnaires linked to hearings or legislative items and collect normalized responses.</p></div><div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="index.php"><i class="bi bi-arrow-left"></i> Feedback</a><?php if($canManageSurveys): ?><button class="btn btn-primary" id="btnNewSurvey"><i class="bi bi-plus-circle"></i> New Survey</button><?php endif; ?></div></div>
 
-    /* Breadcrumb Bar */
-    .breadcrumb-bar {
-        background: var(--sv-white);
-        border-left: 4px solid var(--sv-amber);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-        padding: 1rem 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-    }
+<div class="card lphx-card"><div class="card-header"><i class="bi bi-card-checklist"></i> Survey Register</div><div class="table-responsive">
+<table class="table table-hover lphx-table mb-0"><thead><tr><th>Survey</th><th>Context</th><th>Window</th><th>Status</th><th>Questions</th><th>Responses</th><th class="text-end">Actions</th></tr></thead><tbody>
+<?php if(!$surveys): ?><tr><td colspan="7"><div class="lphx-empty"><i class="bi bi-ui-checks-grid"></i>No surveys yet.</div></td></tr><?php endif; ?>
+<?php foreach($surveys as $s): ?><tr>
+<td><strong><?= e($s['title']) ?></strong><div class="small text-muted"><?= e(mb_strimwidth($s['description']?:'',0,100,'…')) ?></div></td>
+<td><?= e($s['hearing_reference']?:$s['legislative_reference']?:'General consultation') ?></td>
+<td><div class="small"><?= $s['opens_at']?formatDateTime($s['opens_at']):'Open immediately' ?></div><div class="small text-muted"><?= $s['closes_at']?'Closes '.formatDateTime($s['closes_at']):'No closing date' ?></div></td>
+<td><span class="badge text-bg-light"><?= e($s['status']) ?></span></td>
+<td><?= (int)$s['question_count'] ?></td>
+<td><?= (int)$s['submission_count'] ?></td>
+<td class="text-end"><div class="btn-group btn-group-sm"><a class="btn btn-outline-primary" href="survey_take.php?id=<?= (int)$s['id'] ?>"><i class="bi bi-pencil-square"></i></a><a class="btn btn-outline-secondary" href="survey_results.php?id=<?= (int)$s['id'] ?>"><i class="bi bi-bar-chart"></i></a></div></td>
+</tr><?php endforeach; ?>
+</tbody></table></div></div>
+</div></div>
 
-    .breadcrumb-bar h5 {
-        color: var(--sv-dark-900);
-        font-weight: 700;
-    }
-
-    .breadcrumb-bar h5 i {
-        color: var(--sv-amber);
-    }
-
-    .breadcrumb-bar .text-muted {
-        color: var(--sv-gray-500) !important;
-    }
-
-    /* Cards */
-    .card {
-        border: none;
-        border-radius: 16px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
-        background: var(--sv-white);
-        transition: all 0.3s ease;
-    }
-
-    .card:hover {
-        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
-    }
-
-    .card-body {
-        background: var(--sv-white);
-        padding: 1.25rem 1.5rem;
-    }
-
-    /* Buttons */
-    .btn-primary {
-        background: linear-gradient(135deg, var(--sv-dark-900) 0%, var(--sv-dark-800) 100%);
-        border: 1px solid rgba(245, 158, 11, 0.15);
-        color: var(--sv-white);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        border-radius: 10px;
-        font-weight: 600;
-        padding: 0.45rem 1.25rem;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary i {
-        color: var(--sv-amber);
-    }
-
-    .btn-primary:hover {
-        border-color: var(--sv-amber);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
-        color: var(--sv-white);
-        transform: translateY(-2px);
-    }
-
-    .btn-secondary {
-        background: var(--sv-gray-200);
-        border: none;
-        color: var(--sv-dark-900);
-        border-radius: 10px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        padding: 0.45rem 1.25rem;
-    }
-
-    .btn-secondary:hover {
-        background: var(--sv-gray-300);
-        transform: translateY(-2px);
-    }
-
-    /* Form Controls */
-    .form-control,
-    .form-select {
-        border: 2px solid var(--sv-gray-200);
-        border-radius: 10px;
-        padding: 0.5rem 1rem;
-        font-size: 0.875rem;
-        transition: all 0.3s ease;
-        background: var(--sv-gray-100);
-        color: var(--sv-dark-900);
-        font-weight: 500;
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-        border-color: var(--sv-amber);
-        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
-        background: var(--sv-white);
-    }
-
-    .form-control::placeholder {
-        color: var(--sv-gray-400);
-        font-weight: 400;
-    }
-
-    .form-control-sm,
-    .form-select-sm {
-        font-size: 0.8rem;
-        padding: 0.4rem 0.75rem;
-    }
-
-    /* Table */
-    #surveysTableWrap {
-        background: var(--sv-white);
-        border-radius: 16px;
-        overflow: hidden;
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table thead th {
-        background: linear-gradient(135deg, var(--sv-dark-900) 0%, var(--sv-dark-800) 100%);
-        color: var(--sv-white) !important;
-        border-bottom: 4px solid var(--sv-amber);
-        font-weight: 600;
-        padding: 0.85rem 1.25rem;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        border-color: transparent;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-
-    .table thead th i {
-        color: var(--sv-amber);
-        margin-right: 0.4rem;
-        font-size: 0.9rem;
-    }
-
-    .table thead th,
-    .table thead th *,
-    .table thead th span,
-    .table thead th div {
-        color: var(--sv-white) !important;
-    }
-
-    .table tbody td {
-        padding: 0.85rem 1.25rem;
-        vertical-align: middle;
-        color: var(--sv-dark-900);
-        border-bottom: 1px solid var(--sv-gray-200);
-        font-size: 0.9rem;
-        transition: background 0.2s ease;
-    }
-
-    .table tbody tr {
-        transition: all 0.2s ease;
-    }
-
-    .table tbody tr:hover {
-        background: #FFFBEB;
-        transform: scale(1.002);
-    }
-
-    .table tbody tr:last-child td {
-        border-bottom: none;
-    }
-
-    /* Badges */
-    .table .badge {
-        font-weight: 600;
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-    }
-
-    .badge.bg-success {
-        background: var(--sv-emerald) !important;
-        color: white;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-    }
-
-    .badge.bg-warning {
-        background: var(--sv-amber) !important;
-        color: var(--sv-dark-900);
-        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-    }
-
-    .badge.bg-danger {
-        background: var(--sv-rose) !important;
-        color: white;
-        box-shadow: 0 2px 8px rgba(244, 63, 94, 0.3);
-    }
-
-    .badge.bg-info {
-        background: var(--sv-cyan) !important;
-        color: white;
-        box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
-    }
-
-    .badge.bg-secondary {
-        background: var(--sv-gray-500) !important;
-        color: white;
-    }
-
-    /* Modal */
-    .modal-content {
-        border: none;
-        border-radius: 20px;
-        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
-        overflow: hidden;
-        border: 1px solid var(--sv-gray-200);
-    }
-
-    .modal-header {
-        background: linear-gradient(135deg, var(--sv-dark-900) 0%, var(--sv-dark-800) 100%);
-        color: var(--sv-white);
-        padding: 1.25rem 1.75rem;
-        border-bottom: 4px solid var(--sv-amber);
-    }
-
-    .modal-header .modal-title {
-        color: var(--sv-white);
-        font-weight: 700;
-    }
-
-    .modal-header .modal-title i {
-        color: var(--sv-amber);
-        margin-right: 0.6rem;
-        background: rgba(245, 158, 11, 0.15);
-        padding: 0.3rem 0.5rem;
-        border-radius: 8px;
-    }
-
-    .modal-header .btn-close {
-        filter: brightness(0) invert(1);
-        opacity: 0.7;
-        transition: all 0.3s ease;
-    }
-
-    .modal-header .btn-close:hover {
-        opacity: 1;
-        transform: rotate(90deg);
-    }
-
-    .modal-body {
-        padding: 1.75rem;
-        background: var(--sv-gray-100);
-    }
-
-    .modal-footer {
-        background: var(--sv-white);
-        padding: 1rem 1.75rem;
-        border-top: 1px solid var(--sv-gray-200);
-    }
-
-    .modal-body .form-label {
-        font-weight: 600;
-        color: var(--sv-dark-900);
-        font-size: 0.85rem;
-    }
-
-    .modal-body .form-label .text-danger {
-        color: var(--sv-rose);
-    }
-
-    /* Pagination */
-    .pagination .page-link {
-        color: var(--sv-dark-900);
-        border-color: var(--sv-gray-200);
-        transition: all 0.3s ease;
-        font-weight: 500;
-        border-radius: 8px;
-        margin: 0 2px;
-    }
-
-    .pagination .page-link:hover {
-        background: var(--sv-amber);
-        color: var(--sv-dark-900);
-        border-color: var(--sv-amber);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
-    }
-
-    .pagination .page-item.active .page-link {
-        background: linear-gradient(135deg, var(--sv-dark-900) 0%, var(--sv-dark-800) 100%);
-        border-color: var(--sv-amber);
-        color: var(--sv-white);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Action buttons */
-    .btn-action {
-        padding: 0.25rem 0.6rem;
-        border-radius: 8px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: none;
-        font-size: 0.85rem;
-        margin: 0 0.15rem;
-    }
-
-    .btn-action:hover {
-        transform: scale(1.15);
-    }
-
-    .btn-action.edit {
-        color: var(--sv-amber);
-        background: rgba(245, 158, 11, 0.08);
-    }
-
-    .btn-action.edit:hover {
-        background: var(--sv-amber);
-        color: var(--sv-dark-900);
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-    }
-
-    .btn-action.delete {
-        color: var(--sv-rose);
-        background: rgba(244, 63, 94, 0.08);
-    }
-
-    .btn-action.delete:hover {
-        background: var(--sv-rose);
-        color: white;
-        box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
-    }
-
-    .btn-action.view {
-        color: var(--sv-cyan);
-        background: rgba(6, 182, 212, 0.08);
-    }
-
-    .btn-action.view:hover {
-        background: var(--sv-cyan);
-        color: white;
-        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .breadcrumb-bar {
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: flex-start;
-            padding: 1rem;
-        }
-        .table thead th,
-        .table tbody td {
-            padding: 0.6rem 0.8rem;
-            font-size: 0.8rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .breadcrumb-bar h5 {
-            font-size: 0.95rem;
-        }
-        .breadcrumb-bar .text-muted {
-            font-size: 0.75rem;
-        }
-        .card-body {
-            padding: 0.75rem;
-        }
-        .form-control,
-        .form-select {
-            font-size: 0.75rem;
-            padding: 0.3rem 0.6rem;
-        }
-        .table thead th,
-        .table tbody td {
-            padding: 0.4rem 0.6rem;
-            font-size: 0.7rem;
-        }
-        .btn-action {
-            padding: 0.15rem 0.4rem;
-            font-size: 0.7rem;
-        }
-    }
-</style>
-<div class="app-wrapper">
-  <?php include __DIR__ . '/../../layouts/sidebar.php'; ?>
-
-  <div class="main-content">
-    <div class="breadcrumb-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <div>
-        <h5 class="mb-0"><i class="bi bi-chat-square-text"></i> Public Feedback Collection</h5>
-        <small class="text-muted">Submit and manage public feedback and survey responses</small>
-      </div>
-      <?php if (canManage()): ?>
-      <div class="no-print">
-        <button type="button" class="btn btn-primary btn-sm" id="btnAddSurvey"><i class="bi bi-plus-circle"></i> New Survey</button>
-      </div>
-      <?php endif; ?>
-    </div>
-
-    <?php include __DIR__ . '/tabs.php'; ?>
-
-    <div class="card mb-3 no-print">
-      <div class="card-body">
-        <div class="row g-2">
-          <div class="col-md-8">
-            <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search survey title or description...">
-          </div>
-          <div class="col-md-4">
-            <select class="form-select form-select-sm" id="statusFilter">
-              <option value="">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div id="surveysTableWrap">
-        <?php include __DIR__ . '/surveys_table.php'; ?>
-      </div>
-    </div>
-  </div>
+<?php if($canManageSurveys): ?>
+<div class="modal fade" id="surveyModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+<form id="surveyForm"><?= csrfField() ?><input type="hidden" name="id" value="0">
+<div class="modal-header bg-dark text-white"><h5 class="modal-title">Create Survey</h5><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal"></button></div>
+<div class="modal-body">
+<div class="row g-3 mb-3">
+<div class="col-md-8"><label class="form-label">Title *</label><input class="form-control" name="title" required></div>
+<div class="col-md-4"><label class="form-label">Status</label><select class="form-select" name="status"><option>Draft</option><option>Active</option><option>Closed</option><option>Archived</option></select></div>
+<div class="col-md-6"><label class="form-label">Hearing</label><select class="form-select" name="hearing_id"><option value="">None</option><?php foreach($hearings as $h): ?><option value="<?= (int)$h['id'] ?>"><?= e(($h['reference_number']?:'').' '.$h['title']) ?></option><?php endforeach; ?></select></div>
+<div class="col-md-6"><label class="form-label">Legislative Item</label><select class="form-select" name="legislative_item_id"><option value="">None</option><?php foreach($items as $i): ?><option value="<?= (int)$i['id'] ?>"><?= e($i['reference_number'].' - '.$i['title']) ?></option><?php endforeach; ?></select></div>
+<div class="col-md-3"><label class="form-label">Opens At</label><input type="datetime-local" class="form-control" name="opens_at"></div>
+<div class="col-md-3"><label class="form-label">Closes At</label><input type="datetime-local" class="form-control" name="closes_at"></div>
+<div class="col-md-6"><label class="form-label">Description</label><input class="form-control" name="description"></div>
 </div>
-
-<?php if (canManage()): ?>
-<div class="modal fade" id="surveyModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="surveyForm">
-        <?= csrfField() ?>
-        <input type="hidden" name="id" id="sv_id" value="0">
-        <div class="modal-header">
-          <h5 class="modal-title" id="surveyModalTitle"><i class="bi bi-plus-circle"></i> New Survey</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Title <span class="text-danger">*</span></label>
-            <input type="text" name="title" id="sv_title" class="form-control" required maxlength="255">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea name="description" id="sv_description" class="form-control" rows="3" placeholder="Shown to respondents above the response field."></textarea>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Status</label>
-            <select name="status" id="sv_status" class="form-select">
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Save Survey</button>
-        </div>
-      </form>
-    </div>
-  </div>
+<div class="d-flex justify-content-between align-items-center mb-2"><strong>Questions</strong><button type="button" class="btn btn-sm btn-outline-primary" id="btnAddQuestion"><i class="bi bi-plus"></i> Add Question</button></div>
+<div id="questionBuilder"></div>
 </div>
+<div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Save Survey</button></div>
+</form></div></div></div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ const modal=new bootstrap.Modal(document.getElementById('surveyModal'));const builder=document.getElementById('questionBuilder');
+ function addQuestion(){const d=document.createElement('div');d.className='lphx-survey-question';d.innerHTML=`<div class="row g-2"><div class="col-lg-6"><label class="form-label">Question *</label><input class="form-control" name="question_text[]" required></div><div class="col-lg-3"><label class="form-label">Type</label><select class="form-select qtype" name="question_type[]"><option>Text</option><option>Long Text</option><option>Single Choice</option><option>Multiple Choice</option><option>Rating</option><option>Number</option></select></div><div class="col-lg-2"><label class="form-label">Required</label><select class="form-select" name="question_required[]"><option value="0">No</option><option value="1">Yes</option></select></div><div class="col-lg-1 d-flex align-items-end"><button type="button" class="btn btn-outline-danger w-100 remove-q"><i class="bi bi-trash"></i></button></div><div class="col-12 qoptions" hidden><label class="form-label">Options — one per line</label><textarea class="form-control" name="question_options[]" rows="3"></textarea></div><input type="hidden" name="question_options[]" value="" class="fallback-options"></div>`;
+ const type=d.querySelector('.qtype'),opts=d.querySelector('.qoptions'),fallback=d.querySelector('.fallback-options');function sync(){const choice=['Single Choice','Multiple Choice'].includes(type.value);opts.hidden=!choice;fallback.disabled=choice;opts.querySelector('textarea').disabled=!choice;}type.onchange=sync;sync();d.querySelector('.remove-q').onclick=()=>d.remove();builder.appendChild(d);}
+ btnAddQuestion.onclick=addQuestion;btnNewSurvey.onclick=()=>{surveyForm.reset();builder.innerHTML='';addQuestion();modal.show();};
+ surveyForm.onsubmit=async e=>{e.preventDefault();const r=await appPostForm(APP_URL+'/modules/feedback/ajax_survey_save.php',surveyForm);if(r.success){appToast('success',r.message);setTimeout(()=>location.reload(),400);}else if(!r.session_expired)Swal.fire('Survey Error',r.message,'error');};
+});
+</script>
 <?php endif; ?>
-
-<?php
-$extraJs = [APP_URL . '/assets/js/surveys.js'];
-include __DIR__ . '/../../layouts/footer.php';
-?>
+<?php include __DIR__.'/../../layouts/footer.php'; ?>

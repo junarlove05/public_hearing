@@ -68,8 +68,15 @@ function csrfField(): string
 
 function verifyCsrf(): bool
 {
-    $token = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? '';
-    return !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+    $token =
+        $_POST['csrf_token']
+        ?? $_SERVER['HTTP_X_CSRF_TOKEN']
+        ?? $_GET['csrf_token']
+        ?? '';
+
+    return !empty($_SESSION['csrf_token'])
+        && is_string($token)
+        && hash_equals($_SESSION['csrf_token'], $token);
 }
 
 /** Call at the top of any state-changing request handler (POST). */
@@ -261,6 +268,7 @@ function statusBadge(string $status): string
         'Reviewed'   => 'primary',
         'Open'       => 'primary',
         'Processing' => 'warning',
+        'In Progress'=> 'warning',
         'Resolved'   => 'success',
         'Closed'     => 'secondary',
         'Replied'    => 'success',
@@ -275,7 +283,7 @@ function statusBadge(string $status): string
 
 function priorityBadge(string $priority): string
 {
-    $map = ['High' => 'danger', 'Medium' => 'warning', 'Low' => 'success'];
+    $map = ['Critical' => 'danger', 'High' => 'danger', 'Medium' => 'warning', 'Low' => 'success'];
     $color = $map[$priority] ?? 'secondary';
     return '<span class="badge bg-' . $color . '">' . e($priority) . '</span>';
 }

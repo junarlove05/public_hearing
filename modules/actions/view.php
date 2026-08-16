@@ -15,8 +15,13 @@ $id = (int)($_GET['id'] ?? 0);
 $pdo = db();
 
 $stmt = $pdo->prepare(
-    'SELECT a.*, i.title AS issue_title, i.status AS issue_status
-     FROM actions a LEFT JOIN issues i ON i.id = a.issue_id
+    'SELECT a.*, i.title AS issue_title, i.status AS issue_status,
+            o.name AS assigned_office,
+            au.full_name AS assigned_user_name
+     FROM hearing_actions a
+     LEFT JOIN hearing_issues i ON i.id = a.issue_id
+     LEFT JOIN offices o ON o.id = a.assigned_office_id
+     LEFT JOIN users au ON au.id = a.assigned_user_id
      WHERE a.id = :id'
 );
 $stmt->execute([':id' => $id]);
@@ -27,18 +32,31 @@ if (!$action) {
     redirect(APP_URL . '/modules/actions/index.php');
 }
 
-$documents = $pdo->prepare('SELECT * FROM action_documents WHERE action_id = :id ORDER BY uploaded_at DESC');
+$documents = $pdo->prepare('SELECT * FROM hearing_action_documents WHERE action_id = :id ORDER BY uploaded_at DESC');
 $documents->execute([':id' => $id]);
 $documents = $documents->fetchAll();
 
-$updates = $pdo->prepare('SELECT * FROM action_updates WHERE action_id = :id ORDER BY created_at DESC');
+$updates = $pdo->prepare(
+    'SELECT hau.*, u.full_name AS updated_by_name
+     FROM hearing_action_updates hau
+     LEFT JOIN users u ON u.id = hau.updated_by
+     WHERE hau.action_id = :id
+     ORDER BY hau.created_at DESC'
+);
 $updates->execute([':id' => $id]);
 $updates = $updates->fetchAll();
 
-$assignments = $pdo->prepare('SELECT * FROM action_assignments WHERE action_id = :id ORDER BY assigned_at DESC');
+$assignments = $pdo->prepare(
+    'SELECT haa.*, o.name AS assigned_office, u.full_name AS assigned_user_name
+     FROM hearing_action_assignments haa
+     LEFT JOIN offices o ON o.id = haa.assigned_office_id
+     LEFT JOIN users u ON u.id = haa.assigned_user_id
+     WHERE haa.action_id = :id
+     ORDER BY haa.assigned_at DESC'
+);
 $assignments->execute([':id' => $id]);
 $assignments = $assignments->fetchAll();
-$currentOffice = $assignments[0]['assigned_office'] ?? null;
+$currentOffice = $action['assigned_office'] ?: ($action['assigned_user_name'] ?: null);
 
 $overdue = $action['deadline'] && $action['deadline'] < date('Y-m-d') && !in_array($action['status'], ['Completed', 'Cancelled'], true);
 

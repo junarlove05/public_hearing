@@ -13,11 +13,11 @@ $pageTitle  = 'Response & Action Tracking';
 $activeMenu = 'actions';
 $pdo = db();
 
-$issues = $pdo->query("SELECT id, title FROM issues WHERE status NOT IN ('Closed') ORDER BY created_at DESC")->fetchAll();
+$issues = $pdo->query("SELECT id, title FROM hearing_issues WHERE status NOT IN ('Closed') ORDER BY created_at DESC")->fetchAll();
 
 // Upcoming-deadline notifications (next 7 days, not yet completed/cancelled).
 $upcoming = $pdo->query(
-    "SELECT id, title, deadline, status FROM actions
+    "SELECT id, title, deadline, status FROM hearing_actions
      WHERE deadline IS NOT NULL AND deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
      AND status NOT IN ('Completed', 'Cancelled')
      ORDER BY deadline ASC LIMIT 5"

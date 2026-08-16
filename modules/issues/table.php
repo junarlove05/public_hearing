@@ -1,4 +1,3 @@
-
 <?php
 /**
  * modules/issues/table.php

@@ -29,17 +29,19 @@ if ($statusFil !== '') { $where[] = 'a.status = :status'; $params[':status'] = $
 if ($issueFil > 0) { $where[] = 'a.issue_id = :issue_id'; $params[':issue_id'] = $issueFil; }
 $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
-$countStmt = $pdo->prepare("SELECT COUNT(*) FROM actions a $whereSql");
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM hearing_actions a $whereSql");
 $countStmt->execute($params);
 $totalRows = (int)$countStmt->fetchColumn();
 $pageInfo = paginate($totalRows);
 
 $sql = "SELECT a.*, i.title AS issue_title,
-               (SELECT aa.assigned_office FROM action_assignments aa WHERE aa.action_id = a.id ORDER BY aa.assigned_at DESC LIMIT 1) AS current_office,
-               (SELECT COUNT(*) FROM action_documents d WHERE d.action_id = a.id) AS document_count,
-               (SELECT COUNT(*) FROM action_updates u WHERE u.action_id = a.id) AS update_count
-        FROM actions a
-        LEFT JOIN issues i ON i.id = a.issue_id
+               COALESCE(o.name, au.full_name) AS current_office,
+               (SELECT COUNT(*) FROM hearing_action_documents d WHERE d.action_id = a.id) AS document_count,
+               (SELECT COUNT(*) FROM hearing_action_updates u WHERE u.action_id = a.id) AS update_count
+        FROM hearing_actions a
+        LEFT JOIN hearing_issues i ON i.id = a.issue_id
+        LEFT JOIN offices o ON o.id = a.assigned_office_id
+        LEFT JOIN users au ON au.id = a.assigned_user_id
         $whereSql
         ORDER BY a.$sortBy $sortDir
         LIMIT {$pageInfo['perPage']} OFFSET {$pageInfo['offset']}";
@@ -274,8 +276,8 @@ $today = date('Y-m-d');
     .status-badge.pending { background: #FEF3C7; color: #92400E; }
     .status-badge.pending i { color: #F59E0B; }
 
-    .status-badge.in-progress { background: #DBEAFE; color: #1E40AF; }
-    .status-badge.in-progress i { color: #3B82F6; }
+    .status-badge.in-progress, .status-badge.on-going { background: #DBEAFE; color: #1E40AF; }
+    .status-badge.in-progress i, .status-badge.on-going i { color: #3B82F6; }
 
     .status-badge.completed { background: #D1FAE5; color: #065F46; }
     .status-badge.completed i { color: #10B981; }
@@ -667,7 +669,7 @@ $today = date('Y-m-d');
                             <span class="status-badge <?= e($statusLower) ?>">
                                 <i class="bi <?= match($row['status']) {
                                     'Pending' => 'bi-clock',
-                                    'In Progress' => 'bi-play-circle',
+                                    'In Progress', 'On Going' => 'bi-play-circle',
                                     'Completed' => 'bi-check-circle',
                                     'Cancelled' => 'bi-x-circle',
                                     default => 'bi-circle'

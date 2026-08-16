@@ -66,15 +66,29 @@ register_shutdown_function(function (): void {
 
 /* ---- Secure session bootstrap ------------------------------------- */
 if (session_status() === PHP_SESSION_NONE) {
+    $isHttps =
+        (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+        || (int)($_SERVER['SERVER_PORT'] ?? 0) === 443;
+
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+
     session_name(SESSION_NAME);
     session_set_cookie_params([
         'lifetime' => SESSION_LIFETIME,
         'path'     => '/',
         'httponly' => true,
+        'secure'   => $isHttps,
         'samesite' => 'Lax',
-        // 'secure' => true, // enable once served over HTTPS
     ]);
     session_start();
+}
+
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(self), microphone=(), geolocation=()');
 }
 
 /* ---- Idle timeout --------------------------------------------------- */
@@ -146,6 +160,19 @@ function requireLogin(): void
         setFlash('warning', 'Please log in to continue.');
         redirect(APP_URL . '/login.php');
     }
+
+    if (
+        function_exists('lphUserHasSystemAccess')
+        && !lphUserHasSystemAccess((int)currentUserId())
+    ) {
+        if (isAjaxRequest()) {
+            jsonResponse(false, 'Your account does not currently have access to the Public Hearing subsystem.');
+        }
+
+        http_response_code(403);
+        include __DIR__ . '/../pages/403.php';
+        exit;
+    }
 }
 
 /**
@@ -186,5 +213,11 @@ function isAdmin(): bool
  */
 function canManage(): bool
 {
+    if (function_exists('hasPermission')) {
+        return hasPermission('lph.records.manage');
+    }
+
     return hasRole([ROLE_ADMIN, ROLE_STAFF]);
 }
+
+require_once __DIR__ . '/lph_security.php';

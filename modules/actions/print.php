@@ -21,9 +21,11 @@ if ($issueFil > 0) { $where[] = 'a.issue_id = :issue_id'; $params[':issue_id'] =
 $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
 $stmt = $pdo->prepare(
-    "SELECT a.*, i.title AS issue_title,
-            (SELECT aa.assigned_office FROM action_assignments aa WHERE aa.action_id = a.id ORDER BY aa.assigned_at DESC LIMIT 1) AS current_office
-     FROM actions a LEFT JOIN issues i ON i.id = a.issue_id
+    "SELECT a.*, i.title AS issue_title, COALESCE(o.name, u.full_name) AS current_office
+     FROM hearing_actions a
+     LEFT JOIN hearing_issues i ON i.id = a.issue_id
+     LEFT JOIN offices o ON o.id = a.assigned_office_id
+     LEFT JOIN users u ON u.id = a.assigned_user_id
      $whereSql ORDER BY a.created_at DESC"
 );
 $stmt->execute($params);

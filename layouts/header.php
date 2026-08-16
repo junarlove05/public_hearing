@@ -85,8 +85,8 @@ try {
     } else {
         $upcomingCount = (int)$pdo->query("SELECT COUNT(*) FROM hearings WHERE status = 'Upcoming' AND hearing_date >= CURDATE() AND hearing_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)")->fetchColumn();
         $newFeedbackCount = (int)$pdo->query("SELECT COUNT(*) FROM feedback WHERE status = 'New'")->fetchColumn();
-        $openIssuesCount = (int)$pdo->query("SELECT COUNT(*) FROM issues WHERE status = 'Open'")->fetchColumn();
-        $dueActionsCount = (int)$pdo->query("SELECT COUNT(*) FROM actions WHERE status = 'Pending' AND deadline IS NOT NULL AND deadline <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)")->fetchColumn();
+        $openIssuesCount = (int)$pdo->query("SELECT COUNT(*) FROM hearing_issues WHERE status = 'Open'")->fetchColumn();
+        $dueActionsCount = (int)$pdo->query("SELECT COUNT(*) FROM hearing_actions WHERE status = 'Pending' AND deadline IS NOT NULL AND deadline <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)")->fetchColumn();
 
         if ($upcomingCount > 0) $notifItems[] = ['text' => $upcomingCount . ' hearing(s) upcoming this week', 'url' => APP_URL . '/modules/hearings/index.php'];
         if ($newFeedbackCount > 0) $notifItems[] = ['text' => $newFeedbackCount . ' new feedback awaiting review', 'url' => APP_URL . '/modules/feedback/index.php'];

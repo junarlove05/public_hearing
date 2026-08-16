@@ -1,78 +1,124 @@
 <?php
-/**
- * modules/feedback/ajax_submit.php
- * ------------------------------------------------------------------
- * Handles feedback form submissions. Deliberately does NOT require
- * login (public feedback collection), but still requires a valid
- * CSRF token — auth.php starts a PHP session for every visitor
- * (authenticated or not), so csrfToken()/requireCsrf() work fine for
- * anonymous submitters too.
- *
- * AI INTEGRATION: after the feedback is safely saved, we attempt AI
- * sentiment analysis (see includes/AI/AIAnalysisManager.php). This
- * NEVER blocks or fails the feedback submission itself — if Ollama is
- * unavailable, slow, or misconfigured, the citizen still gets a normal
- * success response and their feedback is saved exactly as before; the
- * AI analysis is a background enhancement, not a dependency.
- * ------------------------------------------------------------------
- */
+declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../config/ai_config.php';
-require_once __DIR__ . '/../../includes/AI/AIAnalysisManager.php';
-// NOTE: intentionally no requireLogin() call — this is the public submission endpoint.
+require_once __DIR__ . '/../../includes/lph_module_helpers.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonResponse(false, 'Invalid request method.');
+requireLogin();
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    jsonResponse(false, 'Invalid request method.');
+}
 requireCsrf();
 
-$name       = clean($_POST['name'] ?? '');
-$email      = clean($_POST['email'] ?? '');
+$pdo = db();
+
+$hearingId = (int)($_POST['hearing_id'] ?? 0) ?: null;
+$legislativeItemId = (int)($_POST['legislative_item_id'] ?? 0) ?: null;
+$name = clean($_POST['name'] ?? '');
+$email = strtolower(clean($_POST['email'] ?? ''));
 $categoryId = (int)($_POST['category_id'] ?? 0) ?: null;
-$subject    = clean($_POST['subject'] ?? '');
-$message    = clean($_POST['message'] ?? '');
+$subject = clean($_POST['subject'] ?? '');
+$message = trim((string)($_POST['message'] ?? ''));
+$position = clean($_POST['feedback_position'] ?? 'Comment');
+$isAnonymous = isset($_POST['is_anonymous']) ? 1 : 0;
+$requestedVisibility = clean($_POST['visibility'] ?? 'Internal');
+
+$manager = canManage() || currentRole() === ROLE_COMMITTEE;
+$visibility = $manager && in_array($requestedVisibility, ['Public','Internal','Restricted'], true)
+    ? $requestedVisibility
+    : 'Internal';
 
 $errors = [];
-if ($name === '') $errors[] = 'Name is required.';
-if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email address is required.';
-if ($message === '') $errors[] = 'Message is required.';
 
-if (!empty($errors)) jsonResponse(false, implode(' ', $errors));
+if ($name === '') $errors[] = 'Name is required.';
+if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $errors[] = 'A valid email address is required.';
+}
+if ($message === '') $errors[] = 'Feedback message is required.';
+if (!in_array($position, ['Support','Oppose','Neutral','Comment'], true)) {
+    $errors[] = 'Invalid feedback position.';
+}
+
+if ($hearingId) {
+    $q = $pdo->prepare('SELECT COUNT(*) FROM hearings WHERE id=:id');
+    $q->execute([':id'=>$hearingId]);
+    if ((int)$q->fetchColumn()===0) $errors[]='Selected hearing does not exist.';
+}
+
+if ($legislativeItemId) {
+    $q = $pdo->prepare('SELECT COUNT(*) FROM legislative_items WHERE id=:id AND deleted_at IS NULL');
+    $q->execute([':id'=>$legislativeItemId]);
+    if ((int)$q->fetchColumn()===0) $errors[]='Selected legislative item does not exist.';
+}
+
+if ($categoryId) {
+    $q = $pdo->prepare('SELECT COUNT(*) FROM feedback_categories WHERE id=:id');
+    $q->execute([':id'=>$categoryId]);
+    if ((int)$q->fetchColumn()===0) $errors[]='Selected feedback category does not exist.';
+}
+
+if ($errors) jsonResponse(false, implode(' ', $errors));
+
+$stakeholderId = null;
+$stakeholder = $pdo->prepare('SELECT id FROM stakeholders WHERE LOWER(email)=LOWER(:email) LIMIT 1');
+$stakeholder->execute([':email'=>$email]);
+if ($row = $stakeholder->fetch()) $stakeholderId = (int)$row['id'];
 
 try {
-    $stmt = db()->prepare(
-        "INSERT INTO feedback (name, email, category_id, subject, message, status, submitted_at)
-         VALUES (:name, :email, :cat, :subject, :message, 'New', NOW())"
+    $pdo->beginTransaction();
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO feedback
+         (hearing_id,legislative_item_id,stakeholder_id,user_id,name,email,category_id,
+          subject,message,status,submitted_at,feedback_position,is_anonymous,visibility,
+          validated_by,validated_at,updated_at)
+         VALUES
+         (:hearing,:item,:stakeholder,:user,:name,:email,:category,:subject,:message,
+          "New",NOW(),:position,:anonymous,:visibility,NULL,NULL,NOW())'
     );
+
     $stmt->execute([
-        ':name' => $name, ':email' => $email, ':cat' => $categoryId,
-        ':subject' => $subject, ':message' => $message,
+        ':hearing'=>$hearingId,
+        ':item'=>$legislativeItemId,
+        ':stakeholder'=>$stakeholderId,
+        ':user'=>currentUserId(),
+        ':name'=>$name,
+        ':email'=>$email,
+        ':category'=>$categoryId,
+        ':subject'=>$subject ?: null,
+        ':message'=>$message,
+        ':position'=>$position,
+        ':anonymous'=>$isAnonymous,
+        ':visibility'=>$visibility,
     ]);
-    $id = (int)db()->lastInsertId();
 
-    logActivity(currentUserId(), 'Insert', 'New feedback submitted by ' . $name . ' (#' . $id . ')');
+    $id = (int)$pdo->lastInsertId();
 
-    // FIX/DESIGN: send the success response to the citizen FIRST, then run
-    // AI analysis. fastcgi_finish_request() (available under PHP-FPM) closes
-    // the HTTP connection immediately while the script keeps running, so the
-    // citizen isn't kept waiting on a local LLM inference call that can take
-    // anywhere from 1 to 30+ seconds depending on hardware. Under classic
-    // mod_php (common on XAMPP/Apache), that function doesn't exist, so we
-    // fall back to running the analysis synchronously before responding —
-    // slower, but still correct and never breaks the submission itself.
-    if (function_exists('fastcgi_finish_request')) {
-        jsonResponsePrepare(true, 'Thank you! Your feedback has been submitted successfully.', ['id' => $id]);
-        fastcgi_finish_request();
-        AIAnalysisManager::analyzeAndStore($id, $message);
-        exit;
-    }
+    lphHistory(
+        $pdo, 'feedback', $id, 'Create', null, 'New',
+        'Feedback submitted through the Public Feedback module.'
+    );
 
-    // No fastcgi_finish_request() available: analyze synchronously (bounded
-    // by AI_REQUEST_TIMEOUT_SECONDS) before responding. Any AI failure is
-    // caught inside AIAnalysisManager and never surfaces as a submission error.
-    AIAnalysisManager::analyzeAndStore($id, $message);
-    jsonResponse(true, 'Thank you! Your feedback has been submitted successfully.', ['id' => $id]);
+    logActivity(
+        currentUserId(),
+        'Submit Feedback',
+        'Submitted feedback #' . $id . ($hearingId ? " for hearing #{$hearingId}" : '')
+    );
 
-} catch (PDOException $e) {
-    error_log('Feedback submit error: ' . $e->getMessage());
-    jsonResponse(false, 'A database error occurred while submitting your feedback. Please try again.');
+    $pdo->commit();
+
+    jsonResponse(
+        true,
+        'Feedback submitted successfully. It is now available for review.',
+        ['id'=>$id]
+    );
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    error_log('Feedback submit error: '.$e->getMessage());
+
+    jsonResponse(
+        false,
+        APP_DEBUG ? $e->getMessage() : 'Unable to submit feedback.'
+    );
 }

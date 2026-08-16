@@ -1,68 +1,167 @@
-/**
- * assets/js/hearings-calendar.js
- * ------------------------------------------------------------------
- * Renders a simple month-grid calendar for modules/hearings/calendar.php,
- * fetching events from ajax_calendar_events.php for the visible month.
- * ------------------------------------------------------------------
- */
-
 (function () {
+  'use strict';
+
   const grid = document.getElementById('calendarGrid');
   const label = document.getElementById('calMonthLabel');
-  if (!grid) return;
 
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const statusColor = { Upcoming: '#0b3d6e', Ongoing: '#b5750f', Completed: '#157a6e', Cancelled: '#a4302a' };
+  if (!grid || !label) return;
+
+  const monthNames = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
+  const statusClass = {
+    Upcoming: 'upcoming',
+    Ongoing: 'ongoing',
+    Completed: 'completed',
+    Cancelled: 'cancelled'
+  };
 
   const today = new Date();
   let viewYear = today.getFullYear();
-  let viewMonth = today.getMonth() + 1; // 1-12
+  let viewMonth = today.getMonth() + 1;
+
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = String(value ?? '');
+    return div.innerHTML;
+  }
 
   function load() {
-    label.textContent = monthNames[viewMonth - 1] + ' ' + viewYear;
-    appGet(window.APP_URL + '/modules/hearings/ajax_calendar_events.php?year=' + viewYear + '&month=' + viewMonth)
-      .then(data => render(data.success ? data.events : []));
+    label.textContent =
+      monthNames[viewMonth - 1] + ' ' + viewYear;
+
+    appGet(
+      window.APP_URL
+      + '/modules/hearings/ajax_calendar_events.php?year='
+      + viewYear
+      + '&month='
+      + viewMonth
+    ).then(function (data) {
+      render(data.success ? data.events : []);
+    });
   }
 
   function render(events) {
-    const firstDay = new Date(viewYear, viewMonth - 1, 1);
-    const startOffset = firstDay.getDay(); // 0=Sun
-    const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
+    const first = new Date(viewYear, viewMonth - 1, 1);
+    const offset = first.getDay();
+    const days = new Date(viewYear, viewMonth, 0).getDate();
 
     const eventsByDay = {};
-    events.forEach(ev => {
-      const day = parseInt(ev.hearing_date.split('-')[2], 10);
-      (eventsByDay[day] = eventsByDay[day] || []).push(ev);
+
+    events.forEach(function (event) {
+      const startDate = new Date(event.hearing_date + 'T00:00:00');
+      const endDate = new Date((event.end_date || event.hearing_date) + 'T00:00:00');
+
+      for (
+        let current = new Date(startDate);
+        current <= endDate;
+        current.setDate(current.getDate() + 1)
+      ) {
+        if (
+          current.getFullYear() !== viewYear
+          || current.getMonth() + 1 !== viewMonth
+        ) {
+          continue;
+        }
+
+        const day = current.getDate();
+
+        if (!eventsByDay[day]) {
+          eventsByDay[day] = [];
+        }
+
+        eventsByDay[day].push(event);
+      }
     });
 
     let html = '';
-    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => { html += `<div class="cal-head">${d}</div>`; });
 
-    for (let i = 0; i < startOffset; i++) html += '<div class="cal-day empty"></div>';
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function (day) {
+      html += '<div class="hearing-cal-head">' + day + '</div>';
+    });
 
-    const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1;
+    for (let i = 0; i < offset; i++) {
+      html += '<div class="hearing-cal-day empty"></div>';
+    }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const isToday = isCurrentMonth && day === today.getDate();
-      html += `<div class="cal-day${isToday ? ' today' : ''}"><div class="day-num">${day}</div>`;
-      (eventsByDay[day] || []).forEach(ev => {
-        const color = statusColor[ev.status] || '#6c757d';
-        const title = ev.title.replace(/"/g, '&quot;');
-        html += `<div class="cal-event" style="background:${color}" title="${title} — ${ev.hearing_time}"
-                    onclick="window.location.href='${window.APP_URL}/modules/hearings/view.php?id=${ev.id}'">${title}</div>`;
+    const currentMonth =
+      viewYear === today.getFullYear()
+      && viewMonth === today.getMonth() + 1;
+
+    for (let day = 1; day <= days; day++) {
+      const isToday = currentMonth && day === today.getDate();
+
+      html +=
+        '<div class="hearing-cal-day'
+        + (isToday ? ' today' : '')
+        + '">';
+
+      html +=
+        '<div class="hearing-cal-day-number">'
+        + day
+        + '</div>';
+
+      (eventsByDay[day] || []).forEach(function (event) {
+        const status = statusClass[event.status] || 'default';
+        const title = escapeHtml(event.title);
+        const reference = escapeHtml(event.reference_number || '');
+        const time = String(event.hearing_time || '').substring(0, 5);
+
+        html +=
+          '<button type="button" class="hearing-cal-event '
+          + status
+          + '" data-id="'
+          + Number(event.id)
+          + '" title="'
+          + reference
+          + ' '
+          + title
+          + '">'
+          + '<small>'
+          + escapeHtml(time)
+          + '</small>'
+          + '<span>'
+          + title
+          + '</span>'
+          + '</button>';
       });
+
       html += '</div>';
     }
 
     grid.innerHTML = html;
+
+    grid.querySelectorAll('.hearing-cal-event').forEach(function (button) {
+      button.addEventListener('click', function () {
+        window.location.href =
+          window.APP_URL
+          + '/modules/hearings/view.php?id='
+          + button.getAttribute('data-id');
+      });
+    });
   }
 
   document.getElementById('prevMonth').addEventListener('click', function () {
-    viewMonth--; if (viewMonth < 1) { viewMonth = 12; viewYear--; }
+    viewMonth--;
+
+    if (viewMonth < 1) {
+      viewMonth = 12;
+      viewYear--;
+    }
+
     load();
   });
+
   document.getElementById('nextMonth').addEventListener('click', function () {
-    viewMonth++; if (viewMonth > 12) { viewMonth = 1; viewYear++; }
+    viewMonth++;
+
+    if (viewMonth > 12) {
+      viewMonth = 1;
+      viewYear++;
+    }
+
     load();
   });
 

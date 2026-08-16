@@ -105,7 +105,7 @@
       document.getElementById('ac_issue').value = a.issue_id || '';
       document.getElementById('ac_deadline').value = a.deadline || '';
       document.getElementById('ac_status').value = a.status || 'Pending';
-      document.getElementById('ac_office').value = '';
+      document.getElementById('ac_office').value = a.assigned_office || a.assigned_user || '';
       document.getElementById('actionModalTitle').innerHTML = '<i class="bi bi-pencil-square"></i> Edit Action';
       modal.show();
     });

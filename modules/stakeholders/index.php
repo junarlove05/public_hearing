@@ -1,529 +1,133 @@
 <?php
-/**
- * modules/stakeholders/index.php
- * ------------------------------------------------------------------
- * Stakeholder CRUD (Module 2, part 1 of 3). Search/filter/sort/
- * paginate via AJAX, Create/Edit modal, CSV bulk import, and
- * checkbox multi-select that feeds "Bulk Invite" on invitations.php.
- * ------------------------------------------------------------------
- */
+declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/auth.php';
-requireRole([ROLE_ADMIN, ROLE_STAFF]);
+require_once __DIR__ . '/../../includes/lph_module_helpers.php';
 
-$pageTitle  = 'Stakeholders';
-$activeMenu = 'stakeholders';
-$activeTab  = 'stakeholders';
+requireLogin();
+if (!canManage()) {
+    setFlash('danger','Stakeholder management is limited to authorized staff.');
+    redirect(APP_URL . '/dashboard.php');
+}
+
 $pdo = db();
+$pageTitle = 'Stakeholders & Invitations';
+$activeMenu = 'stakeholders';
 
-$categories = $pdo->query('SELECT id, name FROM stakeholder_categories ORDER BY name')->fetchAll();
+$categories = $pdo->query('SELECT id,name FROM stakeholder_categories ORDER BY name')->fetchAll();
+$stakeholders = $pdo->query(
+    'SELECT s.*,sc.name AS category_name,
+        (SELECT COUNT(*) FROM invitations i WHERE i.stakeholder_id=s.id) AS invitation_count,
+        (SELECT COUNT(*) FROM registrations r WHERE r.stakeholder_id=s.id) AS registration_count
+     FROM stakeholders s
+     LEFT JOIN stakeholder_categories sc ON sc.id=s.category_id
+     ORDER BY s.created_at DESC,s.id DESC'
+)->fetchAll();
+
+$stats = $pdo->query(
+    "SELECT COUNT(*) total,
+      SUM(status='Verified') verified,
+      SUM(status='Pending') pending,
+      SUM(status='Inactive') inactive
+     FROM stakeholders"
+)->fetch();
 
 include __DIR__ . '/../../layouts/header.php';
 ?>
-<style>
-    /* Stakeholders - Sidebar Color Scheme (Slate/Dark Gray + Amber) */
-    /* ONLY COLORS CHANGED - NO SIZE ADJUSTMENTS */
-    :root {
-        --st-primary: #111827;
-        --st-primary-light: #1F2937;
-        --st-accent: #FBBF24;
-        --st-accent-dark: #D97706;
-        --st-white: #FFFFFF;
-        --st-gray-50: #F8FAFC;
-        --st-gray-100: #F1F5F9;
-        --st-gray-200: #E2E8F0;
-        --st-gray-300: #CBD5E1;
-        --st-gray-400: #94A3B8;
-        --st-gray-500: #64748B;
-        --st-gray-600: #475569;
-        --st-success: #10B981;
-        --st-danger: #EF4444;
-        --st-info: #06B6D4;
-    }
-
-    /* Breadcrumb Bar - Color Only */
-    .breadcrumb-bar {
-        background: var(--st-white);
-        border-left: 5px solid var(--st-accent);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-    }
-
-    .breadcrumb-bar h5 {
-        color: var(--st-primary);
-    }
-
-    .breadcrumb-bar h5 i {
-        color: var(--st-accent);
-    }
-
-    .breadcrumb-bar .text-muted {
-        color: var(--st-gray-500) !important;
-    }
-
-    /* Buttons - Color Only */
-    .btn-primary {
-        background: linear-gradient(135deg, var(--st-primary) 0%, var(--st-primary-light) 100%);
-        border: 1px solid rgba(251, 191, 36, 0.15);
-        color: var(--st-white);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    .btn-primary i {
-        color: var(--st-accent);
-    }
-
-    .btn-primary:hover {
-        border-color: var(--st-accent);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
-        color: var(--st-white);
-    }
-
-    .btn-outline-secondary {
-        border: 2px solid var(--st-gray-200);
-        color: var(--st-gray-600);
-        background: transparent;
-    }
-
-    .btn-outline-secondary:hover {
-        background: var(--st-gray-50);
-        border-color: var(--st-accent);
-        color: var(--st-primary);
-    }
-
-    .btn-outline-secondary i {
-        color: var(--st-accent);
-    }
-
-    .btn-outline-primary {
-        border: 2px solid var(--st-primary);
-        color: var(--st-primary);
-        background: transparent;
-    }
-
-    .btn-outline-primary:hover {
-        background: var(--st-primary);
-        color: var(--st-white);
-    }
-
-    .btn-outline-primary i {
-        color: var(--st-accent);
-    }
-
-    /* Cards - Color Only */
-    .card {
-        border: 1px solid var(--st-gray-100);
-        background: var(--st-white);
-        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
-    }
-
-    .card-body {
-        background: var(--st-white);
-    }
-
-    /* Form Controls - Color Only */
-    .form-control,
-    .form-select {
-        border: 2px solid var(--st-gray-200);
-        background: var(--st-gray-50);
-        color: var(--st-primary);
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-        border-color: var(--st-accent);
-        box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.15);
-        background: var(--st-white);
-    }
-
-    .form-control::placeholder {
-        color: var(--st-gray-400);
-    }
-
-    /* Modal - Color Only */
-    .modal-content {
-        border: 1px solid var(--st-gray-100);
-        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
-    }
-
-    .modal-header {
-        background: linear-gradient(135deg, var(--st-primary) 0%, var(--st-primary-light) 100%);
-        color: var(--st-white);
-        border-bottom: 4px solid var(--st-accent);
-    }
-
-    .modal-header .modal-title {
-        color: var(--st-white);
-    }
-
-    .modal-header .modal-title i {
-        color: var(--st-accent);
-        background: rgba(251, 191, 36, 0.15);
-    }
-
-    .modal-body {
-        background: var(--st-gray-50);
-    }
-
-    .modal-footer {
-        background: var(--st-white);
-        border-top: 1px solid var(--st-gray-100);
-    }
-
-    .modal-footer .btn-secondary {
-        background: var(--st-gray-100);
-        color: var(--st-gray-600);
-    }
-
-    .modal-footer .btn-secondary:hover {
-        background: var(--st-gray-200);
-    }
-
-    /* Form labels - Color Only */
-    .modal-body .form-label {
-        color: var(--st-primary);
-    }
-
-    .modal-body .form-label .text-danger {
-        color: var(--st-danger);
-    }
-
-    .modal-body .form-text {
-        color: var(--st-gray-500);
-    }
-
-    /* Table - Color Only */
-    #stakeholdersTableWrap {
-        background: var(--st-white);
-    }
-
-    .table thead th {
-        background: linear-gradient(135deg, var(--st-primary) 0%, var(--st-primary-light) 100%);
-        color: var(--st-white) !important;
-        border-bottom: 4px solid var(--st-accent);
-    }
-
-    .table thead th i {
-        color: var(--st-accent);
-    }
-
-    .table thead th,
-    .table thead th *,
-    .table thead th span,
-    .table thead th div {
-        color: var(--st-white) !important;
-    }
-
-    .table tbody td {
-        color: var(--st-primary);
-        border-bottom: 1px solid var(--st-gray-100);
-    }
-
-    .table tbody tr:hover {
-        background: #FFFBEB;
-    }
-
-    /* Checkbox - Color Only */
-    .form-check-input {
-        border: 2px solid var(--st-gray-300);
-    }
-
-    .form-check-input:checked {
-        background-color: var(--st-primary);
-        border-color: var(--st-accent);
-    }
-
-    .form-check-input:focus {
-        border-color: var(--st-accent);
-        box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.15);
-    }
-
-    /* Badges - Color Only */
-    .badge.bg-success {
-        background: var(--st-success) !important;
-        color: white;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-    }
-
-    .badge.bg-warning {
-        background: var(--st-accent) !important;
-        color: var(--st-primary);
-        box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
-    }
-
-    .badge.bg-danger {
-        background: var(--st-danger) !important;
-        color: white;
-        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-    }
-
-    .badge.bg-secondary {
-        background: var(--st-gray-400) !important;
-        color: white;
-    }
-
-    /* Action buttons - Color Only */
-    .btn-action.edit {
-        color: var(--st-accent-dark);
-        background: rgba(217, 119, 6, 0.08);
-    }
-
-    .btn-action.edit:hover {
-        background: var(--st-accent-dark);
-        color: white;
-        box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
-    }
-
-    .btn-action.delete {
-        color: var(--st-danger);
-        background: rgba(239, 68, 68, 0.08);
-    }
-
-    .btn-action.delete:hover {
-        background: var(--st-danger);
-        color: white;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-    }
-
-    .btn-action.view {
-        color: var(--st-accent);
-        background: rgba(251, 191, 36, 0.08);
-    }
-
-    .btn-action.view:hover {
-        background: var(--st-accent);
-        color: var(--st-primary);
-        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
-    }
-
-    /* Tabs - Color Only */
-    .nav-tabs {
-        border-bottom: 2px solid var(--st-gray-200);
-    }
-
-    .nav-tabs .nav-link {
-        color: var(--st-gray-500);
-    }
-
-    .nav-tabs .nav-link:hover {
-        color: var(--st-primary);
-        background: var(--st-gray-50);
-    }
-
-    .nav-tabs .nav-link.active {
-        color: var(--st-primary);
-        background: var(--st-white);
-        border-bottom: 3px solid var(--st-accent);
-    }
-
-    .nav-tabs .nav-link i {
-        color: var(--st-accent);
-    }
-
-    .nav-tabs .nav-link .badge {
-        background: var(--st-gray-200);
-        color: var(--st-gray-600);
-    }
-
-    .nav-tabs .nav-link.active .badge {
-        background: var(--st-accent);
-        color: var(--st-primary);
-    }
-
-    /* Pagination - Color Only */
-    .pagination .page-link {
-        color: var(--st-primary);
-        border-color: var(--st-gray-200);
-    }
-
-    .pagination .page-link:hover {
-        background: var(--st-accent);
-        color: var(--st-primary);
-        border-color: var(--st-accent);
-        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
-    }
-
-    .pagination .page-item.active .page-link {
-        background: linear-gradient(135deg, var(--st-primary) 0%, var(--st-primary-light) 100%);
-        border-color: var(--st-accent);
-        color: var(--st-white);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Import/CSV specific */
-    #importResult {
-        color: var(--st-primary);
-    }
-    .main-content {
-    margin-left: 260px !important;
-    transition: margin-left 0.3s ease !important;
-    padding: 20px !important;
-    min-height: calc(100vh - 72px) !important;
-    margin-top: 10px !important;
-    width: auto !important;
-    max-width: calc(100% - 260px) !important;
-}
-
-/* When sidebar is collapsed (72px) */
-.main-content.sidebar-collapsed {
-    margin-left: 72px !important;
-    max-width: calc(100% - 72px) !important;
-}
-
-/* When sidebar is completely hidden on mobile */
-@media (max-width: 992px) {
-    .main-content {
-        margin-left: 0 !important;
-        max-width: 100% !important;
-        padding: 15px !important;
-    }
-}
-</style>
+<link rel="stylesheet" href="<?= e(APP_URL . '/assets/css/lph-complete-modules.css') ?>">
 <div class="app-wrapper">
-  <?php include __DIR__ . '/../../layouts/sidebar.php'; ?>
+<?php include __DIR__ . '/../../layouts/sidebar.php'; ?>
+<div class="main-content">
 
-  <div class="main-content">
-    <div class="breadcrumb-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <div>
-        <h5 class="mb-0"><i class="bi bi-people"></i> Stakeholder Invitation &amp; Registration</h5>
-        <small class="text-muted">Manage stakeholders, invitations, and hearing registrations</small>
-      </div>
-      <div class="d-flex gap-2 no-print">
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnImportCsv"><i class="bi bi-upload"></i> Import CSV</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btnAddStakeholder"><i class="bi bi-person-plus"></i> Add Stakeholder</button>
-      </div>
+<div class="lphx-head">
+    <div>
+        <div class="lphx-eyebrow"><i class="bi bi-people"></i> Step 3</div>
+        <h1>Stakeholder Invitation & Registration</h1>
+        <p>Maintain stakeholder records, verification, invitations, registration approval, capacity control and QR-ready attendance credentials.</p>
     </div>
-
-    <?php include __DIR__ . '/tabs.php'; ?>
-
-    <!-- ===== Filters + bulk action bar ===== -->
-    <div class="card mb-3 no-print">
-      <div class="card-body">
-        <div class="row g-2 align-items-center">
-          <div class="col-md-4">
-            <input type="text" class="form-control form-control-sm" id="searchInput" name="search" placeholder="Search name, email, organization...">
-          </div>
-          <div class="col-md-3">
-            <select class="form-select form-select-sm" id="statusFilter" name="status">
-              <option value="">All Status</option>
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <select class="form-select form-select-sm" id="categoryFilter" name="category_id">
-              <option value="">All Categories</option>
-              <?php foreach ($categories as $c): ?>
-                <option value="<?= (int)$c['id'] ?>"><?= e($c['name']) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="col-md-2 text-end">
-            <button type="button" class="btn btn-outline-primary btn-sm w-100" id="btnBulkInvite" disabled>
-              <i class="bi bi-send"></i> Bulk Invite (<span id="selectedCount">0</span>)
-            </button>
-          </div>
-        </div>
-      </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="invitations.php" class="btn btn-outline-secondary"><i class="bi bi-envelope-paper"></i> Invitations</a>
+        <a href="registrations.php" class="btn btn-outline-secondary"><i class="bi bi-person-check"></i> Registrations</a>
+        <button class="btn btn-primary" id="btnNewStakeholder"><i class="bi bi-person-plus"></i> New Stakeholder</button>
     </div>
-
-    <form id="filterForm" class="d-none">
-      <input type="hidden" name="search"><input type="hidden" name="status"><input type="hidden" name="category_id">
-    </form>
-
-    <div class="card">
-      <div id="stakeholdersTableWrap">
-        <?php include __DIR__ . '/table.php'; ?>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- ===== Add / Edit Stakeholder Modal ===== -->
+<div class="row g-3 mb-3">
+<?php foreach ([
+    ['Total',$stats['total'] ?? 0,'bi-people'],
+    ['Verified',$stats['verified'] ?? 0,'bi-patch-check'],
+    ['Pending',$stats['pending'] ?? 0,'bi-hourglass-split'],
+    ['Inactive',$stats['inactive'] ?? 0,'bi-person-x'],
+] as [$label,$value,$icon]): ?>
+<div class="col-6 col-lg-3"><div class="lphx-stat"><i class="bi <?= e($icon) ?>"></i><div><strong><?= (int)$value ?></strong><small><?= e($label) ?></small></div></div></div>
+<?php endforeach; ?>
+</div>
+
+<div class="card lphx-card">
+<div class="card-header d-flex justify-content-between"><span><i class="bi bi-person-vcard"></i> Stakeholder Registry</span><span><?= count($stakeholders) ?> record(s)</span></div>
+<div class="table-responsive">
+<table class="table table-hover lphx-table mb-0">
+<thead><tr><th>Name</th><th>Category / Sector</th><th>Contact</th><th>Status</th><th>Activity</th><th class="text-end">Actions</th></tr></thead>
+<tbody>
+<?php if (!$stakeholders): ?><tr><td colspan="6"><div class="lphx-empty"><i class="bi bi-people"></i>No stakeholders yet.</div></td></tr><?php endif; ?>
+<?php foreach ($stakeholders as $s): ?>
+<tr>
+<td><strong><?= e($s['full_name']) ?></strong><div class="small text-muted"><?= e($s['organization'] ?: 'Individual') ?></div></td>
+<td><?= e($s['category_name'] ?: 'Uncategorized') ?><div class="small text-muted"><?= e($s['sector'] ?: '—') ?></div></td>
+<td><?= e($s['email']) ?><div class="small text-muted"><?= e($s['phone'] ?: '—') ?></div></td>
+<td><span class="badge text-bg-<?= $s['status']==='Verified'?'success':($s['status']==='Pending'?'warning':'secondary') ?>"><?= e($s['status']) ?></span></td>
+<td><span class="small"><?= (int)$s['invitation_count'] ?> invite(s) · <?= (int)$s['registration_count'] ?> registration(s)</span></td>
+<td class="text-end">
+    <button class="btn btn-sm btn-outline-primary btn-edit-stakeholder"
+        data-row='<?= e(json_encode($s, JSON_HEX_APOS|JSON_HEX_QUOT)) ?>'><i class="bi bi-pencil"></i></button>
+    <button class="btn btn-sm btn-outline-danger"
+        data-confirm-delete="stakeholder &quot;<?= e($s['full_name']) ?>&quot;"
+        data-delete-url="<?= e(APP_URL) ?>/modules/stakeholders/ajax_stakeholder_delete.php?id=<?= (int)$s['id'] ?>"><i class="bi bi-trash"></i></button>
+</td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+</div>
+</div>
+
+</div></div>
+
 <div class="modal fade" id="stakeholderModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="stakeholderForm">
-        <?= csrfField() ?>
-        <input type="hidden" name="id" id="s_id" value="0">
-        <div class="modal-header">
-          <h5 class="modal-title" id="stakeholderModalTitle"><i class="bi bi-person-plus"></i> Add Stakeholder</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Full Name <span class="text-danger">*</span></label>
-            <input type="text" name="full_name" id="s_full_name" class="form-control" required maxlength="150">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Email <span class="text-danger">*</span></label>
-            <input type="email" name="email" id="s_email" class="form-control" required maxlength="150">
-          </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Phone</label>
-              <input type="text" name="phone" id="s_phone" class="form-control" maxlength="50">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Category</label>
-              <select name="category_id" id="s_category" class="form-select">
-                <option value="">-- Select --</option>
-                <?php foreach ($categories as $c): ?>
-                  <option value="<?= (int)$c['id'] ?>"><?= e($c['name']) ?></option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-          </div>
-          <div class="mb-3 mt-3">
-            <label class="form-label">Organization</label>
-            <input type="text" name="organization" id="s_organization" class="form-control" maxlength="255">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Status</label>
-            <select name="status" id="s_status" class="form-select">
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="btnSaveStakeholder"><i class="bi bi-check-circle"></i> Save</button>
-        </div>
-      </form>
-    </div>
-  </div>
+<div class="modal-dialog modal-lg"><div class="modal-content">
+<form id="stakeholderForm">
+<?= csrfField() ?><input type="hidden" name="id" id="s_id" value="0">
+<div class="modal-header bg-dark text-white"><h5 class="modal-title">Stakeholder Record</h5><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal"></button></div>
+<div class="modal-body">
+<div class="row g-3">
+<div class="col-md-7"><label class="form-label">Full Name *</label><input class="form-control" name="full_name" id="s_name" required></div>
+<div class="col-md-5"><label class="form-label">Email *</label><input type="email" class="form-control" name="email" id="s_email" required></div>
+<div class="col-md-4"><label class="form-label">Phone</label><input class="form-control" name="phone" id="s_phone"></div>
+<div class="col-md-8"><label class="form-label">Organization</label><input class="form-control" name="organization" id="s_org"></div>
+<div class="col-md-4"><label class="form-label">Category</label><select class="form-select" name="category_id" id="s_category"><option value="">Uncategorized</option><?php foreach($categories as $c): ?><option value="<?= (int)$c['id'] ?>"><?= e($c['name']) ?></option><?php endforeach; ?></select></div>
+<div class="col-md-4"><label class="form-label">Sector</label><input class="form-control" name="sector" id="s_sector"></div>
+<div class="col-md-4"><label class="form-label">Status</label><select class="form-select" name="status" id="s_status"><option>Pending</option><option>Verified</option><option>Inactive</option><option>Rejected</option></select></div>
+<div class="col-12"><label class="form-label">Address</label><textarea class="form-control" name="address" id="s_address" rows="3"></textarea></div>
 </div>
-
-<!-- ===== CSV Import Modal ===== -->
-<div class="modal fade" id="importModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="importForm" enctype="multipart/form-data">
-        <?= csrfField() ?>
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-upload"></i> Import Stakeholders from CSV</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <p class="small text-muted">
-            CSV must include a header row with columns <code>full_name</code>, <code>email</code>
-            (required), and optionally <code>phone</code>, <code>organization</code>, <code>category</code>.
-          </p>
-          <input type="file" name="csv_file" class="form-control" accept=".csv" required>
-          <div id="importResult" class="mt-3"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary" id="btnDoImport"><i class="bi bi-upload"></i> Import</button>
-        </div>
-      </form>
-    </div>
-  </div>
 </div>
+<div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Save Stakeholder</button></div>
+</form>
+</div></div></div>
 
-<?php
-$extraJs = [APP_URL . '/assets/js/stakeholders.js'];
-include __DIR__ . '/../../layouts/footer.php';
-?>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ const modal=new bootstrap.Modal(document.getElementById('stakeholderModal'));
+ const form=document.getElementById('stakeholderForm');
+ document.getElementById('btnNewStakeholder').onclick=function(){form.reset();s_id.value='0';s_status.value='Pending';modal.show();};
+ document.querySelectorAll('.btn-edit-stakeholder').forEach(btn=>btn.onclick=function(){
+   const r=JSON.parse(this.dataset.row);
+   s_id.value=r.id||0;s_name.value=r.full_name||'';s_email.value=r.email||'';s_phone.value=r.phone||'';
+   s_org.value=r.organization||'';s_category.value=r.category_id||'';s_sector.value=r.sector||'';
+   s_status.value=r.status||'Pending';s_address.value=r.address||'';modal.show();
+ });
+ form.onsubmit=async function(e){e.preventDefault();const res=await appPostForm(APP_URL+'/modules/stakeholders/ajax_stakeholder_save.php',form);
+   if(res.success){appToast('success',res.message);setTimeout(()=>location.reload(),400);}else if(!res.session_expired){Swal.fire('Unable to Save',res.message,'error');}
+ };
+});
+</script>
+<?php include __DIR__ . '/../../layouts/footer.php'; ?>

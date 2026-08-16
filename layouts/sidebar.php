@@ -14,35 +14,49 @@ $role = currentRole();
  * Each nav item: key, label, icon, url, roles allowed to see it.
  */
 $menuItems = [
-    ['key' => 'dashboard',     'label' => 'Dashboard',              'icon' => 'bi-speedometer2',   'url' => '/dashboard.php',
-        'roles' => [ROLE_ADMIN, ROLE_STAFF, ROLE_COMMITTEE, ROLE_STAKEHOLDER, ROLE_PUBLIC]],
+    ['key'=>'dashboard','label'=>'Dashboard','icon'=>'bi-speedometer2',
+     'url'=>'/dashboard.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE,ROLE_STAKEHOLDER,ROLE_PUBLIC],
+     'permission'=>'lph.dashboard.view'],
 
-    ['key' => 'hearings',      'label' => 'Hearing Schedule',       'icon' => 'bi-calendar-event', 'url' => '/modules/hearings/index.php',
-        'roles' => [ROLE_ADMIN, ROLE_STAFF, ROLE_COMMITTEE, ROLE_STAKEHOLDER, ROLE_PUBLIC]],
+    ['key'=>'hearings','label'=>'Hearing Schedule','icon'=>'bi-calendar-event',
+     'url'=>'/modules/hearings/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE,ROLE_STAKEHOLDER,ROLE_PUBLIC],
+     'permission'=>'lph.hearings.view'],
 
-    ['key' => 'stakeholders',  'label' => 'Stakeholders & Invitations', 'icon' => 'bi-people',      'url' => '/modules/stakeholders/index.php',
-        'roles' => [ROLE_ADMIN, ROLE_STAFF]],
+    ['key'=>'stakeholders','label'=>'Stakeholders & Invitations','icon'=>'bi-people',
+     'url'=>'/modules/stakeholders/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF],
+     'permission'=>'lph.stakeholders.view'],
 
-    ['key' => 'attendance',    'label' => 'Attendance Tracking',    'icon' => 'bi-qr-code-scan',   'url' => '/modules/attendance/index.php',
-        'roles' => [ROLE_ADMIN, ROLE_STAFF, ROLE_COMMITTEE]],
+    ['key'=>'attendance','label'=>'Attendance Tracking','icon'=>'bi-qr-code-scan',
+     'url'=>'/modules/attendance/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE],
+     'permission'=>'lph.attendance.view'],
 
-    ['key' => 'feedback',      'label' => 'Public Feedback',        'icon' => 'bi-chat-square-text', 'url' => '/modules/feedback/index.php',
-        'roles' => [ROLE_ADMIN, ROLE_STAFF, ROLE_COMMITTEE, ROLE_STAKEHOLDER, ROLE_PUBLIC]],
+    ['key'=>'feedback','label'=>'Public Feedback','icon'=>'bi-chat-square-text',
+     'url'=>'/modules/feedback/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE,ROLE_STAKEHOLDER,ROLE_PUBLIC],
+     'permission'=>'lph.feedback.submit'],
 
-    ['key' => 'issues',        'label' => 'Issue Logging',          'icon' => 'bi-exclamation-triangle', 'url' => '/modules/issues/index.php',
-        'roles' => [ROLE_ADMIN, ROLE_STAFF, ROLE_COMMITTEE]],
+    ['key'=>'issues','label'=>'Issue Logging','icon'=>'bi-exclamation-triangle',
+     'url'=>'/modules/issues/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE],
+     'permission'=>'lph.issues.view'],
 
-    ['key' => 'actions',       'label' => 'Response & Actions',     'icon' => 'bi-list-check',     'url' => '/modules/actions/index.php',
-        'roles' => [ROLE_ADMIN, ROLE_STAFF, ROLE_COMMITTEE]],
+    ['key'=>'actions','label'=>'Response & Actions','icon'=>'bi-list-check',
+     'url'=>'/modules/actions/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE],
+     'permission'=>'lph.actions.view'],
 
-    ['key' => 'reports',       'label' => 'Reports',                'icon' => 'bi-file-earmark-bar-graph', 'url' => '/reports/index.php',
-        'roles' => [ROLE_ADMIN, ROLE_STAFF]],
+    ['key'=>'reports','label'=>'Reports','icon'=>'bi-file-earmark-bar-graph',
+     'url'=>'/reports/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF],
+     'permission'=>'lph.reports.view'],
 
-    ['key' => 'activity_logs', 'label' => 'Activity Logs',          'icon' => 'bi-clock-history',  'url' => '/pages/activity_logs.php',
-        'roles' => [ROLE_ADMIN]],
+    ['key'=>'activity_logs','label'=>'Activity Logs','icon'=>'bi-clock-history',
+     'url'=>'/pages/activity_logs.php','roles'=>[ROLE_ADMIN],
+     'permission'=>'lph.activity_logs.view'],
 
-    ['key' => 'users',         'label' => 'User Management',        'icon' => 'bi-person-gear',    'url' => '/pages/users.php',
-        'roles' => [ROLE_ADMIN]],
+    ['key'=>'users','label'=>'User Management','icon'=>'bi-person-gear',
+     'url'=>'/pages/users.php','roles'=>[ROLE_ADMIN],
+     'permission'=>'lph.users.manage'],
+
+    ['key'=>'system_health','label'=>'System Health','icon'=>'bi-heart-pulse',
+     'url'=>'/pages/system_health.php','roles'=>[ROLE_ADMIN],
+     'permission'=>'lph.system_health.view'],
 ];
 ?>
 
@@ -65,7 +79,14 @@ $menuItems = [
   <nav class="sidebar-nav">
     <ul class="nav-list">
       <?php foreach ($menuItems as $item): ?>
-        <?php if (!in_array($role, $item['roles'], true)) continue; ?>
+        <?php
+          if (!in_array($role, $item['roles'], true)) continue;
+          if (
+              !empty($item['permission'])
+              && function_exists('hasPermission')
+              && !hasPermission($item['permission'])
+          ) continue;
+        ?>
         <li class="nav-item">
           <a class="nav-link <?= $activeMenu === $item['key'] ? 'active' : '' ?>"
              href="<?= e(APP_URL . $item['url']) ?>">

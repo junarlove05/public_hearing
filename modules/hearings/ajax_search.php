@@ -1,13 +1,9 @@
 <?php
-/**
- * modules/hearings/ajax_search.php
- * ------------------------------------------------------------------
- * Returns the filtered/sorted/paginated hearings table body as HTML
- * for the live AJAX search/filter/pagination/sorting UI on index.php.
- * ------------------------------------------------------------------
- */
+declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/hearing_helpers.php';
+
 requireLogin();
 
 ob_start();
