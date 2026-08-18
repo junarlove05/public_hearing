@@ -295,5 +295,8 @@ unset($filterQuery['page']);
         hearing(s)
     </div>
 
-    <?= paginationLinks($pageInfo, $filterQuery) ?>
+    <?= renderPagination(
+    $pageInfo,
+    APP_URL . '/modules/hearings/index.php'
+) ?>
 </div>
