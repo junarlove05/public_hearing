@@ -54,10 +54,18 @@ $dup=$pdo->prepare(
  'SELECT id FROM users
   WHERE deleted_at IS NULL
     AND id<>:id
-    AND (LOWER(email)=LOWER(:email) OR (:username<>"" AND LOWER(username)=LOWER(:username)))
+    AND (
+      LOWER(email)=LOWER(:email)
+      OR (:username_check<>"" AND LOWER(username)=LOWER(:username_value))
+    )
   LIMIT 1'
 );
-$dup->execute([':id'=>$id,':email'=>$email,':username'=>$username]);
+$dup->execute([
+  ':id'=>$id,
+  ':email'=>$email,
+  ':username_check'=>$username,
+  ':username_value'=>$username
+]);
 if($dup->fetch())jsonResponse(false,'Another active user already uses this email address or username.');
 
 $existing=null;

@@ -69,3 +69,5 @@
 [03-Aug-2026 16:46:38 Asia/Manila] Notification bell error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.issues' doesn't exist
 [18-Aug-2026 22:24:21 Asia/Manila] Database connection failed: SQLSTATE[HY000] [1049] Unknown database 'legislative_management_db'
 [18-Aug-2026 22:47:28 Asia/Manila] Uncaught exception: Call to undefined function paginationLinks() in C:\xampp\htdocs\lph\modules\hearings\table.php:298
+[24-Aug-2026 19:42:08 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\lph\pages\ajax_user_save.php:60
+[24-Aug-2026 19:42:43 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\lph\pages\ajax_user_save.php:60
