@@ -487,35 +487,37 @@ $issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
             font-size: 0.7rem;
         }
     }
-    .main-content {
-    margin-left: 260px !important;
-    transition: margin-left 0.3s ease !important;
-    padding: 20px !important;
-    min-height: calc(100vh - 72px) !important;
-    margin-top: 10px !important;
-    width: auto !important;
-    max-width: calc(100% - 260px) !important;
-}
-
-/* When sidebar is collapsed (72px) */
-.main-content.sidebar-collapsed {
-    margin-left: 72px !important;
-    max-width: calc(100% - 72px) !important;
-}
-
-/* When sidebar is completely hidden on mobile */
-@media (max-width: 992px) {
-    .main-content {
-        margin-left: 0 !important;
-        max-width: 100% !important;
-        padding: 15px !important;
+    .main-content,
+    .orlms-main-content {
+        margin-left: 286px !important;
+        padding-top: 0.5rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        min-height: 100vh !important;
+        position: relative !important;
+        transition: margin-left 0.25s ease !important;
     }
-}
+
+    body.sidebar-collapsed .main-content,
+    body.sidebar-collapsed .orlms-main-content,
+    .main-content.sidebar-collapsed {
+        margin-left: 74px !important;
+    }
+
+    @media (max-width: 1050px) {
+        .main-content,
+        .orlms-main-content {
+            margin-left: 0 !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+    }
 </style>
 <div class="app-wrapper">
   <?php include __DIR__ . '/../../layouts/sidebar.php'; ?>
 
   <div class="main-content">
+    <?php include __DIR__ . '/../../layouts/top_controls.php'; ?>
     <div class="breadcrumb-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Issue Logging</h5>

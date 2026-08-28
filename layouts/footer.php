@@ -7,6 +7,7 @@
  * ------------------------------------------------------------------
  */
 ?>
+<?php if (empty($hideFooter)): ?>
     <footer class="app-footer text-center py-3">
         <div class="container-fluid">
             <div class="footer-content">
@@ -26,6 +27,7 @@
             </div>
         </div>
     </footer>
+<?php endif; ?>
   </div><!-- /.main-content -->
 </div><!-- /.app-wrapper -->
 
@@ -92,9 +94,9 @@ endif;
         --footer-midnight-lighter: #6B9BC7;
         --footer-white: #ffffff;
         --footer-off-white: #F5F8FA;
-        --footer-gold: #F5C842;
-        --footer-gold-light: #F7D95A;
-        --footer-gold-dark: #D4A820;
+        --footer-gold: #a97900;
+        --footer-gold-light: #8a6200;
+        --footer-gold-dark: #6e4e00;
         --footer-text-light: #E2E8F0;
         --footer-text-muted: #94A3B8;
         --footer-green: #34D399;
@@ -102,7 +104,7 @@ endif;
 
     .app-footer {
         background: linear-gradient(180deg, #0A1628 0%, #0F2137 40%, #1A3A5C 100%);
-        border-top: 4px solid #F5C842;
+        border-top: 4px solid #a97900;
         padding: 0.75rem 0;
         margin-top: auto;
         position: relative;
@@ -133,7 +135,7 @@ endif;
     .app-footer .footer-divider {
         width: 80px;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #F5C842, transparent);
+        background: linear-gradient(90deg, transparent, #a97900, transparent);
         border-radius: 2px;
         margin-bottom: 0.25rem;
         box-shadow: 0 0 15px rgba(245, 200, 66, 0.15);
@@ -153,7 +155,7 @@ endif;
         font-weight: 700;
         transition: all 0.3s ease;
         letter-spacing: 0.5px;
-        background: linear-gradient(135deg, #F5C842, #F7D95A);
+        background: linear-gradient(135deg, #a97900, #F7D95A);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -276,7 +278,7 @@ endif;
 
         .app-footer .footer-brand {
             font-weight: 700;
-            -webkit-text-fill-color: #F5C842;
+            -webkit-text-fill-color: #a97900;
         }
 
         .app-footer .footer-divider {

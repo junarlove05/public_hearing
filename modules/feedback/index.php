@@ -57,6 +57,7 @@ include __DIR__.'/../../layouts/header.php';
 ?>
 <link rel="stylesheet" href="<?= e(APP_URL.'/assets/css/lph-complete-modules.css') ?>">
 <div class="app-wrapper"><?php include __DIR__.'/../../layouts/sidebar.php'; ?><div class="main-content">
+<?php include __DIR__ . '/../../layouts/top_controls.php'; ?>
 
 <div class="lphx-head">
 <div><div class="lphx-eyebrow"><i class="bi bi-chat-square-text"></i> Step 5</div><h1>Public Feedback Collection</h1><p>Collect structured public comments, positions, hearing feedback and legislative input, then validate and record official responses.</p></div>

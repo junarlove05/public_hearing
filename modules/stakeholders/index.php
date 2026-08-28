@@ -39,6 +39,8 @@ include __DIR__ . '/../../layouts/header.php';
 <?php include __DIR__ . '/../../layouts/sidebar.php'; ?>
 <div class="main-content">
 
+<?php include __DIR__ . '/../../layouts/top_controls.php'; ?>
+
 <div class="lphx-head">
     <div>
         <div class="lphx-eyebrow"><i class="bi bi-people"></i> Step 3</div>

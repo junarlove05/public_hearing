@@ -272,21 +272,21 @@ include __DIR__ . '/../../layouts/header.php';
         }
     }
 
-    /* Default state - sidebar expanded (260px) */
-    .main-content {
-        margin-left: 260px !important;
-        transition: margin-left 0.3s ease !important;
-        padding: 20px !important;
-        min-height: calc(100vh - 72px) !important;
-        margin-top: 10px !important;
-        width: auto !important;
-        max-width: calc(100% - 260px) !important;
+    .main-content,
+    .orlms-main-content {
+        margin-left: 286px !important;
+        padding-top: 0.5rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        min-height: 100vh !important;
+        position: relative !important;
+        transition: margin-left 0.25s ease !important;
     }
 
-    /* When sidebar is collapsed (72px) */
+    body.sidebar-collapsed .main-content,
+    body.sidebar-collapsed .orlms-main-content,
     .main-content.sidebar-collapsed {
-        margin-left: 72px !important;
-        max-width: calc(100% - 72px) !important;
+        margin-left: 74px !important;
     }
 
     /* When sidebar is completely hidden on mobile */

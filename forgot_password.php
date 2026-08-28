@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         --og-lighter: #7ACDC4;
         --og-pale: #D4F0EC;
         --og-white: #FFFFFF;
-        --og-gold: #F5C842;
+        --og-gold: #a97900;
         --og-gold-light: #F7D95A;
         --og-shadow: 0 8px 40px rgba(10, 46, 42, 0.25);
     }

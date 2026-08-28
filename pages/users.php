@@ -78,6 +78,7 @@ include __DIR__.'/../layouts/header.php';
 <div class="app-wrapper">
 <?php include __DIR__.'/../layouts/sidebar.php'; ?>
 <div class="main-content">
+<?php include __DIR__ . '/../layouts/top_controls.php'; ?>
 
 <div class="lpha-head">
   <div>

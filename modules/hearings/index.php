@@ -69,8 +69,10 @@ include __DIR__ . '/../../layouts/header.php';
 
 <div class="main-content hearing-module">
 
-    <div class="hearing-page-head">
-        <div>
+<?php include __DIR__ . '/../../layouts/top_controls.php'; ?>
+
+    <div class="hearing-page-head flex-wrap align-items-center justify-content-between">
+        <div style="max-width: 600px;">
             <div class="hearing-eyebrow">
                 <i class="bi bi-calendar-event"></i>
                 Public Hearing and Consultation Management
@@ -78,24 +80,24 @@ include __DIR__ . '/../../layouts/header.php';
 
             <h1>Hearing Scheduling</h1>
 
-            <p>
+            <p class="mb-0">
                 Create, schedule, link, monitor, and manage public hearings
                 and consultation sessions with committee, registration,
                 document, visibility, and calendar controls.
             </p>
         </div>
 
-        <div class="d-flex gap-2 flex-wrap no-print">
-            <a href="calendar.php" class="btn btn-outline-secondary">
+        <div class="d-flex align-items-center gap-2 flex-nowrap no-print mt-2 mt-md-0">
+            <a href="calendar.php" class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center gap-2" style="width: 140px; height: 38px; font-size: 0.825rem; font-weight: 650; box-sizing: border-box; flex-shrink: 0;">
                 <i class="bi bi-calendar3"></i> Calendar
             </a>
 
-            <a href="print.php" target="_blank" id="printScheduleLink" class="btn btn-outline-secondary">
+            <a href="print.php" target="_blank" id="printScheduleLink" class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center gap-2" style="width: 140px; height: 38px; font-size: 0.825rem; font-weight: 650; box-sizing: border-box; flex-shrink: 0;">
                 <i class="bi bi-printer"></i> Print
             </a>
 
             <?php if (canManage()): ?>
-                <button type="button" class="btn btn-primary" id="btnAddHearing">
+                <button type="button" class="btn btn-primary d-inline-flex align-items-center justify-content-center gap-2" id="btnAddHearing" style="width: 140px; height: 38px; font-size: 0.825rem; font-weight: 650; box-sizing: border-box; flex-shrink: 0;">
                     <i class="bi bi-plus-circle"></i> Create Hearing
                 </button>
             <?php endif; ?>

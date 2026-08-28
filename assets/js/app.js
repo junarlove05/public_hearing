@@ -10,14 +10,13 @@
 document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------- Sidebar toggle (desktop collapse / mobile slide-in) ---------- */
-  const toggleDesktop = document.getElementById('sidebarToggleDesktop');
-  const toggleMobile  = document.getElementById('sidebarToggleMobile');
-
-  if (toggleDesktop) {
-    toggleDesktop.addEventListener('click', function () {
+  const toggleBtns = document.querySelectorAll('#sidebarToggleBtn, #sidebarToggleDesktop, #sidebarToggle, .orlms-collapse-toggle');
+  toggleBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
       document.body.classList.toggle('sidebar-collapsed');
     });
-  }
+  });
+  const toggleMobile  = document.getElementById('sidebarToggleMobile');
   if (toggleMobile) {
     toggleMobile.addEventListener('click', function () {
       document.body.classList.toggle('sidebar-mobile-open');

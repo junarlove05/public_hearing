@@ -23,6 +23,7 @@ include __DIR__.'/../layouts/header.php';
 ?>
 <link rel="stylesheet" href="<?= e(APP_URL.'/assets/css/lph-workflow-final.css') ?>">
 <div class="app-wrapper"><?php include __DIR__.'/../layouts/sidebar.php'; ?><div class="main-content">
+<?php include __DIR__ . '/../layouts/top_controls.php'; ?>
 <div class="lphwf-head"><div><div class="lphwf-eyebrow">Step 8 · Consolidated Monitoring</div><h1>Reports & Analytics</h1><p>Generate date-filtered operational reports across every completed Subsystem #7 module. Existing Print, PDF, Excel and CSV exports continue to use the same centralized data engine.</p></div><a href="<?= e(APP_URL) ?>/dashboard.php" class="btn btn-outline-secondary"><i class="bi bi-speedometer2"></i> Dashboard</a></div>
 
 <div class="row g-3">

@@ -155,20 +155,21 @@ include __DIR__ . '/../../layouts/header.php';
 
 <style>
 .main-content {
-    margin-left: 260px !important;
-    max-width: calc(100% - 260px) !important;
-    min-height: calc(100vh - 72px) !important;
-    margin-top: 72px !important;
-    padding: 20px !important;
-    width: auto !important;
-    transition:
-        margin-left 0.3s ease,
-        max-width 0.3s ease !important;
+.main-content,
+.orlms-main-content {
+    margin-left: 286px !important;
+    padding-top: 0.5rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    min-height: 100vh !important;
+    position: relative !important;
+    transition: margin-left 0.25s ease !important;
 }
 
+body.sidebar-collapsed .main-content,
+body.sidebar-collapsed .orlms-main-content,
 .main-content.sidebar-collapsed {
-    margin-left: 72px !important;
-    max-width: calc(100% - 72px) !important;
+    margin-left: 74px !important;
 }
 
 .report-summary-card {

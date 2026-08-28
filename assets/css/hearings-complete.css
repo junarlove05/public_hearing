@@ -1,7 +1,7 @@
 .hearing-module {
     --hear-navy: #0a1628;
     --hear-blue: #1a3a5c;
-    --hear-gold: #f5c842;
+    --hear-gold: #a97900;
     --hear-border: #e2e8f0;
     --hear-muted: #64748b;
 }
@@ -12,7 +12,7 @@
 
 .hearing-page-head {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 1.25rem;
     margin-bottom: 1rem;
@@ -47,6 +47,21 @@
     margin: .35rem 0 0;
     color: var(--hear-muted);
     font-size: .78rem;
+}
+
+.btn-hearing-action {
+    height: 38px !important;
+    min-width: 140px !important;
+    padding: 0 1rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 650 !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
 }
 
 

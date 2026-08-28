@@ -23,16 +23,19 @@ $flashMessages = getFlashMessages();
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login | <?= e(APP_NAME) ?></title>
+<link rel="icon" type="image/png" href="assets/images/logo.png">
+<link rel="shortcut icon" type="image/png" href="assets/images/logo.png">
+
 <link href="<?= e(vendorAsset('bootstrap/bootstrap.min.css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css')) ?>" rel="stylesheet">
 <link href="<?= e(vendorAsset('bootstrap-icons/bootstrap-icons.css', 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css')) ?>" rel="stylesheet">
 <link href="assets/css/style.css" rel="stylesheet">
 <style>
     :root {
-        --primary-blue: #1A56DB;
-        --primary-blue-dark: #1E3A8A;
-        --primary-blue-light: #3B82F6;
-        --primary-yellow: #FBBF24;
-        --primary-yellow-light: #FCD34D;
+        --primary-blue: #0f2137;
+        --primary-blue-dark: #071426;
+        --primary-blue-light: #1a3a5c;
+        --primary-yellow: #a97900;
+        --primary-yellow-light: #8a6200;
         --primary-white: #FFFFFF;
         --primary-gray: #F3F4F6;
     }
@@ -57,8 +60,8 @@ $flashMessages = getFlashMessages();
 
     /* LEFT SIDE - Brand Section */
     .brand-side {
-        flex: 1;
-        background: linear-gradient(135deg, var(--primary-blue-dark) 0%, var(--primary-blue) 50%, var(--primary-blue-light) 100%);
+        flex: 1.1;
+        background: linear-gradient(135deg, #071426 0%, #0f2137 55%, #1a3a5c 100%);
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -147,32 +150,27 @@ $flashMessages = getFlashMessages();
 
     /* Logo Image Styling */
     .brand-logo {
-        width: 120px;
-        height: 120px;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 50%;
+        width: 220px;
+        height: 220px;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        border-radius: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 2rem;
-        border: 4px solid rgba(251, 191, 36, 0.4);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        overflow: hidden;
-        padding: 12px;
-    }
-
-    .brand-logo:hover {
-        transform: scale(1.05) rotate(-3deg);
-        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+        margin-bottom: 1.5rem;
+        padding: 0;
     }
 
     .brand-logo img {
-        width: 100%;
-        height: 100%;
+        width: 220px !important;
+        height: 220px !important;
+        max-width: 220px !important;
+        max-height: 220px !important;
         object-fit: contain;
-        border-radius: 50%;
+        filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.55));
     }
 
     .brand-title {
@@ -656,7 +654,7 @@ $flashMessages = getFlashMessages();
         
         <div class="brand-content">
             <div class="brand-logo">
-                <img src="assets/images/manila.png" alt="<?= e(APP_NAME) ?> Logo">
+                <img src="assets/images/logo.png" alt="<?= e(APP_NAME) ?> Logo">
             </div>
             
             <h1 class="brand-title">

@@ -182,6 +182,7 @@ include __DIR__.'/../layouts/header.php';
 ?>
 <link rel="stylesheet" href="<?= e(APP_URL.'/assets/css/lph-admin-final.css') ?>">
 <div class="app-wrapper"><?php include __DIR__.'/../layouts/sidebar.php'; ?><div class="main-content">
+<?php include __DIR__ . '/../layouts/top_controls.php'; ?>
 
 <div class="lpha-head">
 <div><div class="lpha-eyebrow"><i class="bi bi-heart-pulse"></i> Step 11 · Final Integration</div><h1>Subsystem Health & Readiness</h1><p>Read-only validation of database objects, migrations, authorization, upload configuration and cross-module data integrity.</p></div>

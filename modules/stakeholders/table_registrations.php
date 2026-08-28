@@ -42,7 +42,7 @@ $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 // User Avatar Colors
-$userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4', '#F97316', '#6366F1'];
+$userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4', '#F97316', '#6366F1'];
 ?>
 <style>
     /* ============================================================
@@ -63,7 +63,7 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     .registrations-table-wrap .table thead th {
         background: linear-gradient(135deg, #0A1628 0%, #1A3A5C 100%);
         color: #ffffff;
-        border-bottom: 3px solid #F5C842;
+        border-bottom: 3px solid #a97900;
         font-weight: 600;
         padding: 0.85rem 1.25rem;
         font-size: 0.75rem;
@@ -76,7 +76,7 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     }
 
     .registrations-table-wrap .table thead th i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.4rem;
         font-size: 0.85rem;
     }
@@ -91,7 +91,7 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     }
 
     .registrations-table-wrap .table thead th a.sort-link:hover {
-        color: #F5C842 !important;
+        color: #a97900 !important;
     }
 
     .registrations-table-wrap .table tbody td {
@@ -163,7 +163,7 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     }
 
     .registrations-table-wrap .stakeholder-details .stakeholder-org i {
-        color: #F5C842;
+        color: #a97900;
         font-size: 0.6rem;
         margin-right: 0.2rem;
     }
@@ -181,7 +181,7 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     }
 
     .registrations-table-wrap .hearing-info .hearing-title i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.3rem;
         font-size: 0.75rem;
     }
@@ -192,7 +192,7 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     }
 
     .registrations-table-wrap .hearing-info .hearing-date i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.2rem;
     }
 
@@ -204,7 +204,7 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     }
 
     .registrations-table-wrap .registered-at i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.3rem;
         font-size: 0.7rem;
     }
@@ -274,16 +274,16 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     }
 
     .registrations-table-wrap .pagination .page-link:hover {
-        background: #F5C842;
+        background: #a97900;
         color: #0A1628;
-        border-color: #F5C842;
+        border-color: #a97900;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(245, 200, 66, 0.2);
     }
 
     .registrations-table-wrap .pagination .page-item.active .page-link {
         background: linear-gradient(135deg, #0A1628 0%, #1A3A5C 100%);
-        border-color: #F5C842;
+        border-color: #a97900;
         color: #ffffff;
         box-shadow: 0 4px 15px rgba(10, 22, 40, 0.15);
     }
@@ -302,7 +302,7 @@ $userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
 
     .registrations-table-wrap .empty-state i {
         font-size: 3rem;
-        color: #F5C842;
+        color: #a97900;
         opacity: 0.3;
         display: block;
         margin-bottom: 0.75rem;

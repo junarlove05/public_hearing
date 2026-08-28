@@ -42,6 +42,7 @@ include __DIR__.'/../../layouts/header.php';
 ?>
 <link rel="stylesheet" href="<?= e(APP_URL.'/assets/css/lph-complete-modules.css') ?>">
 <div class="app-wrapper"><?php include __DIR__.'/../../layouts/sidebar.php'; ?><div class="main-content">
+<?php include __DIR__ . '/../../layouts/top_controls.php'; ?>
 <div class="lphx-head"><div><div class="lphx-eyebrow"><i class="bi bi-qr-code-scan"></i> Step 4</div><h1>Attendance Tracking</h1><p>Manage approved participant check-in, checkout, absence, excused attendance and QR-ready code scanning with an audit trail.</p></div>
 <form method="get"><select name="hearing_id" class="form-select" onchange="this.form.submit()"><option value="">Select hearing</option><?php foreach($hearings as $h): ?><option value="<?= (int)$h['id'] ?>" <?= $hearingId===(int)$h['id']?'selected':'' ?>><?= e(($h['reference_number']?:'').' '.$h['title'].' · '.formatDate($h['hearing_date'])) ?></option><?php endforeach; ?></select></form></div>
 

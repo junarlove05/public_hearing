@@ -40,7 +40,7 @@ $rows = $stmt->fetchAll();
 $currentUserId = currentUserId();
 
 // User Avatar Colors
-$userColors = ['#4A7EB5', '#F5C842', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4', '#F97316', '#6366F1'];
+$userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4', '#F97316', '#6366F1'];
 
 // Role Colors
 $roleColors = [
@@ -70,7 +70,7 @@ $roleColors = [
     .users-table-wrap .table thead th {
         background: linear-gradient(135deg, #0A1628 0%, #1A3A5C 100%);
         color: #ffffff;
-        border-bottom: 3px solid #F5C842;
+        border-bottom: 3px solid #a97900;
         font-weight: 600;
         padding: 0.85rem 1.25rem;
         font-size: 0.75rem;
@@ -83,7 +83,7 @@ $roleColors = [
     }
 
     .users-table-wrap .table thead th i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.4rem;
         font-size: 0.85rem;
     }
@@ -98,7 +98,7 @@ $roleColors = [
     }
 
     .users-table-wrap .table thead th a.sort-link:hover {
-        color: #F5C842 !important;
+        color: #a97900 !important;
     }
 
     .users-table-wrap .table thead th .sort-icon {
@@ -158,7 +158,7 @@ $roleColors = [
     }
 
     .users-table-wrap .user-name .you-badge {
-        background: linear-gradient(135deg, #F5C842, #D4A820);
+        background: linear-gradient(135deg, #a97900, #D4A820);
         color: #0A1628;
         font-size: 0.55rem;
         font-weight: 700;
@@ -174,7 +174,7 @@ $roleColors = [
     }
 
     .users-table-wrap .user-email i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.2rem;
         font-size: 0.65rem;
     }
@@ -200,7 +200,7 @@ $roleColors = [
 
     .role-badge.bg-danger { background: #F43F5E !important; color: white; }
     .role-badge.bg-primary { background: #2C5282 !important; color: white; }
-    .role-badge.bg-warning { background: #F5C842 !important; color: #0A1628; }
+    .role-badge.bg-warning { background: #a97900 !important; color: #0A1628; }
     .role-badge.bg-success { background: #10B981 !important; color: white; }
     .role-badge.bg-info { background: #06B6D4 !important; color: white; }
     .role-badge.bg-secondary { background: #94A3B8 !important; color: white; }
@@ -241,7 +241,7 @@ $roleColors = [
     }
 
     .users-table-wrap .created-at i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.3rem;
         font-size: 0.7rem;
     }
@@ -268,9 +268,9 @@ $roleColors = [
     }
 
     .users-table-wrap .btn-action.edit:hover {
-        background: #F5C842;
+        background: #a97900;
         color: #0A1628;
-        border-color: #F5C842;
+        border-color: #a97900;
     }
 
     .users-table-wrap .btn-action.delete:hover {
@@ -321,16 +321,16 @@ $roleColors = [
     }
 
     .users-table-wrap .pagination .page-link:hover {
-        background: #F5C842;
+        background: #a97900;
         color: #0A1628;
-        border-color: #F5C842;
+        border-color: #a97900;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(245, 200, 66, 0.2);
     }
 
     .users-table-wrap .pagination .page-item.active .page-link {
         background: linear-gradient(135deg, #0A1628 0%, #1A3A5C 100%);
-        border-color: #F5C842;
+        border-color: #a97900;
         color: #ffffff;
         box-shadow: 0 4px 15px rgba(10, 22, 40, 0.15);
     }
@@ -349,7 +349,7 @@ $roleColors = [
 
     .users-table-wrap .empty-state i {
         font-size: 3rem;
-        color: #F5C842;
+        color: #a97900;
         opacity: 0.3;
         display: block;
         margin-bottom: 0.75rem;

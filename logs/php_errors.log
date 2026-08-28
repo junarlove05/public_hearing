@@ -71,3 +71,4 @@
 [18-Aug-2026 22:47:28 Asia/Manila] Uncaught exception: Call to undefined function paginationLinks() in C:\xampp\htdocs\lph\modules\hearings\table.php:298
 [24-Aug-2026 19:42:08 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\lph\pages\ajax_user_save.php:60
 [24-Aug-2026 19:42:43 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\lph\pages\ajax_user_save.php:60
+[27-Aug-2026 14:10:40 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xamppp\htdocs\lph\layouts\sidebar.php on line 118

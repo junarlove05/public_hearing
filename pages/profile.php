@@ -236,6 +236,7 @@ include __DIR__ . '/../layouts/header.php';
   <?php include __DIR__ . '/../layouts/sidebar.php'; ?>
 
   <div class="main-content">
+    <?php include __DIR__ . '/../layouts/top_controls.php'; ?>
     <div class="breadcrumb-bar">
       <h5 class="mb-0"><i class="bi bi-person-circle"></i> My Profile</h5>
     </div>

@@ -70,7 +70,7 @@ $today = date('Y-m-d');
     .actions-table-wrap .table thead th {
         background: linear-gradient(135deg, #0A1628 0%, #1A3A5C 100%);
         color: #ffffff;
-        border-bottom: 3px solid #F5C842;
+        border-bottom: 3px solid #a97900;
         font-weight: 600;
         padding: 0.85rem 1.25rem;
         font-size: 0.75rem;
@@ -83,7 +83,7 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .table thead th i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.4rem;
         font-size: 0.85rem;
     }
@@ -98,7 +98,7 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .table thead th a.sort-link:hover {
-        color: #F5C842 !important;
+        color: #a97900 !important;
     }
 
     .actions-table-wrap .table thead th .sort-icon {
@@ -147,11 +147,11 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .action-title:hover {
-        color: #F5C842;
+        color: #a97900;
     }
 
     .actions-table-wrap .action-title i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.3rem;
         font-size: 0.75rem;
     }
@@ -162,7 +162,7 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .action-updates i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.2rem;
     }
 
@@ -173,7 +173,7 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .linked-issue i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.3rem;
         font-size: 0.7rem;
     }
@@ -196,7 +196,7 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .assigned-office i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.2rem;
         font-size: 0.6rem;
     }
@@ -220,7 +220,7 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .deadline-date i {
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.3rem;
         font-size: 0.7rem;
     }
@@ -302,15 +302,15 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .doc-count:hover {
-        background: #F5C842;
-        border-color: #F5C842;
+        background: #a97900;
+        border-color: #a97900;
         color: #0A1628;
         transform: scale(1.05);
     }
 
     .actions-table-wrap .doc-count i {
         font-size: 0.7rem;
-        color: #F5C842;
+        color: #a97900;
         margin-right: 0.2rem;
     }
 
@@ -346,9 +346,9 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .btn-action.edit:hover {
-        background: #F5C842;
+        background: #a97900;
         color: #0A1628;
-        border-color: #F5C842;
+        border-color: #a97900;
     }
 
     .actions-table-wrap .btn-action.delete:hover {
@@ -399,16 +399,16 @@ $today = date('Y-m-d');
     }
 
     .actions-table-wrap .pagination .page-link:hover {
-        background: #F5C842;
+        background: #a97900;
         color: #0A1628;
-        border-color: #F5C842;
+        border-color: #a97900;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(245, 200, 66, 0.2);
     }
 
     .actions-table-wrap .pagination .page-item.active .page-link {
         background: linear-gradient(135deg, #0A1628 0%, #1A3A5C 100%);
-        border-color: #F5C842;
+        border-color: #a97900;
         color: #ffffff;
         box-shadow: 0 4px 15px rgba(10, 22, 40, 0.15);
     }
@@ -427,7 +427,7 @@ $today = date('Y-m-d');
 
     .actions-table-wrap .empty-state i {
         font-size: 3rem;
-        color: #F5C842;
+        color: #a97900;
         opacity: 0.3;
         display: block;
         margin-bottom: 0.75rem;

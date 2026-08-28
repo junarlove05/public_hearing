@@ -107,10 +107,15 @@ $notifCount = count($notifItems);
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($pageTitle) ?> | <?= e(APP_SHORT_NAME) ?></title>
 
+<link rel="icon" type="image/png" href="<?= e(APP_URL) ?>/assets/images/logo.png">
+<link rel="shortcut icon" type="image/png" href="<?= e(APP_URL) ?>/assets/images/logo.png">
+
+
 <link href="<?= e(vendorAsset('bootstrap/bootstrap.min.css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css')) ?>" rel="stylesheet">
 <link href="<?= e(vendorAsset('bootstrap-icons/bootstrap-icons.css', 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css')) ?>" rel="stylesheet">
 <link href="<?= e(vendorAsset('datatables/dataTables.bootstrap5.min.css', 'https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css')) ?>" rel="stylesheet">
-<link href="<?= e(APP_URL) ?>/assets/css/style.css" rel="stylesheet">
+<link href="<?= e(APP_URL) ?>/assets/css/style.css?v=<?= time() ?>" rel="stylesheet">
+<link href="<?= e(APP_URL) ?>/assets/css/orlms-shell.css?v=<?= time() ?>" rel="stylesheet">
 <?php if (!empty($extraCss)) foreach ($extraCss as $css): ?>
 <link href="<?= e($css) ?>" rel="stylesheet">
 <?php endforeach; ?>
@@ -121,16 +126,16 @@ $notifCount = count($notifItems);
    Colors: Midnight Blue, White, Gold Accents
    ============================================================ */
 :root {
-    --header-midnight-dark: #0A1628;
-    --header-midnight: #0F2137;
-    --header-midnight-blue: #1A3A5C;
+    --header-midnight-dark: #071426;
+    --header-midnight: #0f2137;
+    --header-midnight-blue: #1a3a5c;
     --header-midnight-soft: #2C5282;
     --header-midnight-pale: #4A7EB5;
     --header-midnight-lighter: #6B9BC7;
     --header-white: #ffffff;
-    --header-gold: #F5C842;
-    --header-gold-light: #F7D95A;
-    --header-shadow: 0 4px 25px rgba(10, 22, 40, 0.2);
+    --header-gold: #a97900;
+    --header-gold-light: #8a6200;
+    --header-shadow: 0 4px 25px rgba(7, 20, 38, 0.2);
 }
 
 .topnav {
@@ -212,7 +217,7 @@ $notifCount = count($notifItems);
 }
 
 .navbar-brand .brand-text .brand-title .accent {
-    color: #F5C842;
+    color: #a97900;
     transition: color 0.3s ease;
     text-shadow: 0 0 30px rgba(245, 200, 66, 0.15);
 }
@@ -242,7 +247,7 @@ $notifCount = count($notifItems);
 }
 
 .topnav .text-white:hover {
-    color: #F5C842 !important;
+    color: #a97900 !important;
 }
 
 /* Notification Bell */
@@ -254,7 +259,7 @@ $notifCount = count($notifItems);
 
 .topnav .bi-bell:hover {
     transform: scale(1.1) rotate(-10deg);
-    color: #F5C842;
+    color: #a97900;
 }
 
 /* Notification Badge */
@@ -276,7 +281,7 @@ $notifCount = count($notifItems);
 /* User Avatar */
 .topnav .bi-person-circle {
     font-size: 1.6rem;
-    color: #F5C842;
+    color: #a97900;
     transition: all 0.3s ease;
     filter: drop-shadow(0 2px 8px rgba(245, 200, 66, 0.15));
 }
@@ -294,7 +299,7 @@ $notifCount = count($notifItems);
 }
 
 .topnav .small.user-name:hover {
-    color: #F5C842;
+    color: #a97900;
 }
 
 /* Dropdown Caret */
@@ -315,7 +320,7 @@ $notifCount = count($notifItems);
     box-shadow: 0 15px 50px rgba(10, 22, 40, 0.15);
     padding: 0.5rem;
     margin-top: 0.75rem;
-    border-top: 4px solid #F5C842;
+    border-top: 4px solid #a97900;
     min-width: 220px;
     background: var(--header-white);
     animation: dropdownFade 0.25s ease;
@@ -367,7 +372,7 @@ $notifCount = count($notifItems);
 }
 
 .topnav .dropdown-menu .dropdown-item:hover i {
-    color: #F5C842;
+    color: #a97900;
 }
 
 .topnav .dropdown-menu .dropdown-divider {
@@ -509,18 +514,129 @@ $notifCount = count($notifItems);
     background: #4A7EB5;
     border-radius: 10px;
 }
+
+/* ============================================================
+   GLOBAL SYSTEMWIDE COLOR OVERRIDE: DARK GOLD (#a97900)
+   ============================================================ */
+:root {
+    --gold: #a97900 !important;
+    --hear-gold: #a97900 !important;
+    --header-gold: #a97900 !important;
+    --primary-yellow: #a97900 !important;
+    --primary-yellow-light: #8a6200 !important;
+    --footer-gold: #a97900 !important;
+    --ai-gold: #a97900 !important;
+    --og-gold: #a97900 !important;
+}
+
+.lphwf-eyebrow,
+.lphx-eyebrow,
+.lpha-eyebrow,
+.text-warning,
+.text-gold,
+.text-yellow,
+.bi-grid-3x3-gap-fill.text-warning,
+.bi-exclamation-triangle.text-warning,
+.bi-geo-alt.text-warning,
+.bi-people.text-warning,
+.hearing-eyebrow {
+    color: #a97900 !important;
+}
+
+.lphwf-head,
+.lphx-head,
+.lpha-head,
+.hearing-page-head,
+.lphx-scan-box,
+.breadcrumb-bar {
+    border-left-color: #a97900 !important;
+}
+
+.lphwf-card > .card-header,
+.lphx-card > .card-header,
+.lpha-card > .card-header,
+.lphwf-stat,
+.lphx-stat,
+.lpha-stat,
+.lphwf-funnel a,
+.lphwf-table thead th,
+.lphx-table thead th,
+.lpha-table thead th,
+.table thead th {
+    border-bottom-color: #a97900 !important;
+}
+
+.btn-warning,
+.btn-outline-warning:hover,
+.btn-outline-warning:focus,
+.btn-outline-warning:active,
+.badge.bg-warning,
+.badge.text-bg-warning,
+.text-bg-warning {
+    background-color: #a97900 !important;
+    border-color: #a97900 !important;
+    color: #ffffff !important;
+}
+
+.btn-outline-warning {
+    color: #a97900 !important;
+    border-color: #a97900 !important;
+}
+
+.orlms-sidebar-link.active,
+.orlms-sidebar-link:hover,
+.sidebar-navigation a.active,
+.sidebar-navigation a:hover {
+    color: #a97900 !important;
+}
+
+body.sidebar-collapsed .orlms-sidebar-link.active > i,
+body.sidebar-collapsed .orlms-sidebar-link:hover > i,
+body.sidebar-collapsed .sidebar-navigation a.active > i,
+body.sidebar-collapsed .sidebar-navigation a:hover > i {
+    color: #a97900 !important;
+}
+
+.pagination .page-item.active .page-link {
+    border-color: #a97900 !important;
+}
+
+.pagination .page-link:hover {
+    background-color: #a97900 !important;
+    border-color: #a97900 !important;
+    color: #ffffff !important;
+}
+
+/* REMOVE BACKGROUND COLOR FOR CARD HEADERS (e.g. Hearings Trend & All System Card Headers) */
+.card-header,
+.lphwf-card > .card-header,
+.lphx-card > .card-header,
+.lpha-card > .card-header,
+.hearing-detail-card .card-header {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    font-weight: 700 !important;
+}
 </style>
 </head>
-<body>
-
+<?php if (!empty($hideTopnav) || !empty($hideHeader)): ?>
+<style>
+  .topnav { display: none !important; }
+  .sidebar, .orlms-sidebar { top: 0 !important; padding-top: 0 !important; }
+  .main-content, .orlms-main-content { padding-top: 1.5rem !important; }
+</style>
+<?php else: ?>
 <nav class="navbar navbar-expand-lg topnav shadow-sm fixed-top">
   <div class="container-fluid">
-    <!-- Left Section: Brand Only -->
-    <div class="nav-left">
+    <!-- Left Section: Brand & Subsystems Navigation -->
+    <div class="nav-left d-flex align-items-center gap-3">
       <!-- Brand with Manila Logo -->
       <a class="navbar-brand fw-bold text-white d-flex align-items-center gap-2" href="<?= e(APP_URL) ?>/dashboard.php">
         <span class="logo-wrapper">
-          <img src="<?= e(APP_URL) ?>/assets/images/manila.png" alt="<?= e(APP_SHORT_NAME) ?> Logo">
+          <img src="<?= e(APP_URL) ?>/assets/images/logo.png" alt="<?= e(APP_SHORT_NAME) ?> Logo">
         </span>
         <span class="brand-text">
           <span class="brand-title">
@@ -529,6 +645,29 @@ $notifCount = count($notifItems);
           <span class="brand-subtitle">Government Portal</span>
         </span>
       </a>
+
+      <!-- Subsystems Navigation Dropdown -->
+      <div class="dropdown ms-2">
+        <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 6px;">
+          <i class="bi bi-grid-3x3-gap-fill text-warning"></i>
+          <span>Subsystems</span>
+        </button>
+        <ul class="dropdown-menu shadow-lg border-0 mt-2" style="min-width: 290px; font-size: 0.825rem; background: #0F2137; border: 1px solid rgba(245,200,66,0.2) !important;">
+          <li><a class="dropdown-item text-white py-2" href="<?= e(APP_URL) ?>/index.php"><i class="bi bi-house-door text-warning me-2"></i><strong>Portal Landing Page</strong></a></li>
+          <li><hr class="dropdown-divider bg-secondary"></li>
+          <li><span class="dropdown-header text-uppercase text-gold" style="font-size:0.65rem; color: #a97900;">All Integrated Subsystems</span></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/orlms/" target="_blank"><i class="bi bi-file-earmark-text text-primary me-2"></i>#1 Ordinance & Resolution</a></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/slmms/" target="_blank"><i class="bi bi-calendar-event text-info me-2"></i>#2 Session & Meeting</a></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/lacms/" target="_blank"><i class="bi bi-calendar3 text-success me-2"></i>#3 Agenda & Calendar</a></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/cmas/" target="_blank"><i class="bi bi-diagram-3 text-warning me-2"></i>#4 Committee Management</a></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/vqdss/" target="_blank"><i class="bi bi-check2-square text-danger me-2"></i>#5 Voting & Quorum</a></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/lrdms/" target="_blank"><i class="bi bi-folder-check text-primary me-2"></i>#6 Records & Documents</a></li>
+          <li><a class="dropdown-item text-warning fw-bold py-1.5 active" href="<?= e(APP_URL) ?>/dashboard.php" style="background: rgba(245,200,66,0.15);"><i class="bi bi-people text-warning me-2"></i>#7 Public Hearing (Active)</a></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/lahrs/" target="_blank"><i class="bi bi-archive text-secondary me-2"></i>#8 Archives & Repository</a></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/lrpaies/" target="_blank"><i class="bi bi-graph-up-arrow text-info me-2"></i>#9 Research & Policy</a></li>
+          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/cepfms/" target="_blank"><i class="bi bi-chat-square-heart text-danger me-2"></i>#10 Citizen Engagement</a></li>
+        </ul>
+      </div>
     </div>
 
     <!-- Right Section: Notifications + Profile -->
@@ -571,3 +710,4 @@ $notifCount = count($notifItems);
     </div>
   </div>
 </nav>
+<?php endif; ?>
