@@ -158,8 +158,10 @@ if ($action === 'test') {
 
     $result = lphSendMail($testTo, 'Stakeholder / Administrator', $subject, $htmlBody);
 
-    if ($result['ok']) {
+    if ($result['ok'] && ($result['reason'] ?? '') !== 'sandbox_mode') {
         jsonResponse(true, "Test email delivered successfully to {$testTo}! Check your inbox (or spam folder).", ['ok' => true]);
+    } elseif (($result['reason'] ?? '') === 'sandbox_mode') {
+        jsonResponse(false, "No active live email provider or API key is saved yet. Please enter your Gmail App Password, Brevo API key, or Resend API key above and click 'Save Configuration' first.", ['ok' => false, 'reason' => 'unconfigured']);
     } else {
         $msg = $result['message'] ?: 'Failed to send test email.';
         jsonResponse(false, "Delivery Notice: {$msg}", ['ok' => false, 'reason' => $result['reason'] ?? '']);
