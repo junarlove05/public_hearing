@@ -902,8 +902,22 @@ include __DIR__ . '/../../layouts/header.php';
                                                         data-status="Accepted"
                                                         data-name="<?= e($r['full_name']) ?>"
                                                         data-email="<?= e($r['email'] ?? '') ?>"
-                                                        title="Approve Stakeholder & Send Invitation to Gmail">
+                                                        title="Approve Stakeholder & Issue Pass">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Approve &amp; Send
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-danger btn-open-gmail fw-semibold" 
+                                                        data-id="<?= (int)$r['id'] ?>"
+                                                        data-name="<?= e($r['full_name']) ?>"
+                                                        data-email="<?= e($r['email'] ?? '') ?>"
+                                                        data-code="<?= e($r['invitation_code']) ?>"
+                                                        data-title="<?= e($group['hearing_title'] ?? '') ?>"
+                                                        data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
+                                                        data-time="<?= e($group['hearing_time'] ?? '') ?>"
+                                                        data-venue="<?= e($group['venue'] ?? '') ?>"
+                                                        onclick="openGmailInvite(this, event)"
+                                                        title="Open & Send official invitation letter in Gmail">
+                                                    <i class="bi bi-google me-1"></i>Gmail
                                                 </button>
                                                 <div class="btn-group btn-group-sm">
                                                     <button type="button" 
@@ -925,6 +939,20 @@ include __DIR__ . '/../../layouts/header.php';
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 me-1">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Approved &amp; Sent
                                                 </span>
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-danger btn-open-gmail text-white fw-semibold" 
+                                                        data-id="<?= (int)$r['id'] ?>"
+                                                        data-name="<?= e($r['full_name']) ?>"
+                                                        data-email="<?= e($r['email'] ?? '') ?>"
+                                                        data-code="<?= e($r['invitation_code']) ?>"
+                                                        data-title="<?= e($group['hearing_title'] ?? '') ?>"
+                                                        data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
+                                                        data-time="<?= e($group['hearing_time'] ?? '') ?>"
+                                                        data-venue="<?= e($group['venue'] ?? '') ?>"
+                                                        onclick="openGmailInvite(this, event)"
+                                                        title="Open and send official invitation letter directly from your Gmail">
+                                                    <i class="bi bi-google me-1"></i>Send via Gmail
+                                                </button>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-outline-primary btn-direct-send-email" 
                                                         data-id="<?= (int)$r['id'] ?>" 
@@ -1116,6 +1144,70 @@ function escapeHtml(str) {
 }
 window.escapeHtml = escapeHtml;
 
+window.openGmailDirect = function(email, name, code, title, date, time, venue, id) {
+    if (!email) {
+        Swal.fire('No Email Address', 'No email address registered for this stakeholder.', 'warning');
+        return;
+    }
+    name = name || 'Valued Stakeholder';
+    title = title || 'Legislative Public Hearing & Consultation';
+    const passCodeStr = code ? ` [Pass Code: ${code}]` : '';
+    date = date || 'Scheduled Session Date';
+    time = time ? ` at ${time}` : '';
+    venue = venue || 'City Hall Session Hall';
+
+    const portalLink = window.location.origin + '/';
+    const subject = `Official Invitation: ${title}${passCodeStr}`;
+    const body = `Dear ${name},
+
+Greetings from the Office of the City Council & Committee Secretariat!
+
+You are cordially invited to participate in the upcoming official Legislative Public Hearing & Consultation:
+
+• Hearing / Agenda: ${title}
+• Date & Time: ${date}${time}
+• Venue: ${venue}
+${code ? `• Official Pass Code: ${code}\n` : ''}
+Please present your official Invitation Pass upon arrival at the secretariat desk or verify your digital badge online:
+${portalLink}
+
+Respectfully yours,
+Office of the City Council & Committee Secretariat
+City of Manila`;
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(gmailUrl, '_blank');
+
+    if (typeof appToast === 'function') {
+        appToast('success', `Opened Gmail for ${email}!`);
+    }
+
+    if (id) {
+        const fd = new FormData();
+        const token = document.querySelector('[name=csrf_token]')?.value || (typeof APP_CSRF_TOKEN !== 'undefined' ? APP_CSRF_TOKEN : '');
+        fd.append('csrf_token', token);
+        fd.append('id', id);
+        fetch(APP_URL + '/modules/stakeholders/ajax_invitation_send.php', { method: 'POST', body: fd }).catch(() => {});
+    }
+};
+
+window.openGmailInvite = function(btn, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!btn) return;
+    const email = btn.dataset.email || '';
+    const name = btn.dataset.name || '';
+    const code = btn.dataset.code || '';
+    const title = btn.dataset.title || '';
+    const date = btn.dataset.date || '';
+    const time = btn.dataset.time || '';
+    const venue = btn.dataset.venue || '';
+    const id = btn.dataset.id || '';
+    openGmailDirect(email, name, code, title, date, time, venue, id);
+};
+
 window.handleResendInvitation = async function(btn, event) {
     if (event) {
         event.preventDefault();
@@ -1177,16 +1269,21 @@ window.handleResendInvitation = async function(btn, event) {
             });
             setTimeout(() => location.reload(), 1600);
         } else if (!res.email_sent) {
-            const openSetup = await Swal.fire({
-                icon: 'warning',
-                title: 'Email Dispatcher Notice',
-                html: `<div>${escapeHtml(res.message || 'Email dispatcher credentials are not configured yet.')}</div>`,
+            const openChoice = await Swal.fire({
+                icon: 'info',
+                title: 'Send via Gmail',
+                html: `<div>${escapeHtml(res.message || 'Invitation record verified.')}</div><div class="mt-2 text-dark">Would you like to open and send this invitation directly from your own Gmail?</div>`,
                 showCancelButton: true,
-                confirmButtonText: '<i class="bi bi-envelope-gear me-1"></i> Open Email Setup',
-                cancelButtonText: 'Later',
-                confirmButtonColor: '#0b3d6e'
+                showDenyButton: true,
+                confirmButtonText: '<i class="bi bi-google me-1"></i> Open in Gmail',
+                denyButtonText: '<i class="bi bi-envelope-gear me-1"></i> Email Setup',
+                cancelButtonText: 'Done',
+                confirmButtonColor: '#ea4335',
+                denyButtonColor: '#0b3d6e'
             });
-            if (openSetup.isConfirmed) {
+            if (openChoice.isConfirmed) {
+                openGmailDirect(email, name, code, '', '', '', '', id);
+            } else if (openChoice.isDenied) {
                 document.getElementById('btnSmtpSetup')?.click();
             }
         } else {
@@ -1735,15 +1832,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         return;
                     } else {
                         const askSetup = await Swal.fire({
-                            icon: 'warning',
-                            title: 'Approved (Email Notice)',
-                            html: `<div>${escapeHtml(r.message)}</div><div class="mt-2 small text-muted">A configured <strong>Email Setup</strong> is required to dispatch invitations directly to the inbox.</div>`,
+                            icon: 'info',
+                            title: 'Approved (Send via Gmail)',
+                            html: `<div>${escapeHtml(r.message)}</div><div class="mt-2 text-dark">Would you like to open and send this official invitation directly from your own Gmail?</div>`,
                             showCancelButton: true,
-                            confirmButtonText: '<i class="bi bi-envelope-gear me-1"></i> Open Email Setup',
-                            cancelButtonText: 'OK',
-                            confirmButtonColor: '#0b3d6e'
+                            showDenyButton: true,
+                            confirmButtonText: '<i class="bi bi-google me-1"></i> Open in Gmail',
+                            denyButtonText: '<i class="bi bi-envelope-gear me-1"></i> Email Setup',
+                            cancelButtonText: 'Done',
+                            confirmButtonColor: '#ea4335',
+                            denyButtonColor: '#0b3d6e'
                         });
                         if (askSetup.isConfirmed) {
+                            openGmailDirect(email, name, '', '', '', '', '', id);
+                            setTimeout(() => location.reload(), 400);
+                            return;
+                        } else if (askSetup.isDenied) {
                             document.getElementById('btnSmtpSetup')?.click();
                             return;
                         }
