@@ -1004,6 +1004,15 @@ include __DIR__ . '/../../layouts/header.php';
                                                    target="_blank" 
                                                    rel="noopener noreferrer"
                                                    class="btn btn-sm btn-outline-danger fw-semibold" 
+                                                   data-name="<?= e($r['full_name']) ?>"
+                                                   data-email="<?= e($r['email'] ?? '') ?>"
+                                                   data-code="<?= e($r['invitation_code']) ?>"
+                                                   data-title="<?= e($group['hearing_title'] ?? '') ?>"
+                                                   data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
+                                                   data-time="<?= e($group['hearing_time'] ?? '') ?>"
+                                                   data-venue="<?= e($group['venue'] ?? '') ?>"
+                                                   data-id="<?= (int)$r['id'] ?>"
+                                                   onclick="handleGmailWithRichClipboard(this, event)"
                                                    title="Open & Send official invitation letter in Gmail">
                                                     <i class="bi bi-google me-1"></i>Gmail
                                                 </a>
@@ -1047,6 +1056,15 @@ include __DIR__ . '/../../layouts/header.php';
                                                    target="_blank" 
                                                    rel="noopener noreferrer"
                                                    class="btn btn-sm btn-danger text-white fw-semibold shadow-sm" 
+                                                   data-name="<?= e($r['full_name']) ?>"
+                                                   data-email="<?= e($r['email'] ?? '') ?>"
+                                                   data-code="<?= e($r['invitation_code']) ?>"
+                                                   data-title="<?= e($group['hearing_title'] ?? '') ?>"
+                                                   data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
+                                                   data-time="<?= e($group['hearing_time'] ?? '') ?>"
+                                                   data-venue="<?= e($group['venue'] ?? '') ?>"
+                                                   data-id="<?= (int)$r['id'] ?>"
+                                                   onclick="handleGmailWithRichClipboard(this, event)"
                                                    title="Open and send official invitation letter directly from your Gmail">
                                                     <i class="bi bi-google me-1"></i>Send via Gmail
                                                 </a>
@@ -1330,7 +1348,86 @@ Session Hall, 2nd Floor, Executive Building, Manila City Hall
 Padre Burgos Ave., Ermita, City of Manila, Philippines
 Official Portal: ${liveBaseUrl}`;
 
-    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+window.handleGmailWithRichClipboard = function(btn, event) {
+    if (!btn) return;
+    const name = btn.dataset.name || 'Distinguished Stakeholder';
+    const email = btn.dataset.email || '';
+    const code = btn.dataset.code || 'LPH-SECURE';
+    const title = btn.dataset.title || 'Legislative Public Hearing & Consultation';
+    const date = btn.dataset.date || 'Scheduled Date';
+    const time = btn.dataset.time || 'Scheduled Time';
+    const venue = btn.dataset.venue || 'Session Hall, 2nd Floor, Manila City Hall, Padre Burgos Ave., Ermita, Manila';
+    const id = btn.dataset.id || '';
+
+    const liveBaseUrl = 'https://public-hearing-integrated-legislative-system.hostforgeplatforms.com';
+    const printUrl = `${liveBaseUrl}/modules/stakeholders/invitation_print.php?id=${encodeURIComponent(id)}&code=${encodeURIComponent(code)}`;
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(code)}&margin=6`;
+    const manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
+    const todayStr = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
+
+    const richHtml = `
+<div style="font-family: Arial, sans-serif; max-width: 650px; color: #1e293b; line-height: 1.6; margin: 0 auto; padding: 20px; border: 2px solid #c59b27; border-radius: 8px;">
+  <div style="text-align: center; margin-bottom: 20px;">
+    <img src="${manilaLogoUrl}" width="80" height="80" alt="Official Seal of Manila" style="display: block; margin: 0 auto 10px auto; border: 0;" />
+    <div style="font-size: 11px; font-weight: bold; color: #64748b; letter-spacing: 1.5px; text-transform: uppercase;">Republic of the Philippines</div>
+    <div style="font-size: 18px; font-weight: bold; color: #0a2540; margin: 2px 0;">CITY OF MANILA · SANGGUNIANG PANLUNGSOD</div>
+    <div style="font-size: 13px; font-weight: bold; color: #c59b27; text-transform: uppercase;">Office of the City Council &amp; Committee Secretariat</div>
+    <div style="font-size: 11px; color: #64748b;">Manila City Hall, Padre Burgos Ave., Ermita, Manila</div>
+  </div>
+  <hr style="border: 0; border-top: 2px solid #0a2540; margin: 15px 0;" />
+  <table style="width: 100%; font-size: 13px; margin-bottom: 15px; border-collapse: collapse;">
+    <tr><td style="width: 140px; font-weight: bold; color: #475569;">DATE OF NOTICE:</td><td>${todayStr}</td></tr>
+    <tr><td style="font-weight: bold; color: #475569;">REFERENCE NO.:</td><td style="font-family: monospace; font-size: 14px; font-weight: bold; color: #0a2540;">${escapeHtml(code)}</td></tr>
+    <tr><td style="font-weight: bold; color: #475569;">TO:</td><td style="font-weight: bold;">${escapeHtml(name)}</td></tr>
+    <tr><td style="font-weight: bold; color: #475569;">SUBJECT:</td><td><strong>OFFICIAL NOTICE &amp; INVITATION: Public Hearing on ${escapeHtml(title)}</strong></td></tr>
+  </table>
+  <p>Sir / Madam:</p>
+  <p>Pursuant to Republic Act No. 7160 (The Local Government Code of 1991) and the standing rules of procedure of the Sangguniang Panlungsod ng Maynila, you are hereby cordially and officially invited to attend and participate as a recognized stakeholder in the forthcoming Legislative Public Hearing:</p>
+  <div style="background-color: #f8fafc; border: 1.5px solid #cbd5e1; border-left: 4px solid #0a2540; padding: 14px 18px; border-radius: 6px; margin: 15px 0;">
+    <p style="margin: 4px 0;"><strong>• Proposed Measure / Agenda:</strong> ${escapeHtml(title)}</p>
+    <p style="margin: 4px 0;"><strong>• Scheduled Hearing Date:</strong> ${escapeHtml(date)}</p>
+    <p style="margin: 4px 0;"><strong>• Session Call-to-Order:</strong> ${escapeHtml(time)}</p>
+    <p style="margin: 4px 0;"><strong>• Official Venue:</strong> ${escapeHtml(venue)}</p>
+    <p style="margin: 4px 0;"><strong>• Stakeholder Pass Code:</strong> <span style="font-family: monospace; font-weight: bold; color: #0a2540;">${escapeHtml(code)}</span></p>
+  </div>
+  <div style="text-align: center; background-color: #ffffff; border: 2px dashed #c59b27; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <div style="font-size: 12px; font-weight: bold; color: #64748b; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Official Digital Attendance QR Pass</div>
+    <div style="margin-bottom: 12px;">
+      <img src="${qrImageUrl}" width="180" height="180" alt="QR Pass ${escapeHtml(code)}" style="display: inline-block; border: 6px solid #ffffff; box-shadow: 0 3px 10px rgba(0,0,0,0.15); border-radius: 6px;" />
+    </div>
+    <div style="font-size: 12px; color: #475569; margin-bottom: 14px;">Present this QR code badge upon entry at the secretariat desk (screen or printout).</div>
+    <div>
+      <a href="${printUrl}" target="_blank" style="display: inline-block; background-color: #0a2540; color: #ffffff; padding: 10px 22px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: bold; border: 1px solid #c59b27;">📄 View &amp; Print Official Executive Certificate</a>
+    </div>
+  </div>
+  <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
+    <em>Registration Desk opens thirty (30) minutes prior to call-to-order. Written position papers or resolutions may be submitted upon arrival.</em>
+  </p>
+  <p style="margin-top: 20px;">Respectfully yours,<br>
+  <strong>COMMITTEE SECRETARIAT</strong><br>
+  Sangguniang Panlungsod (City Council of Manila)<br>
+  Manila City Hall, Padre Burgos Ave., Ermita, Manila</p>
+</div>`;
+
+    if (navigator.clipboard && window.ClipboardItem) {
+        try {
+            const blobHtml = new Blob([richHtml], { type: 'text/html' });
+            const blobText = new Blob([richHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')], { type: 'text/plain' });
+            navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })]).then(() => {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Official Letterhead & QR Code Copied!',
+                        html: '<span style="font-size:12px;">Naka-copy na sa clipboard ang liham na may <b>mismong Manila Logo at QR Code image</b>! Pindutin lang ang <b>Ctrl + V</b> (Paste) sa loob ng Gmail compose.</span>',
+                        timer: 6000,
+                        showConfirmButton: false
+                    });
+                }
+            }).catch(() => {});
+        } catch (e) {}
+    }
 };
 
 window.openGmailDirect = function(email, name, code, title, date, time, venue, id) {
