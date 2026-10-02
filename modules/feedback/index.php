@@ -269,7 +269,7 @@ $revStatus=$f['ai_review_status']??'';
 <span class="badge text-bg-light text-muted">Not analyzed</span>
 <?php endif; ?>
 </td>
-<td class="text-end"><button type="button" class="btn btn-sm btn-outline-primary btn-review-feedback" data-row='<?= e(json_encode($f,JSON_HEX_APOS|JSON_HEX_QUOT)) ?>' title="View &amp; Verify Feedback"><i class="bi bi-eye"></i></button></td>
+<td class="text-end"><button type="button" class="btn btn-sm btn-outline-primary btn-review-feedback" data-id="<?= (int)$f['id'] ?>" data-row='<?= e(json_encode($f,JSON_HEX_APOS|JSON_HEX_QUOT)) ?>' title="View &amp; Verify Feedback"><i class="bi bi-eye"></i></button></td>
 </tr>
 <?php endforeach; ?>
 </tbody>
@@ -538,11 +538,15 @@ $revStatus=$f['ai_review_status']??'';
 
 <script>
 document.addEventListener('DOMContentLoaded',function(){
- const fmodal=new bootstrap.Modal(document.getElementById('feedbackModal'));
- btnNewFeedback.onclick=()=>{feedbackForm.reset();fmodal.show();};
- feedbackForm.onsubmit=async e=>{e.preventDefault();const r=await appPostForm(APP_URL+'/modules/feedback/ajax_submit.php',feedbackForm);if(r.success){appToast('success',r.message);setTimeout(()=>location.reload(),400);}else if(!r.session_expired)Swal.fire('Feedback Error',r.message,'error');};
+ const fbModalEl = document.getElementById('feedbackModal');
+ const fmodal = fbModalEl ? new bootstrap.Modal(fbModalEl) : null;
+ const btnNew = document.getElementById('btnNewFeedback');
+ const fForm = document.getElementById('feedbackForm');
+ if(btnNew && fmodal && fForm) btnNew.onclick=()=>{fForm.reset();fmodal.show();};
+ if(fForm) fForm.onsubmit=async e=>{e.preventDefault();const r=await appPostForm(APP_URL+'/modules/feedback/ajax_submit.php',fForm);if(r.success){appToast('success',r.message);setTimeout(()=>location.reload(),400);}else if(!r.session_expired)Swal.fire('Feedback Error',r.message,'error');};
  <?php if($canReview): ?>
- const rmodal=new bootstrap.Modal(document.getElementById('reviewModal'));
+ const rmodalEl = document.getElementById('reviewModal');
+ const rmodal = rmodalEl ? new bootstrap.Modal(rmodalEl) : null;
  let currentFeedbackRow=null;
 
  function parseList(value){
@@ -689,47 +693,98 @@ document.addEventListener('DOMContentLoaded',function(){
    }
  }
 
- document.querySelectorAll('.btn-review-feedback').forEach(b=>b.onclick=function(){
-   const r=JSON.parse(this.dataset.row);
-   currentFeedbackRow=r;
-   rv_id.value=r.id;
-   rv_status.value=r.status||'New';
-   rv_visibility.value=r.visibility||'Internal';
-   rv_reply.value=r.reply_text||'';
-   rv_message.textContent=(r.subject?'Subject: '+r.subject+'\n\n':'')+r.message;
+ document.addEventListener('click', async function(e){
+    const b = e.target.closest('.btn-review-feedback');
+    if(!b) return;
+    e.preventDefault();
 
-   const eligible=Number(r.ai_eligible||0)===1;
-   const analyzeBtn=document.getElementById('btnAnalyzeFeedback');
-   if(analyzeBtn)analyzeBtn.classList.toggle('d-none',!eligible);
+    let r = null;
+    if(b.dataset.row){
+      try{
+        r = JSON.parse(b.dataset.row);
+      }catch(err){
+        console.warn('Failed to parse data-row:', err);
+      }
+    }
 
-   if(!eligible && !r.ai_status){
-     const aiBox=document.getElementById('rv_ai_result');
-     if(aiBox)aiBox.innerHTML='<span class="text-muted"><i class="bi bi-info-circle"></i> AI analysis is limited to citizen feedback and Complaint submissions.</span>';
-   }else renderAi(r.ai_status?{
-     status:r.ai_status,
-     sentiment:r.ai_sentiment,
-     confidence_score:r.ai_confidence_score,
-     urgency_level:r.ai_urgency_level,
-     urgency_score:r.ai_urgency_score,
-     keyword_score:r.ai_keyword_score,
-     summary:r.ai_summary,
-     keywords:r.ai_keywords,
-     risk_keywords:r.ai_risk_keywords,
-     recommended_category:r.ai_recommended_category,
-     suggested_response:r.ai_suggested_response,
-     flagged_for_review:r.ai_flagged_for_review,
-     error_message:r.ai_error_message,
-     review_status:r.ai_review_status,
-     review_notes:r.ai_review_notes,
-     reviewed_by:r.ai_reviewed_by,
-     reviewed_by_name:r.ai_reviewed_by_name,
-     reviewed_at:r.ai_reviewed_at,
-     analysis_version:r.ai_analysis_version,
-     history_count:r.ai_history_count
-   }:null);
+    const fid = r ? r.id : b.dataset.id;
+    if(!r && fid){
+      try{
+        const res = await fetch(APP_URL + '/modules/feedback/ajax_get.php?id=' + encodeURIComponent(fid), {
+          headers: {'X-Requested-With': 'XMLHttpRequest'}
+        });
+        const d = await res.json();
+        if(d.success && d.feedback){
+          r = d.feedback;
+          if(d.ai_analysis){
+            r.ai_status = d.ai_analysis.status;
+            r.ai_sentiment = d.ai_analysis.sentiment;
+            r.ai_urgency_level = d.ai_analysis.urgency_level;
+            r.ai_confidence_score = d.ai_analysis.confidence_score;
+            r.ai_urgency_score = d.ai_analysis.urgency_score;
+            r.ai_summary = d.ai_analysis.summary;
+            r.ai_keywords = d.ai_analysis.keywords;
+            r.ai_risk_keywords = d.ai_analysis.risk_keywords;
+            r.ai_recommended_category = d.ai_analysis.recommended_category;
+            r.ai_suggested_response = d.ai_analysis.suggested_response;
+            r.ai_review_status = d.ai_analysis.review_status;
+            r.ai_review_notes = d.ai_analysis.review_notes;
+          }
+        }
+      }catch(err){
+        console.error('Failed to load feedback details:', err);
+      }
+    }
 
-   rmodal.show();
- });
+    if(!r) return;
+    currentFeedbackRow = r;
+
+    const elId = document.getElementById('rv_id');
+    const elStatus = document.getElementById('rv_status');
+    const elVis = document.getElementById('rv_visibility');
+    const elReply = document.getElementById('rv_reply');
+    const elMsg = document.getElementById('rv_message');
+
+    if(elId) elId.value = r.id;
+    if(elStatus) elStatus.value = r.status || 'New';
+    if(elVis) elVis.value = r.visibility || 'Internal';
+    if(elReply) elReply.value = r.reply_text || '';
+    if(elMsg) elMsg.textContent = (r.subject ? 'Subject: ' + r.subject + '\n\n' : '') + (r.message || '');
+
+    const eligible = Number(r.ai_eligible || 0) === 1;
+    const analyzeBtn = document.getElementById('btnAnalyzeFeedback');
+    if(analyzeBtn) analyzeBtn.classList.toggle('d-none', !eligible);
+
+    if(!eligible && !r.ai_status){
+      const aiBox = document.getElementById('rv_ai_result');
+      if(aiBox) aiBox.innerHTML = '<span class=\"text-muted\"><i class=\"bi bi-info-circle\"></i> AI analysis is limited to citizen feedback and Complaint submissions.</span>';
+    }else{
+      renderAi(r.ai_status ? {
+        status: r.ai_status,
+        sentiment: r.ai_sentiment,
+        confidence_score: r.ai_confidence_score,
+        urgency_level: r.ai_urgency_level,
+        urgency_score: r.ai_urgency_score,
+        keyword_score: r.ai_keyword_score,
+        summary: r.ai_summary,
+        keywords: r.ai_keywords,
+        risk_keywords: r.ai_risk_keywords,
+        recommended_category: r.ai_recommended_category,
+        suggested_response: r.ai_suggested_response,
+        flagged_for_review: r.ai_flagged_for_review,
+        error_message: r.ai_error_message,
+        review_status: r.ai_review_status,
+        review_notes: r.ai_review_notes,
+        reviewed_by: r.ai_reviewed_by,
+        reviewed_by_name: r.ai_reviewed_by_name,
+        reviewed_at: r.ai_reviewed_at,
+        analysis_version: r.ai_analysis_version,
+        history_count: r.ai_history_count
+      } : null);
+    }
+
+    if(rmodal) rmodal.show();
+  });
 
  const analyzeBtn=document.getElementById('btnAnalyzeFeedback');
  if(analyzeBtn)analyzeBtn.onclick=async()=>{
@@ -866,7 +921,9 @@ document.addEventListener('DOMContentLoaded',function(){
              <div class="mt-1">${esc(h.summary||h.error_message||'-')}</div>
              ${kws.length?'<div class="mt-1"><strong>Keywords:</strong> '+kws.map(esc).join(', ')+'</div>':''}
              ${risks.length?'<div class="mt-1"><strong>Risk:</strong> '+risks.map(esc).join(', ')+'</div>':''}
-             <div class="mt-1"><strong>Staff Review:</strong> ${esc(h.review_status||'Pending')}${h.reviewed_by_name ? ` · Verified by: <strong>${esc(h.reviewed_by_name)}</strong>` : ''}${h.reviewed_at ? ` (${esc(h.reviewed_at)})` : ''}</div>' + (h.review_notes ? `<div class="mt-1 text-muted ps-2 border-start border-2 border-primary"><em>Notes:</em> ${esc(h.review_notes)}</div>` : '') + (h.archived_by_name ? `<div class="mt-1 text-muted" style="font-size: 0.78rem;"><i class="bi bi-arrow-repeat text-secondary"></i> Re-analyzed by: <strong>${esc(h.archived_by_name)}</strong>${h.archived_at ? ` (${esc(h.archived_at)})` : ''}</div>` : '');
+             <div class="mt-1"><strong>Staff Review:</strong> ${esc(h.review_status||'Pending')}${h.reviewed_by_name ? ` · Verified by: <strong>${esc(h.reviewed_by_name)}</strong>` : ''}${h.reviewed_at ? ` (${esc(h.reviewed_at)})` : ''}</div>
+              ${h.review_notes ? `<div class="mt-1 text-muted ps-2 border-start border-2 border-primary"><em>Notes:</em> ${esc(h.review_notes)}</div>` : ''}
+              ${h.archived_by_name ? `<div class="mt-1 text-muted" style="font-size: 0.78rem;"><i class="bi bi-arrow-repeat text-secondary"></i> Re-analyzed by: <strong>${esc(h.archived_by_name)}</strong>${h.archived_at ? ` (${esc(h.archived_at)})` : ''}</div>` : ''}
            </div>
          `;
        }).join('');
