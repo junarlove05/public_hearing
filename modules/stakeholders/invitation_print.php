@@ -10,11 +10,17 @@
 
 declare(strict_types=1);
 require_once __DIR__ . '/../../includes/auth.php';
-requireLogin();
 
 $id = (int)($_GET['id'] ?? 0);
-$stmt = db()->prepare(
-    'SELECT i.*, 
+$codeParam = trim((string)($_GET['code'] ?? ''));
+
+// If an invitation code is provided in the URL, verify it directly without forcing login
+// so external recipients can access and print their official invitation and QR badge.
+if ($codeParam === '') {
+    requireLogin();
+}
+
+$sql = 'SELECT i.*, 
             s.full_name, s.email, s.organization, s.phone, s.sector, 
             sc.name AS category_name,
             h.id AS hearing_id, h.title AS hearing_title, h.reference_number, h.venue, 
@@ -36,10 +42,21 @@ $stmt = db()->prepare(
              OR (i.session_day_id IS NOT NULL AND r.session_day_id = i.session_day_id)
              OR (i.session_date IS NULL AND r.session_date IS NULL)
          )
-     )
-     WHERE i.id = :id'
-);
-$stmt->execute([':id' => $id]);
+     )';
+
+if ($id > 0 && $codeParam !== '') {
+    $stmt = db()->prepare($sql . ' WHERE i.id = :id AND i.invitation_code = :code');
+    $stmt->execute([':id' => $id, ':code' => $codeParam]);
+} elseif ($id > 0) {
+    $stmt = db()->prepare($sql . ' WHERE i.id = :id');
+    $stmt->execute([':id' => $id]);
+} elseif ($codeParam !== '') {
+    $stmt = db()->prepare($sql . ' WHERE i.invitation_code = :code');
+    $stmt->execute([':code' => $codeParam]);
+} else {
+    die('Invalid invitation reference.');
+}
+
 $inv = $stmt->fetch();
 
 if (!$inv) {

@@ -51,7 +51,7 @@ function lphBuildGmailComposeUrl(array $r, array $group): string {
     $id = (int)($r['id'] ?? 0);
 
     $baseUrl = (defined('APP_URL') && APP_URL) ? rtrim(APP_URL, '/') : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/legislative/lph');
-    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $id;
+    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $id . '&code=' . rawurlencode($code);
     $qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($code) . '&margin=6';
     $manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
 
@@ -73,13 +73,13 @@ function lphBuildGmailComposeUrl(array $r, array $group): string {
           . "• Session Venue  : {$venue}\n"
           . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
           . "🎫 YOUR OFFICIAL ATTENDANCE PASS & QR CODE:\n"
-          . "• Stakeholder Name : {$name}\n"
+          . "• Stakeholder Name  : {$name}\n"
           . "• Official Pass Code: {$code}\n\n"
-          . "📱 SCAN / VIEW YOUR QR CODE BADGE:\n{$qrImageUrl}\n\n"
-          . "📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE:\n{$printUrl}\n\n"
+          . "📲 CLICK TO DISPLAY / SCAN YOUR QR CODE PASS:\n{$qrImageUrl}\n\n"
+          . "📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE (WITH QR PASS):\n{$printUrl}\n\n"
           . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
           . "IMPORTANT INSTRUCTIONS FOR ATTENDEES:\n"
-          . "1. Please present this Official Invitation Code or your digital QR Code upon arrival at the secretariat registration desk.\n"
+          . "1. Please present this Official Pass Code or your digital QR Code upon arrival at the secretariat registration desk.\n"
           . "2. For on-site attendees, registration desk opens 30 minutes before the session starts.\n"
           . "3. Keep this email and QR pass accessible on your mobile phone or print a hard copy.\n"
           . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -1197,7 +1197,7 @@ window.buildClientGmailUrl = function(email, name, code, title, date, time, venu
     const origin = window.location.origin;
     const pathname = window.location.pathname;
     const printUrl = id 
-        ? (origin + pathname.replace('invitations.php', 'invitation_print.php?id=' + encodeURIComponent(id))) 
+        ? (origin + pathname.replace('invitations.php', 'invitation_print.php?id=' + encodeURIComponent(id) + '&code=' + encodeURIComponent(code))) 
         : (origin + pathname.replace('invitations.php', 'index.php'));
     const qrImageUrl = code 
         ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(code)}&margin=6` 
@@ -1229,18 +1229,18 @@ LEGISLATIVE PUBLIC HEARING DETAILS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🎫 YOUR OFFICIAL ATTENDANCE PASS & QR CODE:
-• Stakeholder Name : ${name}
+• Stakeholder Name  : ${name}
 • Official Pass Code: ${code || 'LPH-SECURE'}
 
-📱 SCAN / VIEW YOUR QR CODE BADGE:
+📲 CLICK TO DISPLAY / SCAN YOUR QR CODE PASS:
 ${qrImageUrl}
 
-📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE:
+📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE (WITH QR PASS):
 ${printUrl}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 IMPORTANT INSTRUCTIONS FOR ATTENDEES:
-1. Please present this Official Invitation Code or your digital QR Code upon arrival at the secretariat registration desk.
+1. Please present this Official Pass Code or your digital QR Code upon arrival at the secretariat registration desk.
 2. For on-site attendees, registration desk opens 30 minutes before the session starts.
 3. Keep this email and QR pass accessible on your mobile phone or print a hard copy.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1254,32 +1254,121 @@ City Hall, Padre Burgos Ave, Ermita, Manila, Philippines`;
     return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 };
 
-window.openGmailDirect = function(email, name, code, title, date, time, venue, id) {
+window.copyRichInvitationToClipboard = async function(email, name, code, title, date, time, venue, id) {
+    name = name || 'Valued Stakeholder';
+    title = title || 'Legislative Public Hearing & Consultation';
+    date = date || 'Scheduled Session Date';
+    time = time ? ` at ${time}` : '';
+    venue = venue || 'City Hall Session Hall, City of Manila';
+
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    const printUrl = id 
+        ? (origin + pathname.replace('invitations.php', 'invitation_print.php?id=' + encodeURIComponent(id) + '&code=' + encodeURIComponent(code))) 
+        : (origin + pathname.replace('invitations.php', 'index.php'));
+    const qrImageUrl = code 
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(code)}&margin=6` 
+        : '';
+    const manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
+
+    const htmlCard = `<div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 2px solid #c59b27; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+  <div style="background: linear-gradient(135deg, #071426 0%, #0f2137 60%, #1a3a5c 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
+    <img src="${manilaLogoUrl}" alt="City of Manila Seal" width="80" height="80" style="display: block; margin: 0 auto 10px auto;">
+    <div style="font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #d4af37; font-weight: 700; margin-bottom: 2px;">Republic of the Philippines</div>
+    <div style="font-size: 19px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; color: #ffffff;">City of Manila</div>
+    <div style="font-size: 14px; font-style: italic; color: #f7edd4; margin-bottom: 4px;">Sangguniang Panlungsod · Office of the City Council</div>
+    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8;">Legislative Public Hearing &amp; Consultation Management System</div>
+  </div>
+
+  <div style="padding: 24px 22px; color: #1e293b; line-height: 1.6;">
+    <p style="font-size: 16px; margin: 0 0 14px 0;">Dear <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="font-size: 14px; margin: 0 0 16px 0; color: #334155;">
+      Warm greetings from the Office of the City Council of Manila! You are officially invited to attend and participate as an official stakeholder in the upcoming Legislative Public Hearing:
+    </p>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0f2137; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Agenda / Hearing Title</div>
+      <div style="font-size: 15px; font-weight: 700; color: #0f2137; margin-bottom: 10px;">${escapeHtml(title)}</div>
+      <div style="font-size: 13px; color: #334155; margin-bottom: 4px;">📅 <strong>Date:</strong> ${escapeHtml(date)} ${escapeHtml(time)}</div>
+      <div style="font-size: 13px; color: #334155;">📍 <strong>Venue:</strong> ${escapeHtml(venue)}</div>
+    </div>
+
+    <!-- Official QR Code Badge -->
+    <div style="background: #ffffff; border: 1.5px dashed #c59b27; border-radius: 10px; padding: 18px; text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 4px;">Official Attendance Pass Code</div>
+      <div style="font-family: monospace; font-size: 18px; font-weight: 800; color: #071426; background: #fef9c3; display: inline-block; padding: 4px 14px; border-radius: 6px; border: 1px solid #facc15; margin-bottom: 12px; letter-spacing: 1.5px;">${escapeHtml(code)}</div>
+      <div style="margin: 0 auto 10px auto;">
+        <img src="${qrImageUrl}" alt="Attendance QR Pass" width="220" height="220" style="display: block; margin: 0 auto; border: 2px solid #0f2137; border-radius: 8px; background: #ffffff;">
+      </div>
+      <div style="font-size: 11px; color: #64748b;">Present this QR pass upon arrival at the secretariat registration desk.</div>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+      <a href="${printUrl}" target="_blank" style="display: inline-block; background: #0f2137; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 22px; border-radius: 6px; border: 1px solid #c59b27;">
+        📜 View &amp; Print Official Executive Certificate
+      </a>
+    </div>
+
+    <div style="border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 12px; color: #475569;">
+      <strong>Office of the City Council &amp; Committee Secretariat</strong><br>
+      Sangguniang Panlungsod, City of Manila<br>
+      City Hall, Padre Burgos Ave, Ermita, Manila, Philippines
+    </div>
+  </div>
+</div>`;
+
+    try {
+        if (navigator.clipboard && window.ClipboardItem) {
+            const htmlBlob = new Blob([htmlCard], { type: 'text/html' });
+            const textBlob = new Blob([htmlCard.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': htmlBlob,
+                    'text/plain': textBlob
+                })
+            ]);
+            return true;
+        }
+    } catch(err) {
+        console.warn('Clipboard write HTML failed:', err);
+    }
+    return false;
+};
+
+window.openGmailDirect = async function(email, name, code, title, date, time, venue, id) {
     if (!email) {
         Swal.fire('No Email Address', 'No email address registered for this stakeholder.', 'warning');
         return;
     }
     const gmailUrl = window.buildClientGmailUrl(email, name, code, title, date, time, venue, id);
+
+    // Auto copy the rich HTML invitation with actual logo & QR code image to clipboard
+    window.copyRichInvitationToClipboard(email, name, code, title, date, time, venue, id);
+
     const win = window.open(gmailUrl, '_blank');
 
-    if (!win || win.closed || typeof win.closed === 'undefined') {
-        Swal.fire({
-            icon: 'info',
-            title: 'Open Gmail Compose',
-            html: `
-                <p>Your browser blocked the automatic pop-up window. Click below to open Gmail:</p>
-                <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mt-2" onclick="Swal.close()">
-                    <i class="bi bi-google me-2"></i> Open in Gmail
-                </a>
-            `,
-            showConfirmButton: false,
-            showCloseButton: true
-        });
-    } else {
-        if (typeof appToast === 'function') {
-            appToast('success', `Opened Gmail compose for ${email}!`);
-        }
-    }
+    await Swal.fire({
+        icon: 'info',
+        title: 'Gmail Invitation Ready!',
+        html: `
+            <div class="text-start small p-2 bg-light rounded border mb-3">
+                <div class="mb-1"><strong>Recipient:</strong> <span class="text-danger font-monospace">${escapeHtml(email)}</span></div>
+                <div><strong>Pass Code:</strong> <span class="badge bg-warning text-dark font-monospace">${escapeHtml(code)}</span></div>
+            </div>
+            <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mb-2" onclick="Swal.close()">
+                <i class="bi bi-google me-2"></i> Open in Gmail
+            </a>
+            <button type="button" class="btn btn-outline-dark w-100 fw-semibold mb-2" onclick="window.copyRichInvitationToClipboard('${escapeHtml(email)}', '${escapeHtml(name)}', '${escapeHtml(code)}', '${escapeHtml(title)}', '${escapeHtml(date)}', '${escapeHtml(time)}', '${escapeHtml(venue)}', '${escapeHtml(id)}').then(() => { if (typeof appToast==='function') appToast('success', 'Rich card with Manila seal and QR image copied! Press Ctrl+V in Gmail to paste.'); })">
+                <i class="bi bi-clipboard-check me-2"></i> Copy Rich Card (with Manila Logo &amp; QR Image)
+            </button>
+            <div class="alert alert-light border small text-muted text-start mt-2 mb-0">
+                <i class="bi bi-lightbulb-fill text-warning me-1"></i> <strong>Pro-Tip:</strong> The rich invitation card with the <strong>actual City Seal and QR Code Picture</strong> is already copied to your clipboard. Simply press <strong>Ctrl + V</strong> in Gmail to paste it!
+            </div>
+        `,
+        showConfirmButton: true,
+        confirmButtonText: 'Done',
+        confirmButtonColor: '#0b3d6e'
+    });
 
     if (id) {
         const fd = new FormData();
@@ -1307,7 +1396,7 @@ window.openGmailInvite = function(btn, event) {
     openGmailDirect(email, name, code, title, date, time, venue, id);
 };
 
-window.handleResendInvitation = function(btn, event) {
+window.handleResendInvitation = async function(btn, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -1322,23 +1411,7 @@ window.handleResendInvitation = function(btn, event) {
     const date = btn.dataset.date || '';
     const time = btn.dataset.time || '';
     const venue = btn.dataset.venue || '';
-    const gmailUrl = btn.dataset.gmailUrl || window.buildClientGmailUrl(email, name, code, title, date, time, venue, id);
-
-    const win = window.open(gmailUrl, '_blank');
-    if (!win || win.closed || typeof win.closed === 'undefined') {
-        Swal.fire({
-            icon: 'info',
-            title: 'Resend via Gmail',
-            html: `
-                <p>Click below to open Gmail and resend the official invitation with Manila seal and QR pass:</p>
-                <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mt-2" onclick="Swal.close()">
-                    <i class="bi bi-google me-2"></i> Open in Gmail
-                </a>
-            `,
-            showConfirmButton: false,
-            showCloseButton: true
-        });
-    }
+    openGmailDirect(email, name, code, title, date, time, venue, id);
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1867,18 +1940,28 @@ document.addEventListener('DOMContentLoaded', function() {
             if (r.success) {
                 if (status === 'Accepted') {
                     const gmailUrl = b.dataset.gmailUrl || window.buildClientGmailUrl(email, name, code, title, date, time, venue, id);
+
+                    // Auto copy rich HTML card with actual logo and QR code picture
+                    window.copyRichInvitationToClipboard(email, name, code, title, date, time, venue, id);
+
                     window.open(gmailUrl, '_blank');
 
                     await Swal.fire({
                         icon: 'success',
                         title: 'Stakeholder Approved!',
                         html: `
-                            <div class="text-center py-2">
+                            <div class="text-center py-1">
                                 <p class="mb-2">Stakeholder <strong>${escapeHtml(name)}</strong> has been approved.</p>
                                 <p class="small text-muted mb-3">Target Email: <strong class="text-danger font-monospace">${escapeHtml(email)}</strong></p>
                                 <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mb-2" onclick="Swal.close(); setTimeout(()=>location.reload(), 500);">
                                     <i class="bi bi-google me-2"></i> Open in Gmail &amp; Send Invitation
                                 </a>
+                                <button type="button" class="btn btn-outline-dark w-100 fw-semibold mb-2" onclick="window.copyRichInvitationToClipboard('${escapeHtml(email)}', '${escapeHtml(name)}', '${escapeHtml(code)}', '${escapeHtml(title)}', '${escapeHtml(date)}', '${escapeHtml(time)}', '${escapeHtml(venue)}', '${escapeHtml(id)}').then(() => { if (typeof appToast==='function') appToast('success', 'Rich card with Manila seal and QR image copied! Press Ctrl+V in Gmail to paste.'); })">
+                                    <i class="bi bi-clipboard-check me-2"></i> Copy Rich Card (with Manila Logo &amp; QR Image)
+                                </button>
+                                <div class="alert alert-light border small text-muted text-start mt-2 mb-0">
+                                    <i class="bi bi-lightbulb-fill text-warning me-1"></i> <strong>Pro-Tip:</strong> The rich invitation card with the <strong>actual City Seal and QR Code Picture</strong> is already copied to your clipboard. Simply press <strong>Ctrl + V</strong> in Gmail to paste it!
+                                </div>
                             </div>
                         `,
                         showConfirmButton: true,
