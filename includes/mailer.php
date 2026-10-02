@@ -711,9 +711,14 @@ function lphSendInvitationEmail(array $inv): array
         } catch (\Throwable $e) {}
     }
 
-    $baseUrl = (defined('APP_URL') && APP_URL) ? rtrim(APP_URL, '/') : 'https://web-production-6afc9.up.railway.app/lph';
-    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $invId;
-    $logoUrl = 'https://web-production-6afc9.up.railway.app/lph/assets/images/manila.png';
+    $liveProductionUrl = 'https://public-hearing-integrated-legislative-system.hostforgeplatforms.com';
+    $baseUrl = (defined('APP_URL') && APP_URL && !str_contains(APP_URL, 'localhost') && !str_contains(APP_URL, '127.0.0.1'))
+        ? rtrim(APP_URL, '/')
+        : ((isset($_SERVER['HTTP_HOST']) && !str_contains($_SERVER['HTTP_HOST'], 'localhost') && !str_contains($_SERVER['HTTP_HOST'], '127.0.0.1'))
+            ? ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'])
+            : $liveProductionUrl);
+    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $invId . '&code=' . rawurlencode($code);
+    $logoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
     $attendanceMode = !empty($inv['attendance_type']) ? (string)$inv['attendance_type'] : 'On-site';
     $categoryName = (string)($inv['category_name'] ?? '');
     $dayNum = !empty($inv['day_number']) ? (int)$inv['day_number'] : null;

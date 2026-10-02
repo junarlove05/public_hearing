@@ -42,51 +42,86 @@ if ($filterKey !== '' && $filterKey !== '0') {
  */
 function lphBuildGmailComposeUrl(array $r, array $group): string {
     $email = trim((string)($r['email'] ?? ''));
-    $name = trim((string)($r['full_name'] ?? 'Stakeholder'));
+    $name = trim((string)($r['full_name'] ?? 'Distinguished Stakeholder'));
     $code = trim((string)($r['invitation_code'] ?? 'LPH-SECURE'));
     $title = trim((string)($group['hearing_title'] ?? 'Legislative Public Hearing & Consultation'));
     $date = !empty($r['session_date']) ? date('F j, Y', strtotime($r['session_date'])) : (!empty($group['hearing_date']) ? date('F j, Y', strtotime($group['hearing_date'])) : 'Scheduled Date');
     $time = !empty($group['hearing_time']) ? date('g:i A', strtotime($group['hearing_time'])) : 'Scheduled Time';
-    $venue = !empty($group['venue']) ? $group['venue'] : 'City Hall Session Hall, City of Manila';
+    $venue = !empty($group['venue']) ? $group['venue'] : 'Session Hall, 2nd Floor, Manila City Hall, Padre Burgos Ave., Ermita, Manila';
     $id = (int)($r['id'] ?? 0);
+    $dispatchDate = date('F j, Y');
 
-    $baseUrl = (defined('APP_URL') && APP_URL) ? rtrim(APP_URL, '/') : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/legislative/lph');
-    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $id;
-    $qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($code) . '&margin=6';
+    // Never output localhost to external stakeholders; always use the live production domain
+    $liveProductionUrl = 'https://public-hearing-integrated-legislative-system.hostforgeplatforms.com';
+    $baseUrl = (defined('APP_URL') && APP_URL && !str_contains(APP_URL, 'localhost') && !str_contains(APP_URL, '127.0.0.1'))
+        ? rtrim(APP_URL, '/')
+        : ((isset($_SERVER['HTTP_HOST']) && !str_contains($_SERVER['HTTP_HOST'], 'localhost') && !str_contains($_SERVER['HTTP_HOST'], '127.0.0.1'))
+            ? ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'])
+            : $liveProductionUrl);
+
+    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $id . '&code=' . rawurlencode($code);
+    $qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=' . urlencode($code) . '&margin=6';
     $manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
 
-    $subject = "Official Invitation: {$title} [Pass Code: {$code}] · City of Manila";
+    $subject = "FORMAL NOTICE & INVITATION: Public Hearing on {$title} [Ref: {$code}] · City of Manila";
     $body = "REPUBLIC OF THE PHILIPPINES\n"
-          . "CITY OF MANILA · SANGGUNIANG PANLUNGSOD\n"
-          . "Office of the City Council & Committee Secretariat\n"
-          . "Legislative Public Hearing & Consultation Management System\n\n"
-          . "🏛️ OFFICIAL CITY SEAL / LOGO:\n{$manilaLogoUrl}\n\n"
-          . "Dear {$name},\n\n"
-          . "Warm greetings from the Office of the City Council of Manila!\n\n"
-          . "You are officially invited to attend and participate as an official stakeholder in the upcoming Legislative Public Hearing & Consultation:\n\n"
-          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-          . "LEGISLATIVE PUBLIC HEARING DETAILS\n"
-          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-          . "• Agenda / Title : {$title}\n"
-          . "• Scheduled Date : {$date}\n"
-          . "• Session Time   : {$time}\n"
-          . "• Session Venue  : {$venue}\n"
-          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-          . "🎫 YOUR OFFICIAL ATTENDANCE PASS & QR CODE:\n"
-          . "• Stakeholder Name : {$name}\n"
-          . "• Official Pass Code: {$code}\n\n"
-          . "📱 SCAN / VIEW YOUR QR CODE BADGE:\n{$qrImageUrl}\n\n"
-          . "📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE:\n{$printUrl}\n\n"
-          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-          . "IMPORTANT INSTRUCTIONS FOR ATTENDEES:\n"
-          . "1. Please present this Official Invitation Code or your digital QR Code upon arrival at the secretariat registration desk.\n"
-          . "2. For on-site attendees, registration desk opens 30 minutes before the session starts.\n"
-          . "3. Keep this email and QR pass accessible on your mobile phone or print a hard copy.\n"
-          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "CITY OF MANILA\n"
+          . "OFFICE OF THE SANGGUNIANG PANLUNGSOD (CITY COUNCIL)\n"
+          . "COMMITTEE SECRETARIAT & LEGISLATIVE SERVICES\n"
+          . "Manila City Hall, Padre Burgos Avenue, Ermita, Manila\n\n"
+          . "🏛️ OFFICIAL SEAL OF THE CITY OF MANILA:\n"
+          . "{$manilaLogoUrl}\n\n"
+          . "================================================================================\n"
+          . "                OFFICIAL NOTICE OF LEGISLATIVE PUBLIC HEARING\n"
+          . "                     & FORMAL INVITATION TO STAKEHOLDER\n"
+          . "================================================================================\n\n"
+          . "Date of Notice      : {$dispatchDate}\n"
+          . "Control Reference No: {$code}\n\n"
+          . "TO:\n"
+          . "  {$name}\n"
+          . "  Official Stakeholder / Invitee\n\n"
+          . "FROM:\n"
+          . "  The Committee Secretariat\n"
+          . "  Sangguniang Panlungsod, City of Manila\n\n"
+          . "SUBJECT:\n"
+          . "  FORMAL INVITATION AND NOTICE TO ATTEND THE LEGISLATIVE PUBLIC HEARING ON:\n"
+          . "  \"{$title}\"\n\n"
+          . "--------------------------------------------------------------------------------\n\n"
+          . "Sir / Madam:\n\n"
+          . "Greetings from the City Government of Manila!\n\n"
+          . "Pursuant to the provisions of Republic Act No. 7160 (The Local Government Code of 1991) and the standing rules of procedure of the Sangguniang Panlungsod ng Maynila, you are hereby cordially and officially invited to attend and participate as a recognized stakeholder in the forthcoming Legislative Public Hearing:\n\n"
+          . "--------------------------------------------------------------------------------\n"
+          . "SESSION PARTICULARS\n"
+          . "--------------------------------------------------------------------------------\n"
+          . "• Proposed Measure / Agenda : {$title}\n"
+          . "• Scheduled Hearing Date    : {$date}\n"
+          . "• Session Call-to-Order     : {$time}\n"
+          . "• Official Venue            : {$venue}\n"
+          . "• Stakeholder Pass Code     : {$code}\n"
+          . "--------------------------------------------------------------------------------\n\n"
+          . "Your specialized perspective, insights, and counsel are vital in guiding the Honorable Members of the City Council in deliberating this legislative measure for the welfare and good governance of the City of Manila.\n\n"
+          . "================================================================================\n"
+          . "DIGITAL ACCESS CREDENTIALS & ATTENDANCE PASS\n"
+          . "================================================================================\n\n"
+          . "To facilitate expedited entry and automated electronic check-in at the registration desk:\n\n"
+          . "1. DIGITAL ATTENDANCE QR CODE PASS (Click link to view badge):\n"
+          . "   {$qrImageUrl}\n\n"
+          . "2. OFFICIAL EXECUTIVE INVITATION CERTIFICATE (Live Online Portal):\n"
+          . "   {$printUrl}\n\n"
+          . "================================================================================\n"
+          . "SESSION GUIDELINES & REMINDERS FOR ATTENDEES:\n"
+          . "================================================================================\n"
+          . "1. The Committee Secretariat Registration Desk opens thirty (30) minutes prior to the scheduled session call-to-order.\n"
+          . "2. Please present your Digital QR Badge on your mobile smartphone or provide your Control Reference Number ({$code}) upon entry.\n"
+          . "3. Position papers, written manifestations, or related documentation may be submitted directly to the Secretariat upon registration or via reply to this email.\n"
+          . "4. A printed copy of the Executive Certificate may be presented in lieu of the digital QR badge.\n\n"
+          . "We look forward to your presence and fruitful participation in this democratic process.\n\n"
           . "Respectfully yours,\n\n"
-          . "OFFICE OF THE CITY COUNCIL & COMMITTEE SECRETARIAT\n"
-          . "Sangguniang Panlungsod, City of Manila\n"
-          . "City Hall, Padre Burgos Ave, Ermita, Manila, Philippines";
+          . "COMMITTEE SECRETARIAT\n"
+          . "Sangguniang Panlungsod (City Council of Manila)\n"
+          . "Session Hall, 2nd Floor, Executive Building, Manila City Hall\n"
+          . "Padre Burgos Ave., Ermita, City of Manila, Philippines\n"
+          . "Official Portal: {$baseUrl}";
 
     return 'https://mail.google.com/mail/?view=cm&fs=1&to=' . rawurlencode($email) . '&su=' . rawurlencode($subject) . '&body=' . rawurlencode($body);
 }
@@ -1196,69 +1231,104 @@ function escapeHtml(str) {
 window.escapeHtml = escapeHtml;
 
 window.buildClientGmailUrl = function(email, name, code, title, date, time, venue, id) {
-    name = name || 'Valued Stakeholder';
+    name = name || 'Distinguished Stakeholder';
     title = title || 'Legislative Public Hearing & Consultation';
-    const passCodeStr = code ? ` [Pass Code: ${code}]` : '';
-    date = date || 'Scheduled Session Date';
-    time = time ? ` at ${time}` : '';
-    venue = venue || 'City Hall Session Hall, City of Manila';
+    code = code || 'LPH-SECURE';
+    date = date || 'Scheduled Date';
+    time = time || 'Scheduled Time';
+    venue = venue || 'Session Hall, 2nd Floor, Manila City Hall, Padre Burgos Ave., Ermita, Manila';
 
-    const origin = window.location.origin;
-    const pathname = window.location.pathname;
+    const liveBaseUrl = (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'))
+        ? window.location.origin
+        : 'https://public-hearing-integrated-legislative-system.hostforgeplatforms.com';
+
     const printUrl = id 
-        ? (origin + pathname.replace('invitations.php', 'invitation_print.php?id=' + encodeURIComponent(id))) 
-        : (origin + pathname.replace('invitations.php', 'index.php'));
-    const qrImageUrl = code 
-        ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(code)}&margin=6` 
-        : '';
+        ? `${liveBaseUrl}/modules/stakeholders/invitation_print.php?id=${encodeURIComponent(id)}&code=${encodeURIComponent(code)}`
+        : `${liveBaseUrl}/modules/stakeholders/index.php`;
+
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(code)}&margin=6`;
     const manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
+    const todayStr = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 
-    const subject = `Official Invitation: ${title}${passCodeStr} · City of Manila`;
+    const subject = `FORMAL NOTICE & INVITATION: Public Hearing on ${title} [Ref: ${code}] · City of Manila`;
     const body = `REPUBLIC OF THE PHILIPPINES
-CITY OF MANILA · SANGGUNIANG PANLUNGSOD
-Office of the City Council & Committee Secretariat
-Legislative Public Hearing & Consultation Management System
+CITY OF MANILA
+OFFICE OF THE SANGGUNIANG PANLUNGSOD (CITY COUNCIL)
+COMMITTEE SECRETARIAT & LEGISLATIVE SERVICES
+Manila City Hall, Padre Burgos Avenue, Ermita, Manila
 
-🏛️ OFFICIAL CITY SEAL / LOGO:
+🏛️ OFFICIAL SEAL OF THE CITY OF MANILA:
 ${manilaLogoUrl}
 
-Dear ${name},
+================================================================================
+                OFFICIAL NOTICE OF LEGISLATIVE PUBLIC HEARING
+                     & FORMAL INVITATION TO STAKEHOLDER
+================================================================================
 
-Warm greetings from the Office of the City Council of Manila!
+Date of Notice      : ${todayStr}
+Control Reference No: ${code}
 
-You are officially invited to attend and participate as an official stakeholder in the upcoming Legislative Public Hearing & Consultation:
+TO:
+  ${name}
+  Official Stakeholder / Invitee
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LEGISLATIVE PUBLIC HEARING DETAILS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Agenda / Title : ${title}
-• Scheduled Date : ${date}
-• Session Time   : ${time}
-• Session Venue  : ${venue}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FROM:
+  The Committee Secretariat
+  Sangguniang Panlungsod, City of Manila
 
-🎫 YOUR OFFICIAL ATTENDANCE PASS & QR CODE:
-• Stakeholder Name : ${name}
-• Official Pass Code: ${code || 'LPH-SECURE'}
+SUBJECT:
+  FORMAL INVITATION AND NOTICE TO ATTEND THE LEGISLATIVE PUBLIC HEARING ON:
+  "${title}"
 
-📱 SCAN / VIEW YOUR QR CODE BADGE:
-${qrImageUrl}
+--------------------------------------------------------------------------------
 
-📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE:
-${printUrl}
+Sir / Madam:
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IMPORTANT INSTRUCTIONS FOR ATTENDEES:
-1. Please present this Official Invitation Code or your digital QR Code upon arrival at the secretariat registration desk.
-2. For on-site attendees, registration desk opens 30 minutes before the session starts.
-3. Keep this email and QR pass accessible on your mobile phone or print a hard copy.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Greetings from the City Government of Manila!
+
+Pursuant to the provisions of Republic Act No. 7160 (The Local Government Code of 1991) and the standing rules of procedure of the Sangguniang Panlungsod ng Maynila, you are hereby cordially and officially invited to attend and participate as a recognized stakeholder in the forthcoming Legislative Public Hearing:
+
+--------------------------------------------------------------------------------
+SESSION PARTICULARS
+--------------------------------------------------------------------------------
+• Proposed Measure / Agenda : ${title}
+• Scheduled Hearing Date    : ${date}
+• Session Call-to-Order     : ${time}
+• Official Venue            : ${venue}
+• Stakeholder Pass Code     : ${code}
+--------------------------------------------------------------------------------
+
+Your specialized perspective, insights, and counsel are vital in guiding the Honorable Members of the City Council in deliberating this legislative measure for the welfare and good governance of the City of Manila.
+
+================================================================================
+DIGITAL ACCESS CREDENTIALS & ATTENDANCE PASS
+================================================================================
+
+To facilitate expedited entry and automated electronic check-in at the registration desk:
+
+1. DIGITAL ATTENDANCE QR CODE PASS (Click link to view badge):
+   ${qrImageUrl}
+
+2. OFFICIAL EXECUTIVE INVITATION CERTIFICATE (Live Online Portal):
+   ${printUrl}
+
+================================================================================
+SESSION GUIDELINES & REMINDERS FOR ATTENDEES:
+================================================================================
+1. The Committee Secretariat Registration Desk opens thirty (30) minutes prior to the scheduled session call-to-order.
+2. Please present your Digital QR Badge on your mobile smartphone or provide your Control Reference Number (${code}) upon entry.
+3. Position papers, written manifestations, or related documentation may be submitted directly to the Secretariat upon registration or via reply to this email.
+4. A printed copy of the Executive Certificate may be presented in lieu of the digital QR badge.
+
+We look forward to your presence and fruitful participation in this democratic process.
 
 Respectfully yours,
 
-OFFICE OF THE CITY COUNCIL & COMMITTEE SECRETARIAT
-Sangguniang Panlungsod, City of Manila
-City Hall, Padre Burgos Ave, Ermita, Manila, Philippines`;
+COMMITTEE SECRETARIAT
+Sangguniang Panlungsod (City Council of Manila)
+Session Hall, 2nd Floor, Executive Building, Manila City Hall
+Padre Burgos Ave., Ermita, City of Manila, Philippines
+Official Portal: ${liveBaseUrl}`;
 
     return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 };
