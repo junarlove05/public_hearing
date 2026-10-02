@@ -38,12 +38,11 @@ $rows = $stmt->fetchAll();
         <th>Respondent</th>
         <th>Response</th>
         <th>Submitted</th>
-        <?php if (canManage()): ?><th class="text-end no-print">Actions</th><?php endif; ?>
       </tr>
     </thead>
     <tbody>
       <?php if (empty($rows)): ?>
-        <tr><td colspan="4" class="text-center text-muted py-4">No responses yet.</td></tr>
+        <tr><td colspan="3" class="text-center text-muted py-4">No responses yet.</td></tr>
       <?php endif; ?>
       <?php foreach ($rows as $row): ?>
         <tr>
@@ -53,15 +52,6 @@ $rows = $stmt->fetchAll();
           </td>
           <td class="small"><?= nl2br(e(truncate($row['response_text'], 200))) ?></td>
           <td class="small text-muted"><?= formatDateTime($row['submitted_at']) ?></td>
-          <?php if (canManage()): ?>
-          <td class="text-end no-print">
-            <button type="button" class="btn btn-outline-danger btn-sm" title="Delete"
-                    data-confirm-delete="this survey response"
-                    data-delete-url="<?= e(APP_URL) ?>/modules/feedback/ajax_survey_response_delete.php?id=<?= (int)$row['id'] ?>">
-              <i class="bi bi-trash"></i>
-            </button>
-          </td>
-          <?php endif; ?>
         </tr>
       <?php endforeach; ?>
     </tbody>

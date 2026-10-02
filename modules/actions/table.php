@@ -256,33 +256,38 @@ $today = date('Y-m-d');
 
     /* Status Badges */
     .actions-table-wrap .status-badge {
-        display: inline-flex;
+        display: inline-flex !important;
         align-items: center;
         gap: 0.4rem;
-        padding: 0.3rem 0.8rem;
+        padding: 0.35rem 0.8rem;
         border-radius: 20px;
         font-weight: 600;
-        font-size: 0.7rem;
+        font-size: 0.72rem;
         text-transform: uppercase;
         letter-spacing: 0.3px;
         border: none;
-        transition: all 0.3s ease;
+        height: auto !important;
+        overflow: visible !important;
+        line-height: 1.25;
+        white-space: nowrap;
+        box-sizing: border-box;
+        transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .actions-table-wrap .status-badge i {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
     }
 
-    .status-badge.pending { background: #FEF3C7; color: #92400E; }
-    .status-badge.pending i { color: #F59E0B; }
+    .status-badge.pending { background: #FEF3C7 !important; color: #92400E !important; }
+    .status-badge.pending i { color: #F59E0B !important; }
 
-    .status-badge.in-progress, .status-badge.on-going { background: #DBEAFE; color: #1E40AF; }
-    .status-badge.in-progress i, .status-badge.on-going i { color: #3B82F6; }
+    .status-badge.in-progress, .status-badge.on-going { background: #DBEAFE !important; color: #1E40AF !important; }
+    .status-badge.in-progress i, .status-badge.on-going i { color: #2563EB !important; }
 
-    .status-badge.completed { background: #D1FAE5; color: #065F46; }
-    .status-badge.completed i { color: #10B981; }
+    .status-badge.completed { background: #D1FAE5 !important; color: #065F46 !important; }
+    .status-badge.completed i { color: #10B981 !important; }
 
-    .status-badge.cancelled { background: #F1F5F9; color: #475569; }
+    .status-badge.cancelled { background: #F1F5F9 !important; color: #475569 !important; }
     .status-badge.cancelled i { color: #94A3B8; }
 
     /* Document Count */
@@ -594,7 +599,7 @@ $today = date('Y-m-d');
                     </th>
                     <th>
                         <a class="sort-link" data-sort="status">
-                            <i class="bi bi-circle"></i> Status
+                            Status
                             <?php if ($sortBy === 'status'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
@@ -618,9 +623,9 @@ $today = date('Y-m-d');
                 <?php endif; ?>
                 <?php foreach ($rows as $row): 
                     $overdue = $row['deadline'] && $row['deadline'] < $today && !in_array($row['status'], ['Completed', 'Cancelled'], true);
-                    $statusLower = strtolower($row['status']);
+                    $statusSlug = strtolower(str_replace(' ', '-', (string)$row['status']));
                 ?>
-                    <tr class="<?= $overdue ? 'overdue-row' : '' ?>">
+                    <tr class="<?= $overdue ? 'overdue-row' : '' ?>" data-id="<?= (int)$row['id'] ?>" id="action-row-<?= (int)$row['id'] ?>">
                         <td>
                             <a href="view.php?id=<?= (int)$row['id'] ?>" class="action-title">
                                 <i class="bi bi-list-check"></i> <?= e($row['title']) ?>
@@ -666,7 +671,7 @@ $today = date('Y-m-d');
                             </div>
                         </td>
                         <td>
-                            <span class="status-badge <?= e($statusLower) ?>">
+                            <span class="status-badge <?= e($statusSlug) ?>">
                                 <i class="bi <?= match($row['status']) {
                                     'Pending' => 'bi-clock',
                                     'In Progress', 'On Going' => 'bi-play-circle',
@@ -691,12 +696,6 @@ $today = date('Y-m-d');
                                     <button type="button" class="btn-action edit btn-edit-action" 
                                             data-id="<?= (int)$row['id'] ?>" title="Edit">
                                         <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button type="button" class="btn-action delete" 
-                                            title="Delete"
-                                            data-confirm-delete="action &quot;<?= e($row['title']) ?>&quot;"
-                                            data-delete-url="<?= e(APP_URL) ?>/modules/actions/ajax_delete.php?id=<?= (int)$row['id'] ?>">
-                                        <i class="bi bi-trash"></i>
                                     </button>
                                 <?php endif; ?>
                             </div>

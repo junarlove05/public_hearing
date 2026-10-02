@@ -9,7 +9,7 @@ $stats=[
  'hearings'=>(int)$pdo->query('SELECT COUNT(*) FROM hearings')->fetchColumn(),
  'upcoming'=>(int)$pdo->query("SELECT COUNT(*) FROM hearings WHERE status='Upcoming'")->fetchColumn(),
  'stakeholders'=>(int)$pdo->query('SELECT COUNT(*) FROM stakeholders')->fetchColumn(),
- 'registrations'=>(int)$pdo->query("SELECT COUNT(*) FROM registrations WHERE registration_status='Approved'")->fetchColumn(),
+ 'completed_hearings'=>(int)$pdo->query("SELECT COUNT(*) FROM hearings WHERE status='Completed'")->fetchColumn(),
  'feedback'=>(int)$pdo->query('SELECT COUNT(*) FROM feedback')->fetchColumn(),
  'new_feedback'=>(int)$pdo->query("SELECT COUNT(*) FROM feedback WHERE status='New'")->fetchColumn(),
  'issues'=>(int)$pdo->query('SELECT COUNT(*) FROM hearing_issues')->fetchColumn(),
@@ -30,11 +30,16 @@ $feedbackStatus=$pdo->query('SELECT status,COUNT(*) total FROM feedback GROUP BY
 $issueStatus=$pdo->query('SELECT status,COUNT(*) total FROM hearing_issues GROUP BY status ORDER BY total DESC')->fetchAll();
 $actionStatus=$pdo->query('SELECT status,COUNT(*) total FROM hearing_actions GROUP BY status ORDER BY total DESC')->fetchAll();
 
-$recent=$pdo->query(
+$recent=[];
+$lphSysId=function_exists('lphSystemId')?lphSystemId():4;
+$qRecent=$pdo->prepare(
  "SELECT al.action,al.details,al.created_at,u.full_name
   FROM activity_logs al LEFT JOIN users u ON u.id=al.user_id
-  ORDER BY al.created_at DESC LIMIT 10"
-)->fetchAll();
+  WHERE al.system_id=:system
+  ORDER BY al.created_at DESC,al.id DESC LIMIT 50"
+);
+$qRecent->execute([':system'=>$lphSysId]);
+$recent=$qRecent->fetchAll();
 
 $upcoming=$pdo->query(
  "SELECT id,reference_number,title,hearing_date,hearing_time,venue
@@ -42,6 +47,19 @@ $upcoming=$pdo->query(
   WHERE status='Upcoming' AND hearing_date>=CURDATE()
   ORDER BY hearing_date,hearing_time LIMIT 6"
 )->fetchAll();
+
+$myAssignedIssues = [];
+if (function_exists('currentUserId') && currentUserId()) {
+    $myStmt = $pdo->prepare(
+        "SELECT i.id, i.reference_number, i.title, i.priority, i.status, o.name office_name, i.due_at
+         FROM hearing_issues i
+         LEFT JOIN offices o ON o.id = i.assigned_office_id
+         WHERE i.assigned_user_id = :uid AND i.status NOT IN ('Closed', 'Resolved')
+         ORDER BY i.updated_at DESC LIMIT 6"
+    );
+    $myStmt->execute([':uid' => currentUserId()]);
+    $myAssignedIssues = $myStmt->fetchAll();
+}
 
 include __DIR__.'/layouts/header.php';
 ?>
@@ -173,60 +191,75 @@ body.sidebar-collapsed .orlms-sidebar-footer {
         padding-right: 1rem !important;
     }
 }
+
+/* Stat KPI Cards Uniform Height & Size */
+.lphwf-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+.lphwf-stats-row > div {
+    display: flex;
+}
+.lphwf-stat {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.7rem !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 92px !important;
+    padding: 0.75rem 0.8rem !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-bottom: 3px solid #a97900 !important;
+    border-radius: 11px !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 6px rgba(10, 22, 40, 0.04) !important;
+}
+.lphwf-stat i {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    flex-shrink: 0 !important;
+    color: #1a3a5c !important;
+    background: #eef5fb !important;
+    border-radius: 9px !important;
+    font-size: 1.2rem !important;
+}
+.lphwf-stat > div {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+}
+.lphwf-stat strong {
+    display: block !important;
+    color: #0a1628 !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    margin-bottom: 2px !important;
+}
+.lphwf-stat small {
+    display: block !important;
+    color: #64748b !important;
+    font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.2px !important;
+    word-break: break-word !important;
+}
 </style>
 <div class="app-wrapper"><?php include __DIR__.'/layouts/sidebar.php'; ?><div class="main-content">
 
-<!-- TOP CONTROLS (Sidebar Toggle + Subsystems Navigation + Admin Profile) -->
-<div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-  <!-- 3-Line Hamburger Sidebar Toggle Button -->
-  <button type="button" class="btn btn-sm btn-white border shadow-sm d-flex align-items-center justify-content-center" id="sidebarToggleBtn" title="Toggle Sidebar" onclick="document.body.classList.toggle('sidebar-collapsed');" style="width: 36px; height: 36px; border-radius: 8px; background: #fff; color: #0F172A; cursor: pointer;">
-    <i class="bi bi-list fs-5"></i>
-  </button>
+<?php include __DIR__ . '/layouts/top_controls.php'; ?>
 
-  <!-- Right Controls Section -->
-  <div class="d-flex align-items-center gap-2">
-    <!-- Subsystems Switcher Dropdown -->
-    <div class="dropdown">
-      <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2 shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 8px; font-weight: 600; background: #fff;">
-        <i class="bi bi-grid-3x3-gap-fill text-warning"></i>
-        <span>Subsystems</span>
-      </button>
-      <ul class="dropdown-menu dropdown-menu-end shadow-sm border p-2 mt-2" style="min-width: 230px; font-size: 0.825rem; border-radius: 10px;">
-        <li><a class="dropdown-item rounded py-1.5" href="<?= e(APP_URL) ?>/index.php"><i class="bi bi-house-door me-2 text-primary"></i>Main Portal</a></li>
-        <li><hr class="dropdown-divider my-1"></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/orlms/" target="_blank">#1 Ordinance & Resolution</a></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/slmms/" target="_blank">#2 Session & Meeting</a></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/lacms/" target="_blank">#3 Agenda & Calendar</a></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/cmas/" target="_blank">#4 Committee Management</a></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/vqdss/" target="_blank">#5 Voting & Quorum</a></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/lrdms/" target="_blank">#6 Records & Documents</a></li>
-        <li><a class="dropdown-item rounded py-1.5 fw-bold text-primary active" href="<?= e(APP_URL) ?>/dashboard.php">#7 Public Hearing</a></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/lahrs/" target="_blank">#8 Archives & Repository</a></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/lrpaies/" target="_blank">#9 Research & Policy</a></li>
-        <li><a class="dropdown-item rounded py-1.5" href="http://localhost/cepfms/" target="_blank">#10 Citizen Engagement</a></li>
-      </ul>
-    </div>
-
-    <!-- Admin / User Profile Dropdown -->
-    <div class="dropdown">
-      <a href="#" class="d-flex align-items-center text-dark text-decoration-none gap-2 px-3 py-1.5 bg-white border rounded-3 shadow-sm" data-bs-toggle="dropdown" aria-expanded="false">
-        <i class="bi bi-person-circle fs-5 text-primary"></i>
-        <div class="d-flex flex-column text-start lh-1">
-          <strong style="font-size: 0.825rem; color: #0F172A;"><?= e($user['full_name'] ?? 'Admin') ?></strong>
-          <small style="font-size: 0.65rem; color: #64748B;"><?= e($user['role_name'] ?? 'Administrator') ?></small>
-        </div>
-        <i class="bi bi-chevron-down ms-1 text-muted" style="font-size: 0.75rem;"></i>
-      </a>
-      <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2" style="font-size: 0.85rem;">
-        <li><a class="dropdown-item py-2" href="<?= e(APP_URL) ?>/pages/profile.php"><i class="bi bi-person me-2 text-primary"></i> My Profile</a></li>
-        <li><hr class="dropdown-divider my-1"></li>
-        <li><a class="dropdown-item py-2 text-danger" href="<?= e(APP_URL) ?>/logout.php"><i class="bi bi-box-arrow-right me-2"></i> Logout</a></li>
-      </ul>
-    </div>
-  </div>
-</div>
-
-<div class="lphwf-head"><div><div class="lphwf-eyebrow">Subsystem #7 · Complete Operational Dashboard</div><h1>Public Hearing & Consultation Management</h1><p>Live operational monitoring across hearings, stakeholders, registration, attendance, feedback, issues, actions and official responses.</p></div><a href="<?= e(APP_URL) ?>/reports/index.php" class="btn btn-primary"><i class="bi bi-bar-chart-line"></i> Reports & Analytics</a></div>
+<div class="lphwf-head"><div><div class="lphwf-eyebrow">Subsystem #7 · Complete Operational Dashboard</div><h1>Public Hearing & Consultation Management</h1><p>Live operational monitoring across hearings, consultation attendance, feedback, issues, actions and official responses.</p></div><a href="<?= e(APP_URL) ?>/reports/index.php" class="btn btn-primary"><i class="bi bi-bar-chart-line"></i> Reports & Analytics</a></div>
 
 <div class="lphwf-funnel mb-3">
 <a href="<?= e(APP_URL) ?>/modules/hearings/index.php"><strong><?= $stats['hearings'] ?></strong><span>Hearings</span></a>
@@ -236,32 +269,369 @@ body.sidebar-collapsed .orlms-sidebar-footer {
 <a href="<?= e(APP_URL) ?>/modules/actions/responses.php"><strong><?= $stats['published_responses'] ?></strong><span>Published Responses</span></a>
 </div>
 
-<div class="row g-3 mb-3">
+<?php if (!empty($myAssignedIssues)): ?>
+<div class="card mb-3 border-0 shadow-sm" style="border-left: 4.5px solid #d97706 !important; background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom" style="border-color: rgba(217, 119, 6, 0.2) !important;">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-bell-fill me-1"></i> My Assigned Issues (Nakatoka sa Iyo)</span>
+                <span class="text-muted small">May <strong><?= count($myAssignedIssues) ?></strong> aktibong issue na naka-assign sa iyong account</span>
+            </div>
+            <a href="<?= e(APP_URL) ?>/modules/issues/index.php" class="btn btn-sm btn-outline-dark py-0 px-2" style="font-size:0.75rem;">Tingnan Lahat</a>
+        </div>
+        <div class="d-flex flex-column gap-2">
+            <?php foreach ($myAssignedIssues as $mIss): ?>
+                <div class="d-flex flex-wrap align-items-center justify-content-between p-2 rounded bg-white border" style="border-color: #fde68a !important; gap: 8px;">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge bg-light text-dark border font-monospace"><?= e($mIss['reference_number']) ?></span>
+                        <a href="<?= e(APP_URL) ?>/modules/issues/view.php?id=<?= (int)$mIss['id'] ?>" class="fw-bold text-dark text-decoration-none">
+                            <?= e($mIss['title']) ?>
+                        </a>
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.72rem;"><?= e($mIss['priority']) ?></span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.72rem;"><?= e($mIss['status']) ?></span>
+                    </div>
+                    <div>
+                        <a href="<?= e(APP_URL) ?>/modules/issues/view.php?id=<?= (int)$mIss['id'] ?>" class="btn btn-sm btn-primary py-1 px-3" style="background:#0F2137; border-color:#0F2137;">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Buksan ang Issue
+                        </a>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<div class="row g-3 mb-3 lphwf-stats-row">
 <?php foreach([
  ['Upcoming Hearings',$stats['upcoming'],'bi-calendar-event'],
- ['Approved Registrations',$stats['registrations'],'bi-person-check'],
+ ['Completed Hearings',$stats['completed_hearings'],'bi-calendar-check'],
  ['New Feedback',$stats['new_feedback'],'bi-chat-dots'],
  ['Open / In Progress Issues',$stats['open_issues'],'bi-exclamation-triangle'],
  ['Overdue Actions',$stats['overdue_actions'],'bi-alarm'],
  ['Official Responses',$stats['responses'],'bi-reply-all'],
-] as [$l,$v,$i]): ?><div class="col-6 col-xl-2"><div class="lphwf-stat"><i class="bi <?= e($i) ?>"></i><div><strong><?= $v ?></strong><small><?= e($l) ?></small></div></div></div><?php endforeach; ?>
+] as [$l,$v,$i]): ?><div class="col-6 col-md-4 col-xl-2 d-flex"><div class="lphwf-stat w-100 h-100"><i class="bi <?= e($i) ?>"></i><div><strong><?= $v ?></strong><small><?= e($l) ?></small></div></div></div><?php endforeach; ?>
 </div>
 
 <div class="row g-3 mb-3">
-<div class="col-xl-6"><div class="card lphwf-card h-100"><div class="card-header">Hearings Trend — Last 6 Months</div><div class="card-body"><canvas id="hearingTrend" height="140"></canvas></div></div></div>
-<div class="col-xl-6"><div class="card lphwf-card h-100"><div class="card-header">Issue / Action Workflow</div><div class="card-body"><canvas id="workflowChart" height="140"></canvas></div></div></div>
+<div class="col-xl-6">
+    <div class="card lphwf-card h-100" style="border-top: 3.5px solid #B8860B; box-shadow: 0 4px 18px rgba(10,22,40,0.06);">
+        <div class="card-header d-flex align-items-center justify-content-between" style="color: #0F2137; font-weight: 750; background: #ffffff !important; border-bottom: 1px solid #e2e8f0 !important;">
+            <div class="d-flex align-items-center">
+                <span style="display:inline-block;width:4px;height:16px;background:#B8860B;border-radius:2px;margin-right:8px;"></span>
+                <span>Hearings Trend — Last 6 Months</span>
+            </div>
+            <span class="badge" style="background: rgba(184, 134, 11, 0.12); color: #8A6400; border: 1px solid rgba(184, 134, 11, 0.3); font-size: 0.7rem; font-weight: 650; border-radius: 6px; padding: 4px 8px;">
+                <i class="bi bi-graph-up me-1"></i>Trend
+            </span>
+        </div>
+        <div class="card-body py-3" style="position: relative; height: 230px;">
+            <canvas id="hearingTrend"></canvas>
+        </div>
+    </div>
+</div>
+<div class="col-xl-6">
+    <div class="card lphwf-card h-100" style="border-top: 3.5px solid #0F2137; box-shadow: 0 4px 18px rgba(10,22,40,0.06);">
+        <div class="card-header d-flex align-items-center justify-content-between" style="color: #0F2137; font-weight: 750; background: #ffffff !important; border-bottom: 1px solid #e2e8f0 !important;">
+            <div class="d-flex align-items-center">
+                <span style="display:inline-block;width:4px;height:16px;background:#0F2137;border-radius:2px;margin-right:8px;"></span>
+                <span>Issue / Action Workflow</span>
+            </div>
+            <span class="badge" style="background: rgba(15, 33, 55, 0.08); color: #0F2137; border: 1px solid rgba(15, 33, 55, 0.2); font-size: 0.7rem; font-weight: 650; border-radius: 6px; padding: 4px 8px;">
+                <i class="bi bi-bar-chart-steps me-1"></i>Workflow
+            </span>
+        </div>
+        <div class="card-body py-3 d-flex justify-content-center align-items-center" style="position: relative; height: 230px;">
+            <div style="width: 100%; max-width: 310px; height: 100%; position: relative; margin: 0 auto;">
+                <canvas id="workflowChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 
 <div class="row g-3">
 <div class="col-xl-7"><div class="card lphwf-card"><div class="card-header">Upcoming Hearings</div><div class="table-responsive"><table class="table lphwf-table mb-0"><thead><tr><th>Reference</th><th>Hearing</th><th>Date</th><th>Venue</th></tr></thead><tbody><?php if(!$upcoming): ?><tr><td colspan="4" class="lphwf-empty">No upcoming hearings.</td></tr><?php endif; ?><?php foreach($upcoming as $h): ?><tr><td><span class="lphwf-code"><?= e($h['reference_number']?:'—') ?></span></td><td><a href="<?= e(APP_URL) ?>/modules/hearings/view.php?id=<?= (int)$h['id'] ?>"><?= e($h['title']) ?></a></td><td><?= formatDate($h['hearing_date']) ?> <?= formatTime($h['hearing_time']) ?></td><td><?= e($h['venue']?:'—') ?></td></tr><?php endforeach; ?></tbody></table></div></div></div>
-<div class="col-xl-5"><div class="card lphwf-card"><div class="card-header">Recent Activity</div><div class="card-body lphwf-timeline"><?php foreach($recent as $r): ?><div><strong><?= e($r['action']) ?> · <?= e($r['full_name']?:'System') ?></strong><small><?= e(mb_strimwidth($r['details']?:'',0,120,'…')) ?><br><?= formatDateTime($r['created_at']) ?></small></div><?php endforeach; ?></div></div></div>
+<div class="col-xl-5"><div class="card lphwf-card h-100" id="lphRecentActivityCard">
+    <div class="card-header">Recent Activity</div>
+    <div class="card-body lphwf-timeline" id="lphActivityList">
+        <?php if(!$recent): ?>
+            <div class="text-muted small">No recent activity.</div>
+        <?php endif; ?>
+        <?php foreach($recent as $idx => $r): ?>
+            <div class="<?= $idx >= 5 ? 'lph-activity-extra d-none' : '' ?>">
+                <strong><?= e($r['action']) ?> · <?= e($r['full_name']?:'System') ?></strong>
+                <small><?= e(mb_strimwidth($r['details']?:'',0,120,'…')) ?><br><?= formatDateTime($r['created_at']) ?></small>
+            </div>
+        <?php endforeach; ?>
+    </div>
+    <?php if(count($recent) > 5): ?>
+        <div class="card-footer bg-transparent border-top-0 pt-0 pb-3 px-3">
+            <button type="button" class="btn btn-sm btn-light border w-100 py-1 fw-semibold text-secondary d-flex align-items-center justify-content-center gap-2" id="btnToggleLphActivityBottom" onclick="toggleLphActivity()" style="font-size: 0.8rem; border-radius: 8px;">
+                <i class="bi bi-chevron-down" id="iconToggleLphActivityBottom"></i>
+                <span id="textToggleLphActivityBottom">See All (<?= count($recent) ?>)</span>
+            </button>
+        </div>
+    <?php endif; ?>
+</div></div>
 </div>
 </div></div>
 
+<?php
+// Prepare 6-month continuous trend labels and totals for Hearings Trend chart
+$trendLabels = [];
+$trendTotals = [];
+for ($i = 5; $i >= 0; $i--) {
+    $mKey = date('Y-m', strtotime("-$i months"));
+    $trendLabels[] = date('M Y', strtotime("-$i months"));
+    $found = 0;
+    foreach ($hearingTrend as $ht) {
+        if ($ht['ym'] === $mKey) {
+            $found = (int)$ht['total'];
+            break;
+        }
+    }
+    $trendTotals[] = $found;
+}
+?>
 <script>
-document.addEventListener('DOMContentLoaded',function(){
- new Chart(document.getElementById('hearingTrend'),{type:'line',data:{labels:<?= json_encode(array_column($hearingTrend,'ym')) ?>,datasets:[{label:'Hearings',data:<?= json_encode(array_map('intval',array_column($hearingTrend,'total'))) ?>,tension:.3}]},options:{responsive:true,plugins:{legend:{display:false}}}});
- new Chart(document.getElementById('workflowChart'),{type:'bar',data:{labels:['Feedback','Issues','Actions','Responses'],datasets:[{label:'Records',data:[<?= $stats['feedback'] ?>,<?= $stats['issues'] ?>,<?= $stats['actions'] ?>,<?= $stats['responses'] ?>]}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Hearings Trend (Line chart with Dark Blue stroke & Dark Gold fill gradient)
+    const trendCanvas = document.getElementById('hearingTrend');
+    if (trendCanvas && typeof Chart !== 'undefined') {
+        const ctx = trendCanvas.getContext('2d');
+        const fillGradient = ctx.createLinearGradient(0, 0, 0, 200);
+        fillGradient.addColorStop(0, 'rgba(184, 134, 11, 0.32)'); // Dark Gold
+        fillGradient.addColorStop(0.65, 'rgba(15, 33, 55, 0.08)'); // Dark Blue
+        fillGradient.addColorStop(1, 'rgba(184, 134, 11, 0.00)');
+
+        new Chart(trendCanvas, {
+            type: 'line',
+            data: {
+                labels: <?= json_encode($trendLabels) ?>,
+                datasets: [{
+                    label: 'Hearings Conducted',
+                    data: <?= json_encode($trendTotals) ?>,
+                    borderColor: '#0F2137', // Dark Blue Line
+                    backgroundColor: fillGradient, // Dark Gold to Blue Gradient Fill
+                    fill: true,
+                    tension: 0.35,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#B8860B', // Dark Gold Points
+                    pointBorderColor: '#FFFFFF',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointHoverBackgroundColor: '#071426', // Deep Dark Blue Hover
+                    pointHoverBorderColor: '#B8860B', // Dark Gold
+                    pointHoverBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#071426', // Deep Dark Blue Tooltip
+                        titleColor: '#D4AF37', // Gold Title
+                        bodyColor: '#FFFFFF',
+                        borderColor: '#B8860B', // Dark Gold Border
+                        borderWidth: 1.5,
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return ' Public Hearings: ' + context.parsed.y;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(226, 232, 240, 0.6)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#0F2137', // Dark Blue Ticks
+                            font: {
+                                family: 'Plus Jakarta Sans, sans-serif',
+                                weight: '600',
+                                size: 11
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(226, 232, 240, 0.6)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#0F2137', // Dark Blue Ticks
+                            precision: 0,
+                            font: {
+                                family: 'Plus Jakarta Sans, sans-serif',
+                                weight: '600',
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Issue / Action Workflow (Coordinated Dark Blue & Dark Gold Bar Chart)
+    const workflowCanvas = document.getElementById('workflowChart');
+    if (workflowCanvas && typeof Chart !== 'undefined') {
+        new Chart(workflowCanvas, {
+            type: 'bar',
+            data: {
+                labels: ['Feedback', 'Issues', 'Actions', 'Responses'],
+                datasets: [{
+                    label: 'Workflow Records',
+                    data: [
+                        <?= (int)$stats['feedback'] ?>,
+                        <?= (int)$stats['issues'] ?>,
+                        <?= (int)$stats['actions'] ?>,
+                        <?= (int)$stats['responses'] ?>
+                    ],
+                    backgroundColor: [
+                        '#0F2137', // Feedback: Executive Dark Blue
+                        '#B8860B', // Issues: Executive Dark Gold
+                        '#1A3A5C', // Actions: Medium Dark Blue
+                        '#9A6A00'  // Responses: Burnished Dark Gold
+                    ],
+                    hoverBackgroundColor: [
+                        '#1A3A5C', // Dark Blue Hover
+                        '#9A6A00', // Dark Gold Hover
+                        '#071426', // Deep Blue Hover
+                        '#B8860B'  // Dark Gold Hover
+                    ],
+                    borderColor: 'transparent',
+                    borderWidth: 0,
+                    hoverBorderColor: 'transparent',
+                    hoverBorderWidth: 0,
+                    borderRadius: 0,
+                    borderSkipped: false,
+                    barPercentage: 1.0,
+                    categoryPercentage: 1.0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#071426', // Deep Dark Blue Tooltip
+                        titleColor: '#D4AF37', // Gold Title
+                        bodyColor: '#FFFFFF',
+                        borderColor: '#B8860B', // Dark Gold Border
+                        borderWidth: 1.5,
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        boxPadding: 4
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        border: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#0F2137', // Dark Blue Ticks
+                            autoSkip: false,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            padding: 2,
+                            font: {
+                                family: 'Plus Jakarta Sans, sans-serif',
+                                weight: '700',
+                                size: 10.5
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(226, 232, 240, 0.6)',
+                            drawBorder: false
+                        },
+                        border: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#0F2137', // Dark Blue Ticks
+                            precision: 0,
+                            font: {
+                                family: 'Plus Jakarta Sans, sans-serif',
+                                weight: '600',
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 });
+</script>
+<style>
+.lph-activity-extra:not(.d-none) {
+    animation: fadeInLphActivity 0.25s ease-in-out;
+}
+@keyframes fadeInLphActivity {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+<script>
+function toggleLphActivity() {
+  const extras = document.querySelectorAll('.lph-activity-extra');
+  if (!extras.length) return;
+  const isHidden = extras[0].classList.contains('d-none');
+
+  extras.forEach(el => {
+    if (isHidden) {
+      el.classList.remove('d-none');
+    } else {
+      el.classList.add('d-none');
+    }
+  });
+
+  const totalCount = extras.length + 5;
+  const textBottom = document.getElementById('textToggleLphActivityBottom');
+  const iconBottom = document.getElementById('iconToggleLphActivityBottom');
+
+  if (isHidden) {
+    if (textBottom) textBottom.textContent = 'Hide';
+    if (iconBottom) iconBottom.className = 'bi bi-chevron-up';
+  } else {
+    if (textBottom) textBottom.textContent = 'See All (' + totalCount + ')';
+    if (iconBottom) iconBottom.className = 'bi bi-chevron-down';
+
+    const card = document.getElementById('lphRecentActivityCard');
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+}
 </script>
 <?php include __DIR__.'/layouts/footer.php'; ?>

@@ -51,15 +51,72 @@ include __DIR__.'/../../layouts/header.php';
 </div></div>
 
 <?php if(canManage()): ?>
-<div class="modal fade" id="responseModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form id="responseForm"><?= csrfField() ?><input type="hidden" name="id" value="0">
-<div class="modal-header bg-dark text-white"><h5 class="modal-title">Prepare Official Response</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-<div class="modal-body"><div class="row g-3">
-<div class="col-md-7"><label class="form-label">Issue *</label><select class="form-select" name="issue_id" id="rsp_issue" required><option value="">Select issue</option><?php foreach($issues as $i): ?><option value="<?= (int)$i['id'] ?>" <?= $issueFilter===(int)$i['id']?'selected':'' ?>><?= e($i['reference_number'].' - '.$i['title']) ?></option><?php endforeach; ?></select></div>
-<div class="col-md-5"><label class="form-label">Linked Action</label><select class="form-select" name="action_id" id="rsp_action"><option value="">None</option><?php foreach($actions as $a): ?><option value="<?= (int)$a['id'] ?>" data-issue="<?= (int)$a['issue_id'] ?>"><?= e($a['reference_number'].' - '.$a['title']) ?></option><?php endforeach; ?></select></div>
-<div class="col-md-6"><label class="form-label">Status</label><select class="form-select" name="status"><option>Draft</option><option>For Review</option></select></div>
-<div class="col-md-6"><label class="form-label">Visibility</label><select class="form-select" name="visibility"><option>Internal</option><option>Public</option><option>Restricted</option></select></div>
-<div class="col-12"><label class="form-label">Official Response *</label><textarea class="form-control" name="response_text" rows="7" required></textarea></div>
-</div></div><div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Save Response</button></div></form></div></div></div>
+<div class="modal fade" id="responseModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 820px;">
+    <div class="modal-content border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+      <form id="responseForm"><?= csrfField() ?>
+        <input type="hidden" name="id" value="0">
+        <div class="modal-header py-3 px-4 bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style="width: 36px; height: 36px;">
+              <i class="bi bi-reply-fill fs-5"></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" style="font-size: 1.05rem;">Prepare Official Response</h5>
+              <small class="text-muted" style="font-size: 0.8rem;">Draft formal response statement for issue or inquiry</small>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Issue *</label>
+              <select class="form-select" name="issue_id" id="rsp_issue" required>
+                <option value="">Select issue</option>
+                <?php foreach($issues as $i): ?>
+                  <option value="<?= (int)$i['id'] ?>" <?= $issueFilter===(int)$i['id']?'selected':'' ?>><?= e($i['reference_number'].' - '.$i['title']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Linked Action</label>
+              <select class="form-select" name="action_id" id="rsp_action">
+                <option value="">None</option>
+                <?php foreach($actions as $a): ?>
+                  <option value="<?= (int)$a['id'] ?>" data-issue="<?= (int)$a['issue_id'] ?>"><?= e($a['reference_number'].' - '.$a['title']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
+              <select class="form-select" name="status">
+                <option>Draft</option>
+                <option>For Review</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Visibility</label>
+              <select class="form-select" name="visibility">
+                <option>Internal</option>
+                <option>Public</option>
+                <option>Restricted</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold text-secondary mb-1">Official Response *</label>
+              <textarea class="form-control" name="response_text" rows="5" required placeholder="Type the official response..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer py-2.5 px-4 bg-light border-top d-flex justify-content-end gap-2">
+          <button class="btn btn-light border px-3" type="button" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary px-4 fw-semibold shadow-sm" type="submit"><i class="bi bi-check2-circle me-1"></i> Save Response</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
  const modal=new bootstrap.Modal(document.getElementById('responseModal'));btnNewResponse.onclick=()=>modal.show();

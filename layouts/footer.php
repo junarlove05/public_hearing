@@ -49,8 +49,11 @@
   // appeared "not saved" and forms intermittently reported network errors.
   window.APP_URL = <?= json_encode(rtrim(APP_URL, '/')) ?>;
   window.APP_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
+  window.LPH_INACTIVITY_TIMEOUT = <?= (int)(defined('INACTIVITY_TIMEOUT') ? INACTIVITY_TIMEOUT : (defined('SESSION_LIFETIME') ? SESSION_LIFETIME : 28800)) ?>;
+  window.LPH_USER_LOGGED_IN = <?= json_encode(isLoggedIn()) ?>;
+  try { localStorage.removeItem('lph_last_active_time'); } catch (e) {}
 </script>
-<script src="<?= e(APP_URL) ?>/assets/js/app.js"></script>
+<script src="<?= e(APP_URL) ?>/assets/js/app.js?v=<?= filemtime(__DIR__ . '/../assets/js/app.js') ?>"></script>
 
 <?php
 // Render any flash messages queued this request as SweetAlert2 toasts.

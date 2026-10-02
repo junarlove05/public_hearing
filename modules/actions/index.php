@@ -7,20 +7,25 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/lph_module_helpers.php';
 requireRole([ROLE_ADMIN, ROLE_STAFF, ROLE_COMMITTEE]);
 
 $pageTitle  = 'Response & Action Tracking';
 $activeMenu = 'actions';
 $pdo = db();
+lphEnsureActionsSchema($pdo);
 
 $issues = $pdo->query("SELECT id, title FROM hearing_issues WHERE status NOT IN ('Closed') ORDER BY created_at DESC")->fetchAll();
 
 // Upcoming-deadline notifications (next 7 days, not yet completed/cancelled).
 $upcoming = $pdo->query(
-    "SELECT id, title, deadline, status FROM hearing_actions
-     WHERE deadline IS NOT NULL AND deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-     AND status NOT IN ('Completed', 'Cancelled')
-     ORDER BY deadline ASC LIMIT 5"
+    "SELECT a.id, a.title, a.deadline, a.status, o.name AS office_name,
+            DATEDIFF(a.deadline, CURDATE()) AS days_left
+     FROM hearing_actions a
+     LEFT JOIN offices o ON o.id = a.assigned_office_id
+     WHERE a.deadline IS NOT NULL AND a.deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+       AND a.status NOT IN ('Completed', 'Cancelled')
+     ORDER BY a.deadline ASC LIMIT 6"
 )->fetchAll();
 
 include __DIR__ . '/../../layouts/header.php';
@@ -46,7 +51,7 @@ include __DIR__ . '/../../layouts/header.php';
         --ac-cyan: #06B6D4;
         --ac-orange: #F97316;
         --ac-teal: #14B8A6;
-        --ac-indigo: #6366F1;
+        --ac-indigo: #0F2137;
     }
 
     /* Breadcrumb Bar */
@@ -72,29 +77,168 @@ include __DIR__ . '/../../layouts/header.php';
         color: var(--ac-gray-500) !important;
     }
 
-    /* Alert - Upcoming Deadlines */
-    .alert-warning {
-        background: #FFFBEB;
+    /* Alert - Upcoming Deadlines Premium Card */
+    .upcoming-deadlines-card {
+        background: linear-gradient(135deg, #FFFDF5 0%, #FEF9C3 100%);
+        border: 1px solid #FDE047;
+        border-radius: 14px;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 2px 10px rgba(245, 158, 11, 0.08);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .upcoming-deadlines-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(to bottom, #F59E0B, #D97706);
+    }
+
+    .deadline-icon-pill {
+        width: 36px;
+        height: 36px;
+        background: #FEF3C7;
+        color: #D97706;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        box-shadow: 0 2px 6px rgba(217, 119, 6, 0.15);
+    }
+
+    .bg-amber-subtle {
+        background: #FEF3C7 !important;
+    }
+    .text-amber {
+        color: #B45309 !important;
+    }
+
+    .upcoming-deadlines-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .deadline-item-card {
+        background: #FFFFFF;
+        border: 1px solid #FDE68A;
+        border-radius: 10px;
+        padding: 0.75rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        text-decoration: none !important;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        position: relative;
+    }
+
+    .deadline-item-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(217, 119, 6, 0.14);
+        border-color: #F59E0B;
+    }
+
+    .deadline-item-card.due-urgent {
+        border-left: 3.5px solid #EF4444;
+    }
+
+    .deadline-item-card.due-soon {
+        border-left: 3.5px solid #F59E0B;
+    }
+
+    .deadline-item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .deadline-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.2rem 0.55rem;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-urgent {
+        background: #FEE2E2;
+        color: #B91C1C;
+    }
+
+    .badge-soon {
+        background: #FEF3C7;
         color: #92400E;
-        border: none;
-        border-left: 4px solid var(--ac-amber);
-        border-radius: 12px;
-        padding: 0.75rem 1.25rem;
     }
 
-    .alert-warning i {
-        color: var(--ac-amber);
-    }
-
-    .alert-warning a {
-        color: var(--ac-amber) !important;
+    .deadline-date-text {
+        font-size: 0.75rem;
+        color: #64748B;
         font-weight: 500;
-        transition: color 0.3s ease;
     }
 
-    .alert-warning a:hover {
-        color: var(--ac-dark-900) !important;
-        text-decoration: underline;
+    .deadline-item-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #1E293B;
+        line-height: 1.35;
+        margin-bottom: 0.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .deadline-item-card:hover .deadline-item-title {
+        color: #B45309;
+    }
+
+    .deadline-item-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        padding-top: 0.4rem;
+        border-top: 1px dashed #F1F5F9;
+        margin-top: auto;
+    }
+
+    .deadline-office {
+        color: #64748B;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 65%;
+    }
+
+    .deadline-status-pill {
+        font-size: 0.68rem;
+        font-weight: 600;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+    }
+
+    .deadline-status-pill.status-pending {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .deadline-status-pill.status-in-progress,
+    .deadline-status-pill.status-on-going {
+        background: #DBEAFE;
+        color: #1E40AF;
     }
 
     /* Buttons */
@@ -241,12 +385,11 @@ include __DIR__ . '/../../layouts/header.php';
     }
 
     .table tbody tr {
-        transition: all 0.2s ease;
+        transition: background-color 0.15s ease;
     }
 
     .table tbody tr:hover {
         background: #FFFBEB;
-        transform: scale(1.002);
     }
 
     .table tbody tr:last-child td {
@@ -565,12 +708,54 @@ body.sidebar-collapsed .orlms-main-content,
     </div>
 
     <?php if (!empty($upcoming)): ?>
-    <div class="alert alert-warning d-flex align-items-start gap-2 no-print">
-      <i class="bi bi-bell fs-5"></i>
-      <div>
-        <strong>Upcoming Deadlines:</strong>
-        <?php foreach ($upcoming as $u): ?>
-          <a href="view.php?id=<?= (int)$u['id'] ?>" class="ms-2 text-decoration-none"><?= e($u['title']) ?> (due <?= formatDate($u['deadline']) ?>)</a><?= $u !== end($upcoming) ? ',' : '' ?>
+    <div class="upcoming-deadlines-card mb-3 no-print">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2 pb-2 border-bottom border-warning-subtle">
+        <div class="d-flex align-items-center gap-2">
+          <div class="deadline-icon-pill">
+            <i class="bi bi-bell-fill"></i>
+          </div>
+          <div>
+            <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+              Upcoming Deadlines
+              <span class="badge rounded-pill bg-amber-subtle text-amber fw-semibold"><?= count($upcoming) ?> due soon</span>
+            </h6>
+            <small class="text-muted">Mga aksyon na kailangang matapos sa susunod na 7 araw</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="upcoming-deadlines-grid">
+        <?php foreach ($upcoming as $u): 
+          $days = (int)($u['days_left'] ?? 0);
+          $dueText = match($days) {
+              0 => 'Due Today',
+              1 => 'Due Tomorrow',
+              default => "Due in {$days} days"
+          };
+          $urgencyClass = $days <= 2 ? 'due-urgent' : 'due-soon';
+          $statusSlug = strtolower(str_replace(' ', '-', (string)$u['status']));
+        ?>
+          <a href="view.php?id=<?= (int)$u['id'] ?>" class="deadline-item-card <?= $urgencyClass ?>">
+            <div class="deadline-item-header">
+              <span class="deadline-badge <?= $days <= 2 ? 'badge-urgent' : 'badge-soon' ?>">
+                <i class="bi bi-clock-history me-1"></i> <?= $dueText ?>
+              </span>
+              <span class="deadline-date-text">
+                <i class="bi bi-calendar3 me-1"></i> <?= formatDate($u['deadline']) ?>
+              </span>
+            </div>
+            <div class="deadline-item-title">
+              <?= e($u['title']) ?>
+            </div>
+            <div class="deadline-item-footer">
+              <span class="deadline-office" title="<?= e($u['office_name'] ?: 'Assigned Office') ?>">
+                <i class="bi bi-building me-1"></i> <?= e($u['office_name'] ?: 'Assigned Office') ?>
+              </span>
+              <span class="deadline-status-pill status-<?= e($statusSlug) ?>">
+                <?= e($u['status']) ?>
+              </span>
+            </div>
+          </a>
         <?php endforeach; ?>
       </div>
     </div>
@@ -612,27 +797,35 @@ body.sidebar-collapsed .orlms-main-content,
 
 <?php if (canManage()): ?>
 <div class="modal fade" id="actionModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 820px;">
+    <div class="modal-content border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
       <form id="actionForm" enctype="multipart/form-data">
         <?= csrfField() ?>
         <input type="hidden" name="id" id="ac_id" value="0">
-        <div class="modal-header">
-          <h5 class="modal-title" id="actionModalTitle"><i class="bi bi-plus-circle"></i> Create Action</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header py-3 px-4 bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style="width: 36px; height: 36px;">
+              <i class="bi bi-check2-circle fs-5"></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" id="actionModalTitle" style="font-size: 1.05rem;">Create Action</h5>
+              <small class="text-muted" style="font-size: 0.8rem;">Track follow-up task, deadline, and assigned personnel</small>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body p-4">
           <div class="row g-3">
             <div class="col-12">
-              <label class="form-label">Title <span class="text-danger">*</span></label>
-              <input type="text" name="title" id="ac_title" class="form-control" required maxlength="255">
+              <label class="form-label small fw-semibold text-secondary mb-1">Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" id="ac_title" class="form-control" placeholder="Action task or directive title" required maxlength="255">
             </div>
             <div class="col-12">
-              <label class="form-label">Description</label>
-              <textarea name="description" id="ac_description" class="form-control" rows="3"></textarea>
+              <label class="form-label small fw-semibold text-secondary mb-1">Description</label>
+              <textarea name="description" id="ac_description" class="form-control" rows="3" placeholder="Action task directives and details..."></textarea>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Linked Issue</label>
+              <label class="form-label small fw-semibold text-secondary mb-1">Linked Issue</label>
               <select name="issue_id" id="ac_issue" class="form-select">
                 <option value="">-- None --</option>
                 <?php foreach ($issues as $i): ?>
@@ -641,11 +834,11 @@ body.sidebar-collapsed .orlms-main-content,
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Deadline</label>
+              <label class="form-label small fw-semibold text-secondary mb-1">Deadline</label>
               <input type="date" name="deadline" id="ac_deadline" class="form-control">
             </div>
             <div class="col-md-6">
-              <label class="form-label">Status</label>
+              <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
               <select name="status" id="ac_status" class="form-select">
                 <?php foreach (['Pending', 'On Going', 'Completed', 'Cancelled'] as $s): ?>
                   <option value="<?= e($s) ?>"><?= e($s) ?></option>
@@ -653,18 +846,18 @@ body.sidebar-collapsed .orlms-main-content,
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Assign Office <span class="text-muted small">(optional)</span></label>
+              <label class="form-label small fw-semibold text-secondary mb-1">Assign Office <span class="text-muted small">(optional)</span></label>
               <input type="text" name="assigned_office" id="ac_office" class="form-control" placeholder="e.g. Budget Office">
             </div>
             <div class="col-12">
-              <label class="form-label">Attach Documents</label>
+              <label class="form-label small fw-semibold text-secondary mb-1">Attach Documents</label>
               <input type="file" name="documents[]" class="form-control" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Save Action</button>
+        <div class="modal-footer py-2.5 px-4 bg-light border-top d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-light border px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm"><i class="bi bi-check-circle me-1"></i> Save Action</button>
         </div>
       </form>
     </div>

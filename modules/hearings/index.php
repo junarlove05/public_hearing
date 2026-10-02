@@ -208,25 +208,19 @@ include __DIR__ . '/../../layouts/header.php';
 
 <?php if (canManage()): ?>
 <div class="modal fade" id="hearingModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <form id="hearingForm" enctype="multipart/form-data">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 960px;">
+        <div class="modal-content border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+            <form id="hearingForm" enctype="multipart/form-data" novalidate>
                 <?= csrfField() ?>
 
                 <input type="hidden" name="id" id="hearing_id" value="0">
 
-                <div class="modal-header">
-                    <div>
-                        <div class="small text-warning fw-semibold">HEARING SCHEDULING</div>
-                        <h5 class="modal-title" id="hearingModalTitle">
-                            <i class="bi bi-calendar-plus"></i> Create Hearing
-                        </h5>
-                    </div>
-
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
+                    <h5 class="modal-title fw-bold text-dark mb-0" id="hearingModalTitle" style="font-size: 1.05rem;">Create Hearing</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="hearing-form-section">
                         <h6><span>1</span> Legislative and Hearing Information</h6>
 
@@ -275,27 +269,119 @@ include __DIR__ . '/../../layouts/header.php';
                     <div class="hearing-form-section">
                         <h6><span>2</span> Schedule and Venue</h6>
 
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label">Start Date <span class="text-danger">*</span></label>
-                                <input type="date" name="hearing_date" id="f_date" class="form-control" required>
+                        <!-- Schedule Mode Selector -->
+                        <div class="mb-3 p-3 bg-light rounded-3 border d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div>
+                                <div class="fw-bold text-dark mb-1">
+                                    <i class="bi bi-calendar3 me-1 text-primary"></i> Schedule Mode
+                                </div>
+                                <div class="small text-muted">
+                                    Pumili kung isang araw lamang o multi-day hearing na may kanya-kanyang oras bawat araw.
+                                </div>
+                            </div>
+                            <div class="btn-group" role="group" aria-label="Schedule Mode">
+                                <input type="radio" class="btn-check" name="schedule_mode" id="sched_mode_single" value="single" checked>
+                                <label class="btn btn-outline-primary btn-sm px-3 fw-semibold" for="sched_mode_single">
+                                    <i class="bi bi-calendar-event me-1"></i> Single Day
+                                </label>
+
+                                <input type="radio" class="btn-check" name="schedule_mode" id="sched_mode_multi" value="multi">
+                                <label class="btn btn-outline-primary btn-sm px-3 fw-semibold" for="sched_mode_multi">
+                                    <i class="bi bi-calendar3-range me-1"></i> Multi-Day / Multiple Sessions
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Hidden sync inputs -->
+                        <input type="hidden" name="sessions_json" id="f_sessions_json" value="">
+                        <input type="hidden" name="end_date" id="f_end_date" value="">
+
+                        <!-- SINGLE DAY CONTAINER -->
+                        <div id="singleDayScheduleWrap">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Hearing Date <span class="text-danger">*</span></label>
+                                    <input type="date" name="hearing_date" id="f_date" class="form-control">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Start Time <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="time" name="hearing_time" id="f_time" class="form-control">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm btn-ampm-quick" data-target="f_time" data-ampm="AM" title="Quick Set to AM">AM</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm btn-ampm-quick" data-target="f_time" data-ampm="PM" title="Quick Set to PM">PM</button>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">End Time</label>
+                                    <div class="input-group">
+                                        <input type="time" name="end_time" id="f_end_time" class="form-control">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm btn-ampm-quick" data-target="f_end_time" data-ampm="AM" title="Quick Set to AM">AM</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm btn-ampm-quick" data-target="f_end_time" data-ampm="PM" title="Quick Set to PM">PM</button>
+                                    </div>
+                                    <div class="form-text small">Default: 1 hour after start time.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MULTI-DAY CONTAINER -->
+                        <div id="multiDayScheduleWrap" style="display: none;">
+                            <!-- Quick Range Generator Box -->
+                            <div class="card border-primary-subtle bg-primary-subtle bg-opacity-10 mb-3">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <strong class="small text-primary d-flex align-items-center gap-1">
+                                            <i class="bi bi-lightning-charge"></i> Quick Consecutive Days Generator
+                                        </strong>
+                                        <span class="small text-muted">Auto-fills consecutive days (e.g. 3 diretsong araw o higit pa)</span>
+                                    </div>
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-sm-3 col-6">
+                                            <label class="form-label small mb-1">From Date</label>
+                                            <input type="date" class="form-control form-control-sm" id="gen_start_date">
+                                        </div>
+                                        <div class="col-sm-3 col-6">
+                                            <label class="form-label small mb-1">To Date</label>
+                                            <input type="date" class="form-control form-control-sm" id="gen_end_date">
+                                        </div>
+                                        <div class="col-sm-2 col-6">
+                                            <label class="form-label small mb-1">Default Start</label>
+                                            <input type="time" class="form-control form-control-sm" id="gen_start_time" value="09:00">
+                                        </div>
+                                        <div class="col-sm-2 col-6">
+                                            <label class="form-label small mb-1">Default End</label>
+                                            <input type="time" class="form-control form-control-sm" id="gen_end_time" value="12:00">
+                                        </div>
+                                        <div class="col-sm-2 col-12">
+                                            <button type="button" class="btn btn-primary btn-sm w-100" id="btnGenerateDays">
+                                                <i class="bi bi-calendar-plus me-1"></i> Generate
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="col-md-3">
-                                <label class="form-label">Start Time <span class="text-danger">*</span></label>
-                                <input type="time" name="hearing_time" id="f_time" class="form-control" required>
+                            <!-- Session Days List -->
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div>
+                                    <strong class="text-dark small">Hearing Session Days &amp; Separate Times</strong>
+                                    <div class="text-muted" style="font-size: 0.76rem;">
+                                        Bawat araw ay may sariling date at time. Maaaring magkakasunod (consecutive) o magkakaibang araw.
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm px-2.5" id="btnAddSessionDay">
+                                    <i class="bi bi-plus-lg me-1"></i> Add Session Day
+                                </button>
                             </div>
 
-                            <div class="col-md-3">
-                                <label class="form-label">End Date</label>
-                                <input type="date" name="end_date" id="f_end_date" class="form-control">
+                            <div id="sessionDaysContainer" class="d-flex flex-column gap-2 mb-3">
+                                <!-- Dynamic Session Day Rows Rendered via JS -->
                             </div>
+                        </div>
 
-                            <div class="col-md-3">
-                                <label class="form-label">End Time</label>
-                                <input type="time" name="end_time" id="f_end_time" class="form-control">
-                            </div>
-
+                        <!-- Venue and Online Link -->
+                        <div class="row g-3 mt-1">
                             <div class="col-lg-7">
                                 <label class="form-label">Physical Venue</label>
                                 <input
@@ -321,11 +407,11 @@ include __DIR__ . '/../../layouts/header.php';
                             </div>
                         </div>
 
-                        <div class="hearing-conflict-note">
+                        <div class="hearing-conflict-note mt-3">
                             <i class="bi bi-shield-check"></i>
                             <div>
                                 <strong>Schedule conflict protection</strong>
-                                <span>Saving is blocked when another active hearing overlaps using the same committee or physical venue.</span>
+                                <span>Saving is blocked when another active hearing overlaps during any scheduled session date and time using the same committee or physical venue.</span>
                             </div>
                         </div>
                     </div>
@@ -412,10 +498,10 @@ include __DIR__ . '/../../layouts/header.php';
                     </div>
                 </div>
 
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="btnSaveHearing">
-                        <i class="bi bi-check-circle"></i> Save Hearing
+                <div class="modal-footer py-2.5 px-4 bg-light border-top d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm" id="btnSaveHearing">
+                        <i class="bi bi-check-circle me-1"></i> Save Hearing
                     </button>
                 </div>
             </form>
@@ -425,6 +511,6 @@ include __DIR__ . '/../../layouts/header.php';
 <?php endif; ?>
 
 <?php
-$extraJs = [APP_URL . '/assets/js/hearings.js'];
+$extraJs = [APP_URL . '/assets/js/hearings.js?v=' . filemtime(__DIR__ . '/../../assets/js/hearings.js')];
 include __DIR__ . '/../../layouts/footer.php';
 ?>

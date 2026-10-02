@@ -22,6 +22,15 @@ $i->execute([':id'=>$issueId]);$issue=$i->fetch();
 if(!$issue)jsonResponse(false,'Issue not found.');
 if($issue['status']==='Closed')jsonResponse(false,'Closed issues cannot receive new actions.');
 
+if ($userId) {
+    $chkUser = $pdo->prepare('SELECT r.name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = :id');
+    $chkUser->execute([':id' => $userId]);
+    $uRole = strtolower(trim((string)$chkUser->fetchColumn()));
+    if (str_contains($uRole, 'public') || str_contains($uRole, 'stakeholder')) {
+        jsonResponse(false, 'Hindi maaaring i-assign ang Public User o Stakeholder sa Response & Action.');
+    }
+}
+
 try{
  $pdo->beginTransaction();
  $ref='ACT-'.date('Y').'-'.strtoupper(substr(bin2hex(random_bytes(6)),0,10));

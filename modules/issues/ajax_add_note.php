@@ -9,10 +9,6 @@
 require_once __DIR__ . '/../../includes/auth.php';
 requireLogin();
 
-if (!canManage()) {
-    jsonResponse(false, 'You do not have permission to perform this action.');
-}
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(false, 'Invalid request method.');
 }
@@ -30,15 +26,21 @@ $pdo = db();
 
 try {
     $checkStmt = $pdo->prepare(
-        'SELECT id
+        'SELECT id, assigned_user_id
          FROM hearing_issues
          WHERE id = :id'
     );
 
     $checkStmt->execute([':id' => $id]);
+    $issueRow = $checkStmt->fetch();
 
-    if (!$checkStmt->fetch()) {
+    if (!$issueRow) {
         jsonResponse(false, 'Issue not found.');
+    }
+
+    $isAssignedUser = (function_exists('currentUserId') && currentUserId() && (int)($issueRow['assigned_user_id'] ?? 0) === currentUserId());
+    if (!canManage() && !$isAssignedUser) {
+        jsonResponse(false, 'You do not have permission to add notes to this issue.');
     }
 
     $stmt = $pdo->prepare(

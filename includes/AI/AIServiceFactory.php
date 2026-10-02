@@ -16,8 +16,10 @@
  * ------------------------------------------------------------------
  */
 
+require_once __DIR__ . '/../../config/ai_config.php';
 require_once __DIR__ . '/AIServiceInterface.php';
 require_once __DIR__ . '/OllamaService.php';
+require_once __DIR__ . '/GeminiService.php';
 
 class AIServiceFactory
 {
@@ -29,13 +31,18 @@ class AIServiceFactory
             return self::$instance;
         }
 
-        switch (AI_PROVIDER) {
+        $provider = defined('AI_PROVIDER') ? strtolower((string)AI_PROVIDER) : 'gemini';
+
+        switch ($provider) {
+            case 'gemini':
+                self::$instance = new GeminiService();
+                break;
             case 'ollama':
-            default:
                 self::$instance = new OllamaService();
                 break;
-            // case 'openai': self::$instance = new OpenAIService(); break;
-            // case 'gemini': self::$instance = new GeminiService(); break;
+            default:
+                self::$instance = new GeminiService();
+                break;
         }
 
         return self::$instance;

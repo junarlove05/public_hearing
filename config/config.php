@@ -10,10 +10,11 @@
  */
 
 // ---- Database credentials ----------------------------------------
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'legislative_management_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', getenv('MYSQLHOST') ?: (getenv('DB_HOST') ?: '127.0.0.1'));
+define('DB_PORT', getenv('MYSQLPORT') ?: (getenv('DB_PORT') ?: '3306'));
+define('DB_NAME', getenv('MYSQLDATABASE') ?: (getenv('DB_NAME') ?: 'legislative_management_db'));
+define('DB_USER', getenv('MYSQLUSER') ?: (getenv('DB_USER') ?: 'root'));
+define('DB_PASS', getenv('MYSQLPASSWORD') !== false ? getenv('MYSQLPASSWORD') : (getenv('DB_PASS') !== false ? getenv('DB_PASS') : ''));
 define('DB_CHARSET', 'utf8mb4');
 
 // ---- Application settings -----------------------------------------
@@ -31,7 +32,38 @@ define('APP_SHORT_NAME', 'LPH-CMS');
 //   - Placed it directly in htdocs\ (no subfolder)  -> change to 'http://localhost'
 // After changing this, do a hard refresh (Ctrl+F5) so the browser doesn't
 // use a cached copy of the old value.
-define('APP_URL', 'http://localhost/lph');
+if (!defined('APP_URL')) {
+    $envAppUrl = getenv('APP_URL') ?: ($_ENV['APP_URL'] ?? null);
+    if (!empty($envAppUrl)) {
+        define('APP_URL', rtrim($envAppUrl, '/'));
+    } else {
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443)
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+            || (isset($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on');
+        $scheme = $isHttps ? 'https://' : 'http://';
+        $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+        
+        $webPath = null;
+        if (!empty($_SERVER['DOCUMENT_ROOT'])) {
+            $docRoot = rtrim(str_replace('\\', '/', realpath($_SERVER['DOCUMENT_ROOT']) ?: $_SERVER['DOCUMENT_ROOT']), '/');
+            $targetDir = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/..') ?: (__DIR__ . '/..')), '/');
+            if ($docRoot && $targetDir && str_starts_with($targetDir, $docRoot)) {
+                $sub = substr($targetDir, strlen($docRoot));
+                $webPath = ($sub === false || $sub === '') ? '' : '/' . ltrim($sub, '/');
+            }
+        }
+        if ($webPath === null) {
+            $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+            if (str_contains($scriptDir, '/lph')) {
+                $webPath = substr($scriptDir, 0, strpos($scriptDir, '/lph') + 4);
+            } else {
+                $webPath = '';
+            }
+        }
+        define('APP_URL', $scheme . $host . rtrim($webPath, '/'));
+    }
+}
 
 define('APP_TIMEZONE', 'Asia/Manila');
 
@@ -43,7 +75,8 @@ define('ALLOWED_UPLOAD_EXT', ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg']);
 
 // ---- Session settings -----------------------------------------------
 define('SESSION_NAME', 'lph_session');
-define('SESSION_LIFETIME', 60 * 60 * 8);
+define('SESSION_LIFETIME', 60 * 60 * 8); // 8 hours standard session
+define('INACTIVITY_TIMEOUT', SESSION_LIFETIME); // Inactivity timeout aligned to 8 hours (removes 5-minute auto logout)
 
 // FIX (network-error root cause #3): PHP's own session garbage collector
 // has its own separate lifetime setting (session.gc_maxlifetime), which
@@ -84,3 +117,19 @@ if (APP_DEBUG) {
 // Central error/exception log file
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/../logs/php_errors.log');
+
+// ---- Gmail / SMTP Email Dispatch Settings ----------------------------
+// To send live emails to stakeholders' Gmail accounts, enter your Gmail & Google App Password here:
+// 1. Visit Google Account (https://myaccount.google.com/) -> Security
+// 2. Enable 2-Step Verification
+// 3. Search "App Passwords" -> Create an App Password (e.g., name it "Legislative")
+// 4. Paste your 16-character App Password into SMTP_PASS below (without spaces)
+define('MAIL_MAILER', 'smtp');
+define('SMTP_HOST', 'smtp.gmail.com');
+define('SMTP_PORT', 587);
+define('SMTP_ENCRYPTION', 'tls');
+define('SMTP_USER', '');                      // Your Gmail address (e.g. 'council.legislative@gmail.com')
+define('SMTP_PASS', '');                      // Your 16-character Google App Password (e.g. 'abcd1234efgh5678')
+define('MAIL_FROM_ADDRESS', '');              // Leave blank to use SMTP_USER
+define('MAIL_FROM_NAME', 'City Council - Legislative Public Hearing');
+

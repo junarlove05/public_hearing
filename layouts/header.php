@@ -83,6 +83,40 @@ try {
             ];
         }
     } else {
+        $curUid = currentUserId();
+        // 1. Personal Assigned Issues (High Priority Notification)
+        if ($curUid) {
+            $myIssuesStmt = $pdo->prepare(
+                "SELECT id, reference_number, title, priority, status
+                 FROM hearing_issues
+                 WHERE assigned_user_id = :uid AND status NOT IN ('Closed', 'Resolved')
+                 ORDER BY updated_at DESC LIMIT 5"
+            );
+            $myIssuesStmt->execute([':uid' => $curUid]);
+            foreach ($myIssuesStmt->fetchAll() as $mi) {
+                $notifItems[] = [
+                    'text' => 'Assigned to you: ' . $mi['reference_number'] . ' – ' . $mi['title'],
+                    'url'  => APP_URL . '/modules/issues/view.php?id=' . $mi['id'],
+                    'type' => 'issue',
+                ];
+            }
+
+            // 2. Personal DB Notifications
+            $userNotifsStmt = $pdo->prepare(
+                "SELECT id, title, target_url FROM notifications
+                 WHERE user_id = :uid AND is_read = 0
+                 ORDER BY created_at DESC LIMIT 5"
+            );
+            $userNotifsStmt->execute([':uid' => $curUid]);
+            foreach ($userNotifsStmt->fetchAll() as $un) {
+                $notifItems[] = [
+                    'text' => $un['title'],
+                    'url'  => $un['target_url'] ?: (APP_URL . '/dashboard.php'),
+                    'type' => 'notification',
+                ];
+            }
+        }
+
         $upcomingCount = (int)$pdo->query("SELECT COUNT(*) FROM hearings WHERE status = 'Upcoming' AND hearing_date >= CURDATE() AND hearing_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)")->fetchColumn();
         $newFeedbackCount = (int)$pdo->query("SELECT COUNT(*) FROM feedback WHERE status = 'New'")->fetchColumn();
         $openIssuesCount = (int)$pdo->query("SELECT COUNT(*) FROM hearing_issues WHERE status = 'Open'")->fetchColumn();
@@ -99,6 +133,29 @@ try {
 }
 
 $notifCount = count($notifItems);
+
+$fullName = trim((string)($user['full_name'] ?? 'Administrator'));
+$userInitial = strtoupper(substr($fullName !== '' ? $fullName : 'A', 0, 1));
+$roleLabel = trim((string)($user['role_name'] ?? 'Administrator'));
+
+$portalBase = rtrim(dirname(APP_URL), '/\\');
+if ($portalBase === '.' || $portalBase === '') {
+    $portalBase = APP_URL;
+}
+
+$subsystems = [
+    ['short' => 'ORLMS', 'name' => 'Ordinance & Resolution Life Cycle', 'url' => $portalBase . '/ORLMS/', 'icon' => 'bi-file-earmark-text', 'active' => false],
+    ['short' => 'SLMMS', 'name' => 'Session & Legislative Meeting', 'url' => $portalBase . '/SLMMS/dashboard.php', 'icon' => 'bi-calendar-event', 'active' => false],
+    ['short' => 'LACMS', 'name' => 'Legislative Agenda & Calendar', 'url' => $portalBase . '/LACMS/', 'icon' => 'bi-calendar3', 'active' => false],
+    ['short' => 'CMAS', 'name' => 'Committee Management & Assignment', 'url' => $portalBase . '/CMAS/dashboard.php', 'icon' => 'bi-diagram-3', 'active' => false],
+    ['short' => 'VQDSS', 'name' => 'Voting, Quorum & Decisions', 'url' => $portalBase . '/vqdss/', 'icon' => 'bi-check2-square', 'active' => false],
+    ['short' => 'LRDMS', 'name' => 'Records & Document Management', 'url' => $portalBase . '/LRDMS/dashboard.php', 'icon' => 'bi-folder-check', 'active' => false],
+    ['short' => 'LPH', 'name' => 'Public Hearing & Consultation', 'url' => APP_URL . '/dashboard.php', 'icon' => 'bi-people', 'active' => true],
+    ['short' => 'LAHRS', 'name' => 'Archives & Historical Repository', 'url' => $portalBase . '/LAHRS/dashboard.php', 'icon' => 'bi-archive', 'active' => false],
+    ['short' => 'LRPAIES', 'name' => 'Research, Policy & Impact Evaluation', 'url' => $portalBase . '/LRPAIES/dashboard.php', 'icon' => 'bi-graph-up-arrow', 'active' => false],
+    ['short' => 'CEPFMS', 'name' => 'Citizen Engagement & Feedback', 'url' => $portalBase . '/CEPFMS/', 'icon' => 'bi-chat-square-heart', 'active' => false],
+    ['short' => 'PORTAL', 'name' => 'Citizen Public Portal', 'url' => $portalBase . '/citizen_portal/', 'icon' => 'bi-globe2', 'active' => false],
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -113,12 +170,31 @@ $notifCount = count($notifItems);
 
 <link href="<?= e(vendorAsset('bootstrap/bootstrap.min.css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css')) ?>" rel="stylesheet">
 <link href="<?= e(vendorAsset('bootstrap-icons/bootstrap-icons.css', 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css')) ?>" rel="stylesheet">
+
+<!-- Google Fonts matching Landing Page -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
 <link href="<?= e(vendorAsset('datatables/dataTables.bootstrap5.min.css', 'https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css')) ?>" rel="stylesheet">
 <link href="<?= e(APP_URL) ?>/assets/css/style.css?v=<?= time() ?>" rel="stylesheet">
 <link href="<?= e(APP_URL) ?>/assets/css/orlms-shell.css?v=<?= time() ?>" rel="stylesheet">
+<link href="<?= e(APP_URL) ?>/assets/css/lph-mobile-responsive.css?v=<?= time() ?>" rel="stylesheet">
 <?php if (!empty($extraCss)) foreach ($extraCss as $css): ?>
 <link href="<?= e($css) ?>" rel="stylesheet">
 <?php endforeach; ?>
+<script>
+(function() {
+    try {
+        if (localStorage.getItem('lph_sidebar_collapsed') === '1') {
+            document.documentElement.classList.add('sidebar-collapsed');
+            document.addEventListener('DOMContentLoaded', function() {
+                if (document.body) document.body.classList.add('sidebar-collapsed');
+            });
+        }
+    } catch(e) {}
+})();
+</script>
 
 <style>
 /* ============================================================
@@ -618,7 +694,128 @@ body.sidebar-collapsed .sidebar-navigation a:hover > i {
     background-image: none !important;
     color: #0f172a !important;
     border-bottom: 2px solid #e2e8f0 !important;
+}
+/* ============================================================
+   CLEAN & SPACIOUS MODAL DESIGN SYSTEM (Subsystem 7 - LPH)
+   Ensures modals are wider, beautifully proportioned, comfortable to view,
+   and follow a simple, clean, elegant, professional modern design.
+   ============================================================ */
+.modal-dialog {
+    max-width: 820px !important;
+    margin: 1.75rem auto !important;
+}
+.modal-dialog.modal-sm,
+.modal-sm {
+    max-width: 480px !important;
+}
+.modal-dialog.modal-lg,
+.modal-lg {
+    max-width: 960px !important;
+}
+.modal-dialog.modal-xl,
+.modal-xl {
+    max-width: 1140px !important;
+}
+.modal-dialog-centered {
+    display: flex !important;
+    align-items: center !important;
+    min-height: calc(100% - 3.5rem) !important;
+}
+.modal-content {
+    border-radius: 12px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 16px 36px -6px rgba(15, 23, 42, 0.16), 0 4px 12px -2px rgba(0, 0, 0, 0.05) !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+}
+.modal-header {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    padding: 1rem 1.5rem !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+.modal-header .modal-title,
+.modal-header h5,
+.modal-header h6 {
+    font-size: 1.05rem !important;
     font-weight: 700 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.2px;
+    margin: 0 !important;
+}
+.modal-header small,
+.modal-header .text-muted,
+.modal-header p,
+.modal-header .text-white-50 {
+    color: #64748b !important;
+    font-size: 0.8rem !important;
+    margin: 0 !important;
+}
+.modal-header .btn-close,
+.modal-header .btn-close-white {
+    filter: none !important;
+    opacity: 0.55 !important;
+    padding: 0.5rem !important;
+}
+.modal-header .btn-close:hover,
+.modal-header .btn-close-white:hover {
+    opacity: 1 !important;
+}
+.modal-header .rounded-circle {
+    background-color: rgba(30, 74, 122, 0.1) !important;
+    color: #1e4a7a !important;
+}
+.modal-header .rounded-circle i {
+    color: #1e4a7a !important;
+}
+.modal-body {
+    padding: 1.5rem 1.75rem !important;
+    max-height: calc(85vh - 120px) !important;
+    overflow-y: auto !important;
+    background: #ffffff !important;
+}
+.modal-footer {
+    padding: 0.85rem 1.75rem !important;
+    background-color: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+.modal .form-label {
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    margin-bottom: 0.35rem !important;
+}
+.modal .form-control,
+.modal .form-select {
+    font-size: 0.875rem !important;
+    padding: 0.45rem 0.75rem !important;
+    border-radius: 7px !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+.modal .form-control:focus,
+.modal .form-select:focus {
+    border-color: #1e4a7a !important;
+    box-shadow: 0 0 0 3px rgba(30, 74, 122, 0.12) !important;
+}
+.modal textarea.form-control {
+    min-height: 75px !important;
+    max-height: 200px !important;
+}
+.modal .form-text,
+.modal small.text-muted {
+    font-size: 0.78rem !important;
+    color: #64748b !important;
+}
+@media (max-width: 768px) {
+    .modal-dialog,
+    .modal-dialog.modal-lg,
+    .modal-dialog.modal-xl,
+    .modal-lg,
+    .modal-xl {
+        max-width: 95% !important;
+        margin: 0.75rem auto !important;
+    }
 }
 </style>
 </head>
@@ -648,25 +845,19 @@ body.sidebar-collapsed .sidebar-navigation a:hover > i {
 
       <!-- Subsystems Navigation Dropdown -->
       <div class="dropdown ms-2">
-        <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 6px;">
-          <i class="bi bi-grid-3x3-gap-fill text-warning"></i>
+        <button class="orlms-system-switcher dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
           <span>Subsystems</span>
         </button>
-        <ul class="dropdown-menu shadow-lg border-0 mt-2" style="min-width: 290px; font-size: 0.825rem; background: #0F2137; border: 1px solid rgba(245,200,66,0.2) !important;">
-          <li><a class="dropdown-item text-white py-2" href="<?= e(APP_URL) ?>/index.php"><i class="bi bi-house-door text-warning me-2"></i><strong>Portal Landing Page</strong></a></li>
-          <li><hr class="dropdown-divider bg-secondary"></li>
-          <li><span class="dropdown-header text-uppercase text-gold" style="font-size:0.65rem; color: #a97900;">All Integrated Subsystems</span></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/orlms/" target="_blank"><i class="bi bi-file-earmark-text text-primary me-2"></i>#1 Ordinance & Resolution</a></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/slmms/" target="_blank"><i class="bi bi-calendar-event text-info me-2"></i>#2 Session & Meeting</a></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/lacms/" target="_blank"><i class="bi bi-calendar3 text-success me-2"></i>#3 Agenda & Calendar</a></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/cmas/" target="_blank"><i class="bi bi-diagram-3 text-warning me-2"></i>#4 Committee Management</a></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/vqdss/" target="_blank"><i class="bi bi-check2-square text-danger me-2"></i>#5 Voting & Quorum</a></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/lrdms/" target="_blank"><i class="bi bi-folder-check text-primary me-2"></i>#6 Records & Documents</a></li>
-          <li><a class="dropdown-item text-warning fw-bold py-1.5 active" href="<?= e(APP_URL) ?>/dashboard.php" style="background: rgba(245,200,66,0.15);"><i class="bi bi-people text-warning me-2"></i>#7 Public Hearing (Active)</a></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/lahrs/" target="_blank"><i class="bi bi-archive text-secondary me-2"></i>#8 Archives & Repository</a></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/lrpaies/" target="_blank"><i class="bi bi-graph-up-arrow text-info me-2"></i>#9 Research & Policy</a></li>
-          <li><a class="dropdown-item text-white py-1.5" href="http://localhost/cepfms/" target="_blank"><i class="bi bi-chat-square-heart text-danger me-2"></i>#10 Citizen Engagement</a></li>
-        </ul>
+        <div class="dropdown-menu dropdown-menu-end orlms-subsystem-menu shadow-lg" style="max-height: 85vh; overflow-y: auto; z-index: 1060;">
+          <a href="http://localhost/legislative/index.php" class="orlms-subsystem-item orlms-subsystem-item-portal">
+            <div><strong>PORTAL</strong><small>Main Landing Page</small></div>
+          </a>
+          <?php foreach ($subsystems as $system): ?>
+          <a href="<?= e($system['url']) ?>" class="orlms-subsystem-item <?= $system['active'] ? 'active' : '' ?>">
+            <div><strong><?= e($system['short']) ?></strong><small><?= e($system['name']) ?></small></div>
+          </a>
+          <?php endforeach; ?>
+        </div>
       </div>
     </div>
 
@@ -695,16 +886,20 @@ body.sidebar-collapsed .sidebar-navigation a:hover > i {
 
       <!-- User Profile -->
       <div class="dropdown">
-        <a href="#" class="d-flex align-items-center text-white text-decoration-none gap-2" data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="bi bi-person-circle fs-5"></i>
-          <span class="d-none d-md-inline small user-name"><?= e($user['full_name']) ?></span>
-          <i class="bi bi-caret-down-fill small"></i>
-        </a>
-        <ul class="dropdown-menu dropdown-menu-end">
+        <button class="orlms-user-button dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="orlms-avatar"><?= e(strtoupper(substr($user['full_name'] ?? 'A', 0, 1))) ?></span>
+          <span class="orlms-user-copy d-none d-md-flex">
+            <strong class="text-white"><?= e($user['full_name']) ?></strong>
+            <small class="text-white-50"><?= e($user['role_name']) ?></small>
+          </span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2" style="font-size: 0.85rem; z-index: 1060; border-radius: 12px; min-width: 210px;">
           <li><span class="dropdown-item-text small text-muted"><?= e($user['role_name']) ?></span></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="<?= e(APP_URL) ?>/pages/profile.php"><i class="bi bi-person"></i> Profile</a></li>
-          <li><a class="dropdown-item" href="<?= e(APP_URL) ?>/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+          <li><hr class="dropdown-divider my-1"></li>
+          <li><a class="dropdown-item py-2" href="<?= e(APP_URL) ?>/dashboard.php"><i class="bi bi-speedometer2 me-2 text-warning"></i>Dashboard</a></li>
+          <li><a class="dropdown-item py-2" href="<?= e(APP_URL) ?>/pages/profile.php"><i class="bi bi-person me-2 text-warning"></i>My Profile</a></li>
+          <li><hr class="dropdown-divider my-1"></li>
+          <li><a class="dropdown-item py-2 text-danger" href="<?= e(APP_URL) ?>/logout.php"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
         </ul>
       </div>
     </div>

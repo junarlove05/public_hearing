@@ -37,7 +37,7 @@ include __DIR__ . '/../../layouts/header.php';
         --ah-rose: #F43F5E;
         --ah-violet: #8B5CF6;
         --ah-cyan: #06B6D4;
-        --ah-indigo: #6366F1;
+        --ah-indigo: #0F2137;
         --ah-orange: #F97316;
         --ah-teal: #14B8A6;
     }

@@ -30,9 +30,15 @@ if (!$stakeholder) {
     redirect(APP_URL . '/modules/stakeholders/index.php');
 }
 
-// A stakeholder created before this module existed might not have a QR row yet — self-heal.
+$isVerified = in_array($stakeholder['status'], ['Verified', 'Approved', 'Active'], true);
+if (!$isVerified) {
+    setFlash('warning', 'Attendance QR Pass is only available for Verified stakeholders. Please verify this stakeholder account first.');
+    redirect(APP_URL . '/modules/stakeholders/index.php');
+}
+
+// A verified stakeholder created before this module existed might not have a QR row yet — self-heal.
 if (empty($stakeholder['code_value']) && canManage()) {
-    $code = generateCode('STK-');
+    $code = 'STK-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
     $pdo->prepare('INSERT INTO qr_codes (stakeholder_id, code_value, created_at) VALUES (:sid, :code, NOW())')
         ->execute([':sid' => $id, ':code' => $code]);
     $stakeholder['code_value'] = $code;

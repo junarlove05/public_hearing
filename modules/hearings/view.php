@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/lph_module_helpers.php';
 require_once __DIR__ . '/hearing_helpers.php';
 
 requireLogin();
@@ -67,10 +68,27 @@ $regStmt->execute([':id' => $id]);
 $registrations = $regStmt->fetchAll();
 
 $regCountStmt = $pdo->prepare(
-    'SELECT COUNT(*) FROM registrations WHERE hearing_id = :id'
+    "SELECT COUNT(*) FROM registrations WHERE hearing_id = :id AND registration_status = 'Approved'"
 );
 $regCountStmt->execute([':id' => $id]);
 $regCount = (int)$regCountStmt->fetchColumn();
+
+// Detailed registration breakdown
+$regBreakdownStmt = $pdo->prepare(
+    "SELECT 
+        SUM(CASE WHEN registration_status = 'Approved' THEN 1 ELSE 0 END) AS approved_count,
+        SUM(CASE WHEN registration_status = 'Pending' THEN 1 ELSE 0 END) AS pending_count,
+        SUM(CASE WHEN registration_status IN ('Declined', 'Rejected') THEN 1 ELSE 0 END) AS declined_count,
+        COUNT(*) AS total_count
+     FROM registrations WHERE hearing_id = :id"
+);
+$regBreakdownStmt->execute([':id' => $id]);
+$regBreakdown = $regBreakdownStmt->fetch() ?: [];
+$pendingRegCount = (int)($regBreakdown['pending_count'] ?? 0);
+$declinedRegCount = (int)($regBreakdown['declined_count'] ?? 0);
+$totalRegCount = (int)($regBreakdown['total_count'] ?? 0);
+
+$sessionDays = lphGetHearingSessionDays($hearing, $pdo);
 
 $attendanceCountStmt = $pdo->prepare(
     "SELECT COUNT(*)
@@ -155,6 +173,15 @@ include __DIR__ . '/../../layouts/header.php';
             } ?>">
                 <?= e($hearing['status']) ?>
             </span>
+
+            <?php if ($hearing['status'] !== 'Completed' && $hearing['status'] !== 'Cancelled'): ?>
+                <a
+                    href="../attendance/index.php?hearing_id=<?= (int)$hearing['id'] ?>"
+                    class="btn btn-outline-primary btn-sm"
+                >
+                    <i class="bi bi-qr-code-scan"></i> Attendance Tracking
+                </a>
+            <?php endif; ?>
 
             <a
                 href="print.php?id=<?= (int)$hearing['id'] ?>"
@@ -320,6 +347,48 @@ include __DIR__ . '/../../layouts/header.php';
                 </div>
             </div>
 
+            <?php if (count($sessionDays) > 1): ?>
+            <div class="card hearing-detail-card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <strong><i class="bi bi-calendar3-range text-primary me-1"></i> Multi-Day Session Schedule &amp; Daily Attendance</strong>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><?= count($sessionDays) ?> Scheduled Days</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <?php foreach ($sessionDays as $sd): ?>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2.5 px-3 flex-wrap gap-2">
+                            <div>
+                                <strong><?= e($sd['day_label']) ?> · <?= e($sd['formatted_date']) ?></strong>
+                                <span class="small text-muted ms-1">(<?= e($sd['weekday']) ?>)</span>
+                                <?php if (!empty($sd['time_label'])): ?>
+                                    <span class="badge bg-light text-dark border ms-2" style="font-size: 0.75rem;">
+                                        <i class="bi bi-clock me-1 text-primary"></i><?= e($sd['time_label']) ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if (!empty($sd['notes'])): ?>
+                                    <div class="small text-primary-emphasis mt-0.5 fw-medium"><i class="bi bi-tag me-1"></i><?= e($sd['notes']) ?></div>
+                                <?php endif; ?>
+                                <div class="small text-muted"><?= e($sd['status_reason']) ?></div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge <?= $sd['status_badge_class'] ?>"><?= e($sd['status_badge_text']) ?></span>
+                                <?php if ($hearing['status'] !== 'Completed' && $hearing['status'] !== 'Cancelled'): ?>
+                                    <a href="../attendance/index.php?hearing_id=<?= (int)$hearing['id'] ?>&date=<?= urlencode($sd['date']) ?>" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-qr-code-scan me-1"></i> <?= $sd['status'] === 'closed' ? 'View Attendance' : 'Take Attendance' ?>
+                                    </a>
+                                <?php else: ?>
+                                    <a href="../attendance/history.php?hearing_id=<?= (int)$hearing['id'] ?>&date=<?= urlencode($sd['date']) ?>" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-clock-history me-1"></i> Attendance History
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <div class="card hearing-detail-card mb-3">
                 <div class="card-header">
                     <strong><i class="bi bi-file-earmark-text"></i> Related Legislative Item</strong>
@@ -441,20 +510,10 @@ include __DIR__ . '/../../layouts/header.php';
                                     href="<?= e(UPLOAD_URL . ltrim($document['file_path'], '/')) ?>"
                                     target="_blank"
                                     class="btn btn-outline-secondary btn-sm"
+                                    title="Download Document"
                                 >
                                     <i class="bi bi-download"></i>
                                 </a>
-
-                                <?php if (canManage()): ?>
-                                    <button
-                                        type="button"
-                                        class="btn btn-outline-danger btn-sm"
-                                        data-confirm-delete="document &quot;<?= e($document['file_name']) ?>&quot;"
-                                        data-delete-url="<?= e(APP_URL) ?>/modules/hearings/document_delete.php?id=<?= (int)$document['id'] ?>"
-                                    >
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -514,13 +573,24 @@ include __DIR__ . '/../../layouts/header.php';
 
                         <div class="mt-3">
                             <div class="d-flex justify-content-between small">
-                                <span>Capacity</span>
+                                <span>Capacity (Approved)</span>
                                 <strong><?= $regCount ?> / <?= $capacity ?></strong>
                             </div>
 
                             <div class="progress mt-1" style="height:8px">
-                                <div class="progress-bar" style="width:<?= $percent ?>%"></div>
+                                <div class="progress-bar <?= $percent >= 90 ? 'bg-danger' : ($percent >= 70 ? 'bg-warning' : 'bg-primary') ?>" style="width:<?= $percent ?>%"></div>
                             </div>
+
+                            <?php if ($pendingRegCount > 0 || $declinedRegCount > 0): ?>
+                                <div class="small text-muted mt-1.5 d-flex gap-2 flex-wrap" style="font-size: 0.75rem;">
+                                    <?php if ($pendingRegCount > 0): ?>
+                                        <span class="text-warning-emphasis"><i class="bi bi-clock-history me-1"></i><?= $pendingRegCount ?> Pending Review</span>
+                                    <?php endif; ?>
+                                    <?php if ($declinedRegCount > 0): ?>
+                                        <span class="text-danger"><i class="bi bi-x-circle me-1"></i><?= $declinedRegCount ?> Declined</span>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -531,11 +601,32 @@ include __DIR__ . '/../../layouts/header.php';
                     <?php endif; ?>
 
                     <?php foreach ($registrations as $registration): ?>
-                        <div class="list-group-item">
-                            <strong><?= e($registration['full_name']) ?></strong>
-                            <div class="small text-muted">
-                                <?= e($registration['organization'] ?: $registration['email']) ?>
-                                · <?= e($registration['registration_status'] ?: 'Pending') ?>
+                        <?php
+                        $regSt = $registration['registration_status'] ?: 'Pending';
+                        $regBadgeClass = match($regSt) {
+                            'Approved' => 'bg-success-subtle text-success border border-success-subtle',
+                            'Declined', 'Rejected' => 'bg-danger-subtle text-danger border border-danger-subtle',
+                            'Cancelled' => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+                            default => 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                        };
+                        $regIcon = match($regSt) {
+                            'Approved' => 'bi-check-circle-fill',
+                            'Declined', 'Rejected' => 'bi-x-circle-fill',
+                            'Cancelled' => 'bi-dash-circle',
+                            default => 'bi-clock-history'
+                        };
+                        ?>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                            <div class="me-2" style="min-width:0;">
+                                <strong class="d-block text-dark text-truncate" style="font-size: 0.9rem;"><?= e($registration['full_name']) ?></strong>
+                                <div class="small text-muted text-truncate">
+                                    <?= e($registration['organization'] ?: $registration['email']) ?>
+                                </div>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <span class="badge <?= $regBadgeClass ?> px-2 py-1" style="font-size: 0.72rem;">
+                                    <i class="bi <?= $regIcon ?> me-1"></i><?= e($regSt) ?>
+                                </span>
                             </div>
                         </div>
                     <?php endforeach; ?>

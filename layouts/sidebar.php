@@ -7,7 +7,12 @@
  */
 
 $activeMenu = $activeMenu ?? '';
-$role = currentRole();
+
+$role = trim((string)($_SESSION['role_name'] ?? ''));
+if($role==='' && function_exists('currentRole')){
+    $role=trim((string)(currentRole()??''));
+}
+if($role==='') $role='Public User';
 
 $menuItems = [
     ['key'=>'dashboard','label'=>'Dashboard','icon'=>'bi-speedometer2',
@@ -23,12 +28,16 @@ $menuItems = [
      'permission'=>'lph.stakeholders.view'],
 
     ['key'=>'attendance','label'=>'Attendance Tracking','icon'=>'bi-qr-code-scan',
-     'url'=>'/modules/attendance/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE],
+     'url'=>'/modules/attendance/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE,ROLE_STAKEHOLDER,ROLE_PUBLIC],
      'permission'=>'lph.attendance.view'],
 
     ['key'=>'feedback','label'=>'Public Feedback','icon'=>'bi-chat-square-text',
      'url'=>'/modules/feedback/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE,ROLE_STAKEHOLDER,ROLE_PUBLIC],
      'permission'=>'lph.feedback.submit'],
+
+    ['key'=>'ai_sentiment','label'=>'AI Sentiment Analytics','icon'=>'bi-robot',
+     'url'=>'/modules/feedback/ai_analytics.php','roles'=>[ROLE_ADMIN,ROLE_STAFF],
+     'permission'=>'lph.feedback.review'],
 
     ['key'=>'issues','label'=>'Issue Logging','icon'=>'bi-exclamation-triangle',
      'url'=>'/modules/issues/index.php','roles'=>[ROLE_ADMIN,ROLE_STAFF,ROLE_COMMITTEE],
@@ -64,30 +73,32 @@ $menuItems = [
 
   <nav class="orlms-sidebar-nav sidebar-navigation">
     <div class="orlms-sidebar-section sidebar-section-label">Overview</div>
-    <?php foreach ($menuItems as $item): ?>
+    <?php foreach ($menuItems as $navItem): ?>
       <?php
-        if (!in_array($role, $item['roles'], true)) continue;
+        if (!in_array($role, $navItem['roles'], true)) continue;
         if (
-            !empty($item['permission'])
+            !empty($navItem['permission'])
             && function_exists('hasPermission')
-            && !hasPermission($item['permission'])
+            && !hasPermission($navItem['permission'])
         ) continue;
       ?>
-      <?php if ($item['key'] === 'hearings'): ?>
+      <?php if ($navItem['key'] === 'hearings'): ?>
         <div class="orlms-sidebar-section sidebar-section-label">Public Hearing Operations</div>
-      <?php elseif ($item['key'] === 'activity_logs'): ?>
+      <?php elseif ($navItem['key'] === 'ai_sentiment'): ?>
+        <div class="orlms-sidebar-section sidebar-section-label">AI Assistance</div>
+      <?php elseif ($navItem['key'] === 'activity_logs'): ?>
         <div class="orlms-sidebar-section sidebar-section-label">Administration</div>
       <?php endif; ?>
-      <a class="orlms-sidebar-link sidebar-link <?= $activeMenu === $item['key'] ? 'active' : '' ?>" href="<?= e(APP_URL . $item['url']) ?>" title="<?= e($item['label']) ?>">
-        <i class="bi <?= e($item['icon']) ?>"></i><span><?= e($item['label']) ?></span>
-        <?php if ($activeMenu === $item['key']): ?><b></b><?php endif; ?>
+      <a class="orlms-sidebar-link sidebar-link <?= $activeMenu === $navItem['key'] ? 'active' : '' ?>" href="<?= e(APP_URL . $navItem['url']) ?>" title="<?= e($navItem['label']) ?>">
+        <i class="bi <?= e($navItem['icon']) ?>"></i><span><?= e($navItem['label']) ?></span>
+        <?php if ($activeMenu === $navItem['key']): ?><b></b><?php endif; ?>
       </a>
     <?php endforeach; ?>
   </nav>
 
   <div class="orlms-sidebar-footer sidebar-session-card" title="Shared Session Enabled">
     <i class="bi bi-shield-check"></i>
-    <div><strong>Shared Access Enabled</strong><small>Role: <?= e(ucfirst((string)$role)) ?></small></div>
+    <div><strong>Shared Access Enabled</strong><small>Role: <?= e($role) ?></small></div>
   </div>
 </aside>
 <div class="orlms-sidebar-backdrop sidebar-backdrop" id="orlmsSidebarBackdrop"></div>

@@ -3,3 +3,10 @@
 [2026-07-19 18:30:23] Feedback #27 analyzed: Positive (80%) in 105173ms.
 [2026-07-20 07:39:48] Feedback #28 analyzed: Negative (80%) in 100127ms.
 [2026-07-20 07:42:26] Feedback #29 analyzed: Positive (80%) in 61234ms.
+[2026-09-02 22:45:11] Feedback #2: Complaint; Negative; urgency High; 5026ms.
+[2026-09-02 23:31:33] Feedback #1: Citizen Feedback; Negative; urgency High; 5334ms.
+[2026-09-03 08:55:21] Feedback #2 analysis failed: Could not connect to Ollama at http://127.0.0.1:11434. Make sure Ollama is running.
+[2026-09-03 09:25:14] Feedback #2: Complaint; Negative; urgency High; 25466ms.
+[2026-09-20 13:59:39] Feedback #3: Complaint; Negative; urgency Critical; 66636ms.
+[2026-09-20 14:00:12] Feedback #4: Complaint; Negative; urgency High; 32838ms.
+[2026-09-25 15:58:22] Feedback #1: Complaint; Positive; urgency High; 41511ms.

@@ -112,56 +112,317 @@ include __DIR__.'/../layouts/header.php';
 </div>
 </div>
 
-<div class="card lpha-card">
-<div class="card-header d-flex justify-content-between"><span><i class="bi bi-person-vcard"></i> User Registry</span><span><?= count($users) ?> result(s)</span></div>
-<div class="table-responsive">
-<table class="table table-hover lpha-table mb-0">
-<thead><tr><th>User</th><th>Role / Office</th><th>Account</th><th>LPH Access</th><th>Permissions</th><th>Last Login</th><th class="text-end">Actions</th></tr></thead>
-<tbody>
-<?php if(!$users): ?><tr><td colspan="7" class="text-center text-muted py-5">No users match the filters.</td></tr><?php endif; ?>
-<?php foreach($users as $u): ?>
-<tr>
-<td><strong><?= e($u['full_name']) ?></strong><?php if((int)$u['id']===(int)currentUserId()): ?> <span class="badge text-bg-warning">You</span><?php endif; ?><div class="small text-muted"><?= e($u['email']) ?><?= $u['username']?' · @'.e($u['username']):'' ?></div></td>
-<td><?= e($u['role_name']) ?><div class="small text-muted"><?= e($u['office_name']?:'No office assigned') ?></div></td>
-<td><span class="badge text-bg-<?= $u['status']==='Active'?'success':'secondary' ?>"><?= e($u['status']) ?></span></td>
-<td><span class="lpha-access <?= $u['lph_access_status']==='Active'?'active':'inactive' ?>"><i class="bi bi-shield-check"></i><?= e($u['lph_access_status']) ?></span><div class="small text-muted mt-1"><?= e($u['lph_access_level']) ?></div></td>
-<td><strong><?= (int)$u['lph_permission_count'] ?></strong><div class="small text-muted">from role</div></td>
-<td><?= $u['last_login_at']?formatDateTime($u['last_login_at']):'Never' ?></td>
-<td class="text-end"><div class="btn-group btn-group-sm">
-<button class="btn btn-outline-primary btn-edit-user" data-id="<?= (int)$u['id'] ?>"><i class="bi bi-pencil"></i></button>
-<button class="btn btn-outline-danger btn-delete-user" data-id="<?= (int)$u['id'] ?>" data-name="<?= e($u['full_name']) ?>"><i class="bi bi-person-x"></i></button>
-</div></td>
-</tr>
-<?php endforeach; ?>
-</tbody>
-</table>
+<?php
+// Group users by role and status
+$pendingUsers = [];
+$inactiveUsers = [];
+$adminUsers = [];
+$staffUsers = [];
+$committeeUsers = [];
+$publicUsers = [];
+$otherUsers = [];
+
+foreach ($users as $u) {
+    $uStatus = strtolower(trim((string)($u['status'] ?? '')));
+    $accessStatus = strtolower(trim((string)($u['lph_access_status'] ?? '')));
+    $roleName = strtolower(trim((string)($u['role_name'] ?? '')));
+
+    if ($uStatus === 'pending' || $accessStatus === 'pending') {
+        $pendingUsers[] = $u;
+    } elseif ($uStatus === 'inactive' || $accessStatus === 'inactive') {
+        $inactiveUsers[] = $u;
+    } elseif (stripos($roleName, 'admin') !== false) {
+        $adminUsers[] = $u;
+    } elseif (stripos($roleName, 'staff') !== false) {
+        $staffUsers[] = $u;
+    } elseif (stripos($roleName, 'committee') !== false) {
+        $committeeUsers[] = $u;
+    } elseif (stripos($roleName, 'public') !== false || stripos($roleName, 'stakeholder') !== false) {
+        $publicUsers[] = $u;
+    } else {
+        $otherUsers[] = $u;
+    }
+}
+
+if (!function_exists('renderUserCard')) {
+    function renderUserCard(string $title, string $icon, string $badgeClass, array $list, string $emptyMsg): void {
+        ?>
+        <div class="card lpha-card mb-4 shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center py-2.5 px-3 bg-white">
+            <span class="d-flex align-items-center gap-2 fw-bold text-dark">
+              <i class="bi <?= e($icon) ?> fs-5"></i> <?= e($title) ?>
+            </span>
+            <span class="badge <?= e($badgeClass) ?> px-2.5 py-1.5"><?= count($list) ?> result(s)</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover lpha-table mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Role / Office</th>
+                  <th>Account</th>
+                  <th>LPH Access</th>
+                  <th>Permissions</th>
+                  <th>Last Login</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if (empty($list)): ?>
+                  <tr><td colspan="7" class="text-center text-muted py-4 fst-italic"><?= e($emptyMsg) ?></td></tr>
+                <?php else: ?>
+                  <?php foreach ($list as $u): ?>
+                  <tr>
+                    <td>
+                      <strong><?= e($u['full_name']) ?></strong>
+                      <?php if ((int)$u['id'] === (int)currentUserId()): ?>
+                        <span class="badge text-bg-warning ms-1">You</span>
+                      <?php endif; ?>
+                      <div class="small text-muted"><?= e($u['email']) ?><?= $u['username'] ? ' · @' . e($u['username']) : '' ?></div>
+                    </td>
+                    <td>
+                      <span class="fw-semibold text-dark"><?= e($u['role_name']) ?></span>
+                      <div class="small text-muted"><?= e($u['office_name'] ?: 'No office assigned') ?></div>
+                    </td>
+                    <td>
+                      <span class="badge text-bg-<?= $u['status'] === 'Active' ? 'success' : ($u['status'] === 'Pending' ? 'warning' : 'secondary') ?>">
+                        <?= e($u['status']) ?>
+                      </span>
+                    </td>
+                    <td>
+                      <span class="lpha-access <?= $u['lph_access_status'] === 'Active' ? 'active' : ($u['lph_access_status'] === 'Pending' ? 'pending' : 'inactive') ?>">
+                        <i class="bi bi-shield-check"></i><?= e($u['lph_access_status']) ?>
+                      </span>
+                      <div class="small text-muted mt-1"><?= e($u['lph_access_level']) ?></div>
+                    </td>
+                    <td>
+                      <strong><?= (int)$u['lph_permission_count'] ?></strong>
+                      <div class="small text-muted">from role</div>
+                    </td>
+                    <td class="small"><?= $u['last_login_at'] ? formatDateTime($u['last_login_at']) : '<span class="text-muted">Never</span>' ?></td>
+                    <td class="text-end">
+                      <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary btn-edit-user" data-id="<?= (int)$u['id'] ?>" title="Edit User">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <?php
+    }
+}
+?>
+
+<!-- Role & Status Category Navigation Tabs -->
+<div class="mb-3">
+  <ul class="nav nav-pills gap-1 bg-white p-2 border rounded shadow-sm flex-wrap" id="userPillTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active fw-semibold py-1.5 px-3" id="tab-all-link" data-bs-toggle="pill" data-bs-target="#tab-all-content" type="button" role="tab">
+        <i class="bi bi-grid-fill me-1 text-primary"></i> All Tables <span class="badge bg-dark ms-1"><?= count($users) ?></span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold py-1.5 px-3" id="tab-admin-link" data-bs-toggle="pill" data-bs-target="#tab-admin-content" type="button" role="tab">
+        <i class="bi bi-shield-shaded me-1 text-dark"></i> Administrators <span class="badge bg-dark ms-1"><?= count($adminUsers) ?></span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold py-1.5 px-3" id="tab-staff-link" data-bs-toggle="pill" data-bs-target="#tab-staff-content" type="button" role="tab">
+        <i class="bi bi-briefcase me-1 text-primary"></i> Legislative Staff <span class="badge bg-primary ms-1"><?= count($staffUsers) ?></span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold py-1.5 px-3" id="tab-committee-link" data-bs-toggle="pill" data-bs-target="#tab-committee-content" type="button" role="tab">
+        <i class="bi bi-people me-1 text-success"></i> Committee Members <span class="badge bg-success ms-1"><?= count($committeeUsers) ?></span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold py-1.5 px-3" id="tab-public-link" data-bs-toggle="pill" data-bs-target="#tab-public-content" type="button" role="tab">
+        <i class="bi bi-globe me-1 text-info"></i> Public Users <span class="badge bg-info text-dark ms-1"><?= count($publicUsers) ?></span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold py-1.5 px-3" id="tab-pending-link" data-bs-toggle="pill" data-bs-target="#tab-pending-content" type="button" role="tab">
+        <i class="bi bi-hourglass-split me-1 text-warning"></i> Pending <span class="badge bg-warning text-dark ms-1"><?= count($pendingUsers) ?></span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-semibold py-1.5 px-3" id="tab-inactive-link" data-bs-toggle="pill" data-bs-target="#tab-inactive-content" type="button" role="tab">
+        <i class="bi bi-person-x me-1 text-danger"></i> Inactive <span class="badge bg-danger ms-1"><?= count($inactiveUsers) ?></span>
+      </button>
+    </li>
+  </ul>
 </div>
+
+<div class="tab-content" id="userPillTabsContent">
+  <!-- 1. All Separated Tables Tab -->
+  <div class="tab-pane fade show active" id="tab-all-content" role="tabpanel">
+    <?php renderUserCard('Administrators', 'bi-shield-shaded text-dark', 'bg-dark', $adminUsers, 'No active administrators found.'); ?>
+    <?php renderUserCard('Legislative Staff', 'bi-briefcase text-primary', 'bg-primary', $staffUsers, 'No active legislative staff found.'); ?>
+    <?php renderUserCard('Committee Members', 'bi-people text-success', 'bg-success', $committeeUsers, 'No active committee members found.'); ?>
+    <?php renderUserCard('Public Users & Stakeholders', 'bi-globe text-info', 'bg-info text-dark', $publicUsers, 'No active public users or stakeholders found.'); ?>
+    
+    <?php if (!empty($otherUsers)): ?>
+      <?php renderUserCard('Other Roles', 'bi-person-badge text-secondary', 'bg-secondary', $otherUsers, 'No other users found.'); ?>
+    <?php endif; ?>
+
+    <?php renderUserCard('Pending Verification & Access', 'bi-hourglass-split text-warning', 'bg-warning text-dark', $pendingUsers, 'No pending user registrations or pending access requests.'); ?>
+    <?php renderUserCard('Inactive Accounts', 'bi-person-x text-danger', 'bg-danger', $inactiveUsers, 'No inactive or deactivated user accounts.'); ?>
+  </div>
+
+  <!-- 2. Administrators Tab -->
+  <div class="tab-pane fade" id="tab-admin-content" role="tabpanel">
+    <?php renderUserCard('Administrators', 'bi-shield-shaded text-dark', 'bg-dark', $adminUsers, 'No active administrators found.'); ?>
+  </div>
+
+  <!-- 3. Legislative Staff Tab -->
+  <div class="tab-pane fade" id="tab-staff-content" role="tabpanel">
+    <?php renderUserCard('Legislative Staff', 'bi-briefcase text-primary', 'bg-primary', $staffUsers, 'No active legislative staff found.'); ?>
+  </div>
+
+  <!-- 4. Committee Members Tab -->
+  <div class="tab-pane fade" id="tab-committee-content" role="tabpanel">
+    <?php renderUserCard('Committee Members', 'bi-people text-success', 'bg-success', $committeeUsers, 'No active committee members found.'); ?>
+  </div>
+
+  <!-- 5. Public Users Tab -->
+  <div class="tab-pane fade" id="tab-public-content" role="tabpanel">
+    <?php renderUserCard('Public Users & Stakeholders', 'bi-globe text-info', 'bg-info text-dark', $publicUsers, 'No active public users or stakeholders found.'); ?>
+  </div>
+
+  <!-- 6. Pending Accounts Tab -->
+  <div class="tab-pane fade" id="tab-pending-content" role="tabpanel">
+    <?php renderUserCard('Pending Verification & Access', 'bi-hourglass-split text-warning', 'bg-warning text-dark', $pendingUsers, 'No pending user registrations or pending access requests.'); ?>
+  </div>
+
+  <!-- 7. Inactive Accounts Tab -->
+  <div class="tab-pane fade" id="tab-inactive-content" role="tabpanel">
+    <?php renderUserCard('Inactive Accounts', 'bi-person-x text-danger', 'bg-danger', $inactiveUsers, 'No inactive or deactivated user accounts.'); ?>
+  </div>
 </div>
 
 </div></div>
 
-<div class="modal fade" id="userModal" tabindex="-1">
-<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
-<form id="userForm">
-<?= csrfField() ?><input type="hidden" name="id" id="u_id" value="0">
-<div class="modal-header bg-dark text-white"><h5 class="modal-title"><i class="bi bi-person-gear"></i> User Account</h5><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal"></button></div>
-<div class="modal-body">
-<div class="row g-3">
-<div class="col-md-6"><label class="form-label">Full Name *</label><input class="form-control" name="full_name" id="u_name" required></div>
-<div class="col-md-6"><label class="form-label">Username</label><input class="form-control" name="username" id="u_username" maxlength="100"></div>
-<div class="col-md-6"><label class="form-label">Email *</label><input type="email" class="form-control" name="email" id="u_email" required></div>
-<div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" id="u_phone"></div>
-<div class="col-md-6"><label class="form-label">Role *</label><select class="form-select" name="role_id" id="u_role" required><?php foreach($roles as $r): ?><option value="<?= (int)$r['id'] ?>"><?= e($r['name']) ?></option><?php endforeach; ?></select></div>
-<div class="col-md-6"><label class="form-label">Office</label><select class="form-select" name="office_id" id="u_office"><option value="">No office</option><?php foreach($offices as $o): ?><option value="<?= (int)$o['id'] ?>"><?= e($o['name']) ?></option><?php endforeach; ?></select></div>
-<div class="col-md-4"><label class="form-label">Account Status</label><select class="form-select" name="status" id="u_status"><option>Active</option><option>Inactive</option></select></div>
-<div class="col-md-4"><label class="form-label">LPH Access</label><select class="form-select" name="lph_access_status" id="u_access"><option>Active</option><option>Inactive</option></select></div>
-<div class="col-md-4"><label class="form-label">Access Level</label><select class="form-select" name="access_level" id="u_level"><option>Administrator</option><option>Staff</option><option>Committee</option><option>Stakeholder</option><option>Standard</option></select></div>
-<div class="col-12"><label class="form-label">Password <span class="text-muted">(required for new users; leave blank when editing to keep current password)</span></label><input type="password" class="form-control" name="password" id="u_password" autocomplete="new-password"><div class="form-text">New passwords must contain at least 10 characters with uppercase, lowercase and a number.</div></div>
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 800px;">
+    <div class="modal-content border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+      <form id="userForm">
+        <?= csrfField() ?>
+        <input type="hidden" name="id" id="u_id" value="0">
+        
+        <div class="modal-header py-3 px-4 bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style="width: 36px; height: 36px;">
+              <i class="bi bi-person-gear fs-5"></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" style="font-size: 1.05rem;">User Account Management</h5>
+              <small class="text-muted" style="font-size: 0.8rem;">Configure legislative user identity and LPH access</small>
+            </div>
+          </div>
+          <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body p-4 bg-white">
+          <!-- Section 1: User Identity -->
+          <div class="d-flex align-items-center gap-2 mb-2 pb-1 border-bottom">
+            <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.68rem; letter-spacing: 0.5px;">ACCOUNT IDENTITY</span>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">Full Name *</label>
+              <input class="form-control form-control-sm" name="full_name" id="u_name" placeholder="Juan Dela Cruz" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">Username</label>
+              <input class="form-control form-control-sm" name="username" id="u_username" maxlength="100" placeholder="jdelacruz">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">Email *</label>
+              <input type="email" class="form-control form-control-sm" name="email" id="u_email" placeholder="user@manila.gov.ph" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">Phone</label>
+              <input class="form-control form-control-sm" name="phone" id="u_phone" placeholder="0917-000-0000">
+            </div>
+          </div>
+
+          <!-- Section 2: Role & Subsystem Access -->
+          <div class="d-flex align-items-center gap-2 mb-2 pb-1 border-bottom">
+            <span class="badge bg-primary-subtle text-primary" style="font-size: 0.68rem; letter-spacing: 0.5px;">ROLE & ACCESS PERMISSIONS</span>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">Role *</label>
+              <select class="form-select form-select-sm" name="role_id" id="u_role" required>
+                <?php foreach($roles as $r): ?>
+                  <option value="<?= (int)$r['id'] ?>"><?= e($r['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">Office</label>
+              <select class="form-select form-select-sm" name="office_id" id="u_office">
+                <option value="">No office</option>
+                <?php foreach($offices as $o): ?>
+                  <option value="<?= (int)$o['id'] ?>"><?= e($o['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">Account Status</label>
+              <select class="form-select form-select-sm" name="status" id="u_status">
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">LPH Access</label>
+              <select class="form-select form-select-sm" name="lph_access_status" id="u_access">
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold text-secondary mb-1" style="font-size: 0.76rem;">Access Level</label>
+              <select class="form-select form-select-sm" name="access_level" id="u_level">
+                <option>Administrator</option>
+                <option>Staff</option>
+                <option>Committee</option>
+                <option>Stakeholder</option>
+                <option>Standard</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Section 3: Password -->
+          <div class="p-3 rounded-3 bg-light border">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="form-label small fw-semibold text-secondary mb-0" style="font-size: 0.76rem;">Password</label>
+              <span class="text-muted" style="font-size: 0.7rem;">Leave blank on edit to keep current password</span>
+            </div>
+            <input type="password" class="form-control form-control-sm" name="password" id="u_password" autocomplete="new-password" placeholder="Enter password (min. 10 chars)">
+            <div class="text-muted mt-1" style="font-size: 0.68rem;">New passwords must contain at least 10 characters with uppercase, lowercase, and a number.</div>
+          </div>
+        </div>
+
+        <!-- Clean Footer -->
+        <div class="modal-footer py-2.5 px-4 bg-light border-top d-flex justify-content-end gap-2">
+          <button class="btn btn-light border px-3" type="button" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary px-4 fw-semibold shadow-sm" type="submit" id="btnSaveUser">
+            <i class="bi bi-check2-circle me-1"></i> Save User
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
-</div>
-<div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit" id="btnSaveUser">Save User</button></div>
-</form>
-</div></div></div>
 
 <script>
 document.addEventListener('DOMContentLoaded',function(){
@@ -189,14 +450,6 @@ document.addEventListener('DOMContentLoaded',function(){
    if(r.success){appToast('success',r.message);setTimeout(()=>location.reload(),350);}
    else if(!r.session_expired)Swal.fire('Unable to Save User',r.message,'error');
  };
-
- document.querySelectorAll('.btn-delete-user').forEach(btn=>btn.onclick=async function(){
-   const ask=await Swal.fire({title:'Deactivate user?',text:'This keeps audit history and shared records intact. The account and LPH access will be disabled.',icon:'warning',showCancelButton:true,confirmButtonText:'Deactivate'});
-   if(!ask.isConfirmed)return;
-   const fd=new FormData();fd.append('csrf_token','<?= e(csrfToken()) ?>');fd.append('id',this.dataset.id);
-   const r=await fetch(APP_URL+'/pages/ajax_user_delete.php',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd}).then(x=>x.json());
-   if(r.success){appToast('success',r.message);setTimeout(()=>location.reload(),350);}else Swal.fire('Unable to Deactivate',r.message,'error');
- });
 });
 </script>
 <?php include __DIR__.'/../layouts/footer.php'; ?>

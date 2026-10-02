@@ -53,7 +53,7 @@ $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 // User Avatar Colors
-$userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4', '#F97316', '#6366F1'];
+$userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4', '#F97316', '#0F2137'];
 
 // Sentiment Icons
 $sentimentIcons = [
@@ -566,7 +566,7 @@ $sentimentIcons = [
                     <?php if ($aiAvailable): ?><th><i class="bi bi-robot"></i> AI Sentiment</th><?php endif; ?>
                     <th>
                         <a class="sort-link" data-sort="status">
-                            <i class="bi bi-circle"></i> Status
+                            Status
                             <?php if ($sortBy === 'status'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
@@ -688,12 +688,6 @@ $sentimentIcons = [
                                 <button type="button" class="btn-action view btn-view-feedback" 
                                         data-id="<?= (int)$row['id'] ?>" title="View / Reply">
                                     <i class="bi bi-envelope-open"></i>
-                                </button>
-                                <button type="button" class="btn-action delete" 
-                                        title="Delete"
-                                        data-confirm-delete="this feedback entry"
-                                        data-delete-url="<?= e(APP_URL) ?>/modules/feedback/ajax_delete.php?id=<?= (int)$row['id'] ?>">
-                                    <i class="bi bi-trash"></i>
                                 </button>
                             </div>
                         </td>

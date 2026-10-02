@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/lph_module_helpers.php';
+require_once __DIR__ . '/../../includes/mailer.php';
 
 requireLogin();
 if (!canManage()) jsonResponse(false,'You do not have permission to approve registrations.');
@@ -14,13 +15,17 @@ $id = (int)($_POST['id'] ?? 0);
 $status = clean($_POST['status'] ?? '');
 $reason = trim((string)($_POST['rejection_reason'] ?? ''));
 
-if (!in_array($status,['Approved','Rejected','Cancelled','Pending'],true)) {
+$allowed = ['Approved','Rejected','Cancelled','Pending','Declined'];
+if (!in_array($status, $allowed, true)) {
     jsonResponse(false,'Invalid registration status.');
 }
 if ($status==='Rejected' && $reason==='') jsonResponse(false,'A rejection reason is required.');
 
 $stmt = $pdo->prepare(
-    'SELECT r.*,s.full_name,h.title AS hearing_title,h.hearing_date
+    'SELECT r.*,
+            s.full_name, s.email, s.organization,
+            h.title AS hearing_title, h.venue, h.hearing_date, h.hearing_time, h.reference_number,
+            (SELECT code_value FROM qr_codes q WHERE q.stakeholder_id = s.id LIMIT 1) AS qr_code
      FROM registrations r
      JOIN stakeholders s ON s.id=r.stakeholder_id
      LEFT JOIN hearings h ON h.id=r.hearing_id
@@ -56,24 +61,48 @@ try {
     ]);
 
     if ($status === 'Approved') {
-        $existingQr = $pdo->prepare('SELECT id FROM qr_codes WHERE registration_id=:rid LIMIT 1');
-        $existingQr->execute([':rid'=>$id]);
+        $stkCheck = $pdo->prepare('SELECT status FROM stakeholders WHERE id = :sid LIMIT 1');
+        $stkCheck->execute([':sid' => $r['stakeholder_id']]);
+        $stkStatus = $stkCheck->fetchColumn();
 
-        if (!$existingQr->fetch()) {
-            $qr = lphUniqueCode($pdo,'qr_codes','code_value','QR');
-            $expiresAt = !empty($r['hearing_date'])
-                ? date('Y-m-d 23:59:59',strtotime($r['hearing_date']))
-                : null;
-
-            $pdo->prepare(
-                'INSERT INTO qr_codes
-                 (stakeholder_id,registration_id,hearing_id,code_value,created_at,status,expires_at,used_at)
-                 VALUES (:sid,:rid,:hid,:code,NOW(),"Active",:expires,NULL)'
-            )->execute([
-                ':sid'=>$r['stakeholder_id'], ':rid'=>$id, ':hid'=>$r['hearing_id'],
-                ':code'=>$qr, ':expires'=>$expiresAt
-            ]);
+        if (in_array($stkStatus, ['Verified', 'Approved', 'Active'], true)) {
+            $existingQr = $pdo->prepare('SELECT id FROM qr_codes WHERE stakeholder_id = :sid LIMIT 1');
+            $existingQr->execute([':sid' => $r['stakeholder_id']]);
+            if (!$existingQr->fetch()) {
+                $qr = 'STK-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+                $pdo->prepare(
+                    'INSERT INTO qr_codes
+                     (stakeholder_id, code_value, created_at, status)
+                     VALUES (:sid, :code, NOW(), "Active")'
+                )->execute([
+                    ':sid'  => $r['stakeholder_id'],
+                    ':code' => $qr
+                ]);
+            }
         }
+    }
+
+    // Two-way sync: keep invitations in sync with registration status
+    $targetInvStatus = match($status) {
+        'Approved' => 'Accepted',
+        'Rejected', 'Declined' => 'Declined',
+        'Cancelled' => 'Cancelled',
+        default => 'Pending'
+    };
+
+    $invCheck = $pdo->prepare('SELECT id, status FROM invitations WHERE stakeholder_id = :sid AND hearing_id = :hid LIMIT 1');
+    $invCheck->execute([':sid' => $r['stakeholder_id'], ':hid' => $r['hearing_id']]);
+    $invRow = $invCheck->fetch();
+
+    if ($invRow && $invRow['status'] !== $targetInvStatus) {
+        $respAt = in_array($targetInvStatus, ['Accepted', 'Declined'], true) ? date('Y-m-d H:i:s') : null;
+        $pdo->prepare(
+            'UPDATE invitations SET status = :st, responded_at = COALESCE(:resp, responded_at), updated_at = NOW() WHERE id = :id'
+        )->execute([
+            ':st'   => $targetInvStatus,
+            ':resp' => $respAt,
+            ':id'   => $invRow['id']
+        ]);
     }
 
     lphHistory($pdo,'registration',$id,'Status Change',$old,$status,
@@ -82,7 +111,25 @@ try {
         "Registration {$r['registration_code']} status {$old} -> {$status}.");
 
     $pdo->commit();
-    jsonResponse(true,'Registration status updated.');
+
+    $emailSent = false;
+    $emailMsg = '';
+    if ($status === 'Approved' && !empty($r['email'])) {
+        $mailResult = lphSendInvitationEmail($r);
+        $emailSent = !empty($mailResult['ok']);
+        $emailMsg = $mailResult['message'] ?? '';
+    }
+
+    $msg = 'Registration status updated.';
+    if ($status === 'Approved') {
+        if ($emailSent) {
+            $msg = "Registration approved and official invitation email delivered to {$r['email']}.";
+        } elseif (!empty($r['email'])) {
+            $msg = "Registration approved. (Email notice: " . ($emailMsg ?: 'Gmail SMTP not configured. Please configure in Invitations page') . ").";
+        }
+    }
+
+    jsonResponse(true, $msg, ['email_sent' => $emailSent, 'email' => $r['email'] ?? '']);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     jsonResponse(false, APP_DEBUG ? $e->getMessage() : 'Unable to update registration.');

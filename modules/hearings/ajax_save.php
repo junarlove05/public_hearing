@@ -37,35 +37,150 @@ $meetingLink = trim((string)($_POST['meeting_link'] ?? ''));
 $visibility = clean($_POST['visibility'] ?? 'Public');
 $cancellationReason = trim((string)($_POST['cancellation_reason'] ?? ''));
 
+// Multi-day sessions parsing
+$rawSessionsJson = trim((string)($_POST['sessions_json'] ?? ''));
+$submittedSessions = [];
+
+if ($rawSessionsJson !== '') {
+    $decoded = json_decode($rawSessionsJson, true);
+    if (is_array($decoded)) {
+        $submittedSessions = $decoded;
+    }
+} elseif (!empty($_POST['session_date']) && is_array($_POST['session_date'])) {
+    $dates = $_POST['session_date'];
+    $starts = $_POST['session_start_time'] ?? [];
+    $ends = $_POST['session_end_time'] ?? [];
+    $notesList = $_POST['session_notes'] ?? [];
+    foreach ($dates as $idx => $d) {
+        $submittedSessions[] = [
+            'session_date' => clean((string)$d),
+            'start_time' => clean((string)($starts[$idx] ?? '')),
+            'end_time' => clean((string)($ends[$idx] ?? '')),
+            'notes' => clean((string)($notesList[$idx] ?? '')),
+        ];
+    }
+}
+
 $errors = [];
 
 if ($title === '') {
     $errors[] = 'Title is required.';
 }
 
-$start = hearingNormalizeDateTime($hearingDate, $hearingTime);
+// Process and validate multi-day sessions if provided
+$parsedSessions = [];
+if (!empty($submittedSessions)) {
+    $seenDates = [];
+    foreach ($submittedSessions as $index => $sess) {
+        $sDate = clean((string)($sess['session_date'] ?? ''));
+        $sStart = clean((string)($sess['start_time'] ?? ''));
+        $sEnd = clean((string)($sess['end_time'] ?? ''));
+        $sNotes = trim((string)($sess['notes'] ?? ''));
 
-if (!$start) {
-    $errors[] = 'A valid hearing date and start time are required.';
-}
+        if ($sDate === '' && $sStart === '' && $sEnd === '') {
+            continue; // Skip empty rows
+        }
 
-if ($endDate === null) {
-    $endDate = $hearingDate !== '' ? $hearingDate : null;
-}
+        $rowNum = $index + 1;
 
-$end = null;
+        if ($sDate === '') {
+            $errors[] = "Session Day #{$rowNum}: Date is required.";
+            continue;
+        }
 
-if ($start) {
-    if ($endTime !== null) {
-        $end = hearingNormalizeDateTime($endDate ?: $hearingDate, $endTime);
-    } else {
-        $end = $start->modify('+1 hour');
-        $endTime = $end->format('H:i:s');
+        if (in_array($sDate, $seenDates, true)) {
+            $errors[] = "Session Day #{$rowNum}: Duplicate date '{$sDate}'. Each session day must have a distinct date.";
+            continue;
+        }
+        $seenDates[] = $sDate;
+
+        if ($sStart === '') {
+            $errors[] = "Session Day #{$rowNum} ({$sDate}): Start time is required.";
+            continue;
+        }
+
+        $sessionStartDt = hearingNormalizeDateTime($sDate, $sStart);
+        if (!$sessionStartDt) {
+            $errors[] = "Session Day #{$rowNum} ({$sDate}): Invalid start time.";
+            continue;
+        }
+
+        $sessionEndDt = null;
+        if ($sEnd !== '') {
+            $sessionEndDt = hearingNormalizeDateTime($sDate, $sEnd);
+            if (!$sessionEndDt || $sessionEndDt <= $sessionStartDt) {
+                $errors[] = "Session Day #{$rowNum} ({$sDate}): End time must be later than start time.";
+                continue;
+            }
+        } else {
+            $sessionEndDt = $sessionStartDt->modify('+1 hour');
+            $sEnd = $sessionEndDt->format('H:i');
+        }
+
+        $parsedSessions[] = [
+            'session_date' => $sDate,
+            'start_time' => strlen($sStart) === 5 ? ($sStart . ':00') : $sStart,
+            'end_time' => strlen($sEnd) === 5 ? ($sEnd . ':00') : $sEnd,
+            'notes' => $sNotes,
+        ];
     }
 
-    if (!$end || $end <= $start) {
-        $errors[] = 'End date and time must be after the hearing start.';
+    if (!empty($parsedSessions)) {
+        // Sort sessions chronologically
+        usort($parsedSessions, function ($a, $b) {
+            return strcmp($a['session_date'] . ' ' . $a['start_time'], $b['session_date'] . ' ' . $b['start_time']);
+        });
+
+        // Derive overall hearing bounds from sessions
+        $firstSession = $parsedSessions[0];
+        $lastSession = $parsedSessions[count($parsedSessions) - 1];
+
+        $hearingDate = $firstSession['session_date'];
+        $hearingTime = substr($firstSession['start_time'], 0, 5);
+        $endDate = $lastSession['session_date'];
+        $endTime = substr($lastSession['end_time'], 0, 5);
     }
+}
+
+// Fallback to traditional single start/end if no sessions submitted
+if (empty($parsedSessions)) {
+    $start = hearingNormalizeDateTime($hearingDate, $hearingTime);
+
+    if (!$start) {
+        $errors[] = 'A valid hearing date and start time are required.';
+    }
+
+    if ($endDate === null) {
+        $endDate = $hearingDate !== '' ? $hearingDate : null;
+    }
+
+    $end = null;
+
+    if ($start) {
+        if ($endTime !== null) {
+            $end = hearingNormalizeDateTime($endDate ?: $hearingDate, $endTime);
+        } else {
+            $end = $start->modify('+1 hour');
+            $endTime = $end->format('H:i:s');
+        }
+
+        if (!$end || $end <= $start) {
+            $errors[] = 'End date and time must be after the hearing start.';
+        }
+    }
+
+    if ($hearingDate !== '' && $hearingTime !== '') {
+        $sEndClean = $endTime ?: ($start ? $start->modify('+1 hour')->format('H:i:s') : '23:59:59');
+        $parsedSessions[] = [
+            'session_date' => $hearingDate,
+            'start_time' => strlen($hearingTime) === 5 ? ($hearingTime . ':00') : $hearingTime,
+            'end_time' => strlen($sEndClean) === 5 ? ($sEndClean . ':00') : $sEndClean,
+            'notes' => '',
+        ];
+    }
+} else {
+    $start = hearingNormalizeDateTime($hearingDate, $hearingTime);
+    $end = hearingNormalizeDateTime($endDate ?: $hearingDate, $endTime ?: '23:59:59');
 }
 
 if (!in_array($status, hearingAllowedStatuses(), true)) {
@@ -123,6 +238,8 @@ if ($id > 0) {
 
     if (!$existing) {
         $errors[] = 'Hearing not found.';
+    } elseif ($existing['status'] === 'Completed') {
+        $errors[] = 'Completed hearings cannot be edited. They are view-only.';
     }
 }
 
@@ -135,11 +252,13 @@ if ($start && $end && $status !== 'Cancelled') {
         $endDate,
         $endTime,
         $committeeId,
-        $venue
+        $venue,
+        $parsedSessions
     );
 
     if ($conflicts) {
         $parts = [];
+        $conflictsData = [];
 
         foreach ($conflicts as $conflict) {
             $reasons = [];
@@ -159,22 +278,44 @@ if ($start && $end && $status !== 'Cancelled') {
                 $reasons[] = 'venue';
             }
 
-            $parts[] =
+            $conflictDateLabel = !empty($conflict['conflict_date'])
+                ? date('M d, Y', strtotime($conflict['conflict_date']))
+                : date('M d, Y', strtotime($conflict['hearing_date']));
+
+            $conflictTimeLabel = (!empty($conflict['conflict_time_start']) && !empty($conflict['conflict_time_end']))
+                ? ' ' . date('g:i A', strtotime($conflict['conflict_time_start'])) . ' - ' . date('g:i A', strtotime($conflict['conflict_time_end']))
+                : (' ' . date('g:i A', strtotime($conflict['hearing_time'])));
+
+            $conflictDesc =
                 ($conflict['reference_number'] ?: ('Hearing #' . $conflict['id']))
                 . ' - '
                 . $conflict['title']
                 . ' ('
-                . date(
-                    'M d, Y g:i A',
-                    strtotime($conflict['hearing_date'] . ' ' . $conflict['hearing_time'])
-                )
+                . $conflictDateLabel . $conflictTimeLabel
                 . ')'
                 . ($reasons ? ' [' . implode(' / ', $reasons) . ' conflict]' : '');
+
+            $parts[] = $conflictDesc;
+            $conflictsData[] = [
+                'id' => (int)$conflict['id'],
+                'title' => $conflict['title'],
+                'reference_number' => $conflict['reference_number'] ?: ('Hearing #' . $conflict['id']),
+                'view_url' => APP_URL . '/modules/hearings/view.php?id=' . (int)$conflict['id'],
+                'date_label' => $conflictDateLabel,
+                'time_label' => trim($conflictTimeLabel),
+                'reasons' => $reasons,
+                'label' => $conflictDesc,
+            ];
         }
 
-        $errors[] =
+        $conflictMsg =
             'Schedule conflict detected. Resolve the overlapping committee or venue schedule first: '
             . implode('; ', $parts);
+
+        jsonResponse(false, $conflictMsg, [
+            'has_conflict' => true,
+            'conflicts' => $conflictsData,
+        ]);
     }
 }
 
@@ -328,6 +469,64 @@ try {
         );
 
         $message = 'Hearing created successfully.';
+    }
+
+    // Synchronize hearing session days in hearing_session_days table
+    if (hearingTableExists($pdo, 'hearing_session_days') && !empty($parsedSessions)) {
+        // Fetch existing session days to retain closure states
+        $existingSessionMap = [];
+        $exStmt = $pdo->prepare('SELECT * FROM hearing_session_days WHERE hearing_id = :hid');
+        $exStmt->execute([':hid' => $id]);
+        foreach ($exStmt->fetchAll() as $row) {
+            $existingSessionMap[$row['session_date']] = $row;
+        }
+
+        $activeDates = [];
+        $upsertSession = $pdo->prepare('
+            INSERT INTO hearing_session_days
+                (hearing_id, session_date, day_number, start_time, end_time, is_closed, closed_at, closed_by, notes, created_at, updated_at)
+            VALUES
+                (:hid, :sdate, :dnum, :start_time, :end_time, :is_closed, :closed_at, :closed_by, :notes, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                day_number = VALUES(day_number),
+                start_time = VALUES(start_time),
+                end_time = VALUES(end_time),
+                notes = VALUES(notes),
+                updated_at = NOW()
+        ');
+
+        foreach ($parsedSessions as $index => $sess) {
+            $sDate = $sess['session_date'];
+            $activeDates[] = $sDate;
+            $dNum = $index + 1;
+            $old = $existingSessionMap[$sDate] ?? null;
+
+            $upsertSession->execute([
+                ':hid' => $id,
+                ':sdate' => $sDate,
+                ':dnum' => $dNum,
+                ':start_time' => $sess['start_time'],
+                ':end_time' => $sess['end_time'],
+                ':is_closed' => $old ? (int)$old['is_closed'] : 0,
+                ':closed_at' => $old['closed_at'] ?? null,
+                ':closed_by' => $old['closed_by'] ?? null,
+                ':notes' => $sess['notes'] ?: ($old['notes'] ?? null),
+            ]);
+        }
+
+        // Clean up removed session dates if no attendance records exist for them
+        if (!empty($existingSessionMap)) {
+            foreach ($existingSessionMap as $oldDate => $oldRow) {
+                if (!in_array($oldDate, $activeDates, true)) {
+                    $attCountStmt = $pdo->prepare('SELECT COUNT(*) FROM attendance WHERE hearing_id = :hid AND attendance_date = :adate');
+                    $attCountStmt->execute([':hid' => $id, ':adate' => $oldDate]);
+                    if ((int)$attCountStmt->fetchColumn() === 0) {
+                        $delStmt = $pdo->prepare('DELETE FROM hearing_session_days WHERE hearing_id = :hid AND session_date = :adate');
+                        $delStmt->execute([':hid' => $id, ':adate' => $oldDate]);
+                    }
+                }
+            }
+        }
     }
 
     $uploadedCount = 0;

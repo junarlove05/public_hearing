@@ -122,49 +122,79 @@ function hearingFindConflicts(
     ?string $endDate,
     ?string $endTime,
     ?int $committeeId,
-    string $venue
+    string $venue,
+    array $sessions = []
 ): array {
-    $start = hearingNormalizeDateTime($hearingDate, $hearingTime);
+    $committeeId = $committeeId && $committeeId > 0 ? $committeeId : null;
+    $venue = trim($venue);
 
-    if (!$start) {
+    if (!$committeeId && $venue === '') {
         return [];
     }
 
-    $end = hearingNormalizeDateTime(
-        $endDate ?: $hearingDate,
-        $endTime ?: '',
-        $hearingDate,
-        $endTime ?: $start->modify('+1 hour')->format('H:i:s')
-    );
+    // Normalize sessions list
+    $normalizedSessions = [];
+    if (!empty($sessions)) {
+        foreach ($sessions as $s) {
+            $sDate = trim((string)($s['session_date'] ?? $s['date'] ?? ''));
+            $sStart = trim((string)($s['start_time'] ?? $s['hearing_time'] ?? ''));
+            $sEnd = trim((string)($s['end_time'] ?? ''));
 
-    if (!$end) {
-        return [];
+            if ($sDate === '' || $sStart === '') {
+                continue;
+            }
+
+            if ($sEnd === '') {
+                $dtStart = hearingNormalizeDateTime($sDate, $sStart);
+                $sEnd = $dtStart ? $dtStart->modify('+1 hour')->format('H:i:s') : '23:59:59';
+            }
+
+            $normalizedSessions[] = [
+                'date' => $sDate,
+                'start_time' => strlen($sStart) === 5 ? ($sStart . ':00') : $sStart,
+                'end_time' => strlen($sEnd) === 5 ? ($sEnd . ':00') : $sEnd,
+            ];
+        }
+    }
+
+    if (empty($normalizedSessions)) {
+        if ($hearingDate !== '' && $hearingTime !== '') {
+            $endT = $endTime ?: '';
+            if ($endT === '') {
+                $dtStart = hearingNormalizeDateTime($hearingDate, $hearingTime);
+                $endT = $dtStart ? $dtStart->modify('+1 hour')->format('H:i:s') : '23:59:59';
+            }
+            $normalizedSessions[] = [
+                'date' => $hearingDate,
+                'start_time' => strlen($hearingTime) === 5 ? ($hearingTime . ':00') : $hearingTime,
+                'end_time' => strlen($endT) === 5 ? ($endT . ':00') : $endT,
+            ];
+        } else {
+            return [];
+        }
     }
 
     $conditions = [];
-    $params = [
-        ':current_id' => $id,
-        ':new_start' => $start->format('Y-m-d H:i:s'),
-        ':new_end' => $end->format('Y-m-d H:i:s'),
-    ];
+    $baseParams = [':current_id' => $id];
 
     if ($committeeId) {
         $conditions[] = 'h.committee_id = :committee_id';
-        $params[':committee_id'] = $committeeId;
+        $baseParams[':committee_id'] = $committeeId;
     }
-
-    $venue = trim($venue);
 
     if ($venue !== '') {
         $conditions[] = 'LOWER(TRIM(h.venue)) = LOWER(:venue)';
-        $params[':venue'] = $venue;
+        $baseParams[':venue'] = $venue;
     }
 
     if (!$conditions) {
         return [];
     }
 
-    $sql = "
+    $hasSessionDaysTable = hearingTableExists($pdo, 'hearing_session_days');
+
+    // Retrieve other active hearings matching committee or venue
+    $candidateSql = "
         SELECT
             h.id,
             h.reference_number,
@@ -181,19 +211,111 @@ function hearingFindConflicts(
         WHERE h.id <> :current_id
           AND h.status <> 'Cancelled'
           AND (" . implode(' OR ', $conditions) . ")
-          AND TIMESTAMP(h.hearing_date, h.hearing_time) < :new_end
-          AND TIMESTAMP(
-                COALESCE(h.end_date, h.hearing_date),
-                COALESCE(h.end_time, ADDTIME(h.hearing_time, '01:00:00'))
-              ) > :new_start
-        ORDER BY h.hearing_date, h.hearing_time
-        LIMIT 10
     ";
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    $stmt = $pdo->prepare($candidateSql);
+    $stmt->execute($baseParams);
+    $candidates = $stmt->fetchAll();
 
-    return $stmt->fetchAll();
+    if (empty($candidates)) {
+        return [];
+    }
+
+    // Preload session days for candidates if table exists
+    $candidateSessionMap = [];
+    if ($hasSessionDaysTable) {
+        $candidateIds = array_column($candidates, 'id');
+        if (!empty($candidateIds)) {
+            $inClause = implode(',', array_map('intval', $candidateIds));
+            $sStmt = $pdo->query("
+                SELECT hearing_id, session_date, start_time, end_time
+                FROM hearing_session_days
+                WHERE hearing_id IN ({$inClause})
+                ORDER BY session_date, day_number
+            ");
+            while ($row = $sStmt->fetch()) {
+                $candidateSessionMap[$row['hearing_id']][] = $row;
+            }
+        }
+    }
+
+    $conflicts = [];
+
+    foreach ($candidates as $cand) {
+        $candId = (int)$cand['id'];
+        $candSessions = [];
+
+        if (!empty($candidateSessionMap[$candId])) {
+            foreach ($candidateSessionMap[$candId] as $cs) {
+                $candSessions[] = [
+                    'date' => $cs['session_date'],
+                    'start_time' => $cs['start_time'] ?: $cand['hearing_time'],
+                    'end_time' => $cs['end_time'] ?: ($cand['end_time'] ?: '23:59:59'),
+                ];
+            }
+        } else {
+            // Fallback for single-day or legacy multi-day hearings
+            $candStart = $cand['hearing_date'];
+            $candEnd = $cand['end_date'] ?: $cand['hearing_date'];
+            $candStartTime = $cand['hearing_time'];
+            $candEndTime = $cand['end_time'] ?: '';
+
+            if ($candStartTime && $candEndTime === '') {
+                $dt = hearingNormalizeDateTime($candStart, $candStartTime);
+                $candEndTime = $dt ? $dt->modify('+1 hour')->format('H:i:s') : '23:59:59';
+            }
+
+            if ($candStart === $candEnd) {
+                $candSessions[] = [
+                    'date' => $candStart,
+                    'start_time' => $candStartTime,
+                    'end_time' => $candEndTime,
+                ];
+            } else {
+                // If legacy contiguous multi-day hearing without explicit session days,
+                // treat each day in range with the daily time window
+                $curTs = strtotime($candStart);
+                $endTs = strtotime($candEnd);
+                $guard = 0;
+                while ($curTs <= $endTs && $guard < 60) {
+                    $candSessions[] = [
+                        'date' => date('Y-m-d', $curTs),
+                        'start_time' => $candStartTime,
+                        'end_time' => $candEndTime,
+                    ];
+                    $curTs = strtotime('+1 day', $curTs);
+                    $guard++;
+                }
+            }
+        }
+
+        // Compare each session of the new hearing against candidate sessions
+        foreach ($normalizedSessions as $newSession) {
+            foreach ($candSessions as $cSession) {
+                if ($newSession['date'] !== $cSession['date']) {
+                    continue;
+                }
+
+                // Check time overlap on same date: startA < endB AND endA > startB
+                $newStartTs = strtotime($newSession['date'] . ' ' . $newSession['start_time']);
+                $newEndTs = strtotime($newSession['date'] . ' ' . $newSession['end_time']);
+                $candStartTs = strtotime($cSession['date'] . ' ' . $cSession['start_time']);
+                $candEndTs = strtotime($cSession['date'] . ' ' . $cSession['end_time']);
+
+                if ($newStartTs !== false && $newEndTs !== false && $candStartTs !== false && $candEndTs !== false) {
+                    if ($newStartTs < $candEndTs && $newEndTs > $candStartTs) {
+                        $cand['conflict_date'] = $newSession['date'];
+                        $cand['conflict_time_start'] = $cSession['start_time'];
+                        $cand['conflict_time_end'] = $cSession['end_time'];
+                        $conflicts[$candId] = $cand;
+                        break 2;
+                    }
+                }
+            }
+        }
+    }
+
+    return array_values($conflicts);
 }
 
 function hearingAddHistory(

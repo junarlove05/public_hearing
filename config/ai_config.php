@@ -1,68 +1,60 @@
 <?php
+declare(strict_types=1);
+
 /**
  * config/ai_config.php
- * ------------------------------------------------------------------
- * Configuration for the AI sentiment analysis feature. Kept in its own
- * file (separate from config/config.php) so AI settings are easy to
- * find, change, or disable without touching core app configuration.
+ * Ollama AI configuration for LPH / PHCMS.
  *
- * SWITCHING PROVIDERS LATER (Ollama -> OpenAI/Gemini/etc.):
- * Change AI_PROVIDER below and implement a new class that satisfies
- * includes/AI/AIServiceInterface.php (see OllamaService.php for the
- * reference implementation), then register it in
- * includes/AI/AIServiceFactory.php. Nothing else in the app needs to
- * change — every caller talks to the interface, never to Ollama
- * directly.
- * ------------------------------------------------------------------
+ * AI scope:
+ * - Citizen feedback stored in the feedback table.
+ * - Complaint-category feedback receives stronger urgency/risk weighting.
+ *
+ * AI results are advisory only.
  */
 
-// ---- Master switch -----------------------------------------------------
-// Set to false to disable all AI analysis app-wide (feedback still saves
-// normally either way; this only turns the AI enhancement on/off).
-define('AI_ENABLED', true);
+if (!defined('AI_ENABLED')) define('AI_ENABLED', true);
+// Fetch settings from database if available
+$dbAiSettings = [];
+try {
+    if (function_exists('db')) {
+        $st = db()->query("SELECT setting_key, setting_value FROM lph_settings WHERE setting_key IN ('ai_provider', 'gemini_api_key', 'gemini_model')");
+        if ($st) {
+            while ($r = $st->fetch()) {
+                $dbAiSettings[$r['setting_key']] = $r['setting_value'];
+            }
+        }
+    }
+} catch (Throwable $t) {}
 
-// ---- Provider selection --------------------------------------------------
-// Currently only 'ollama' is implemented. See AIServiceFactory.php.
-define('AI_PROVIDER', 'ollama');
+if (!defined('AI_PROVIDER')) {
+    $envProvider = getenv('AI_PROVIDER') ?: ($_ENV['AI_PROVIDER'] ?? ($dbAiSettings['ai_provider'] ?? 'gemini'));
+    define('AI_PROVIDER', (string)$envProvider);
+}
 
-// ---- Ollama connection ---------------------------------------------------
-define('OLLAMA_BASE_URL', 'http://localhost:11434');
+// ---- Google Gemini Settings ---------------------------------------
+if (!defined('GEMINI_API_KEY')) {
+    $envKey = getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? ($dbAiSettings['gemini_api_key'] ?? ''));
+    define('GEMINI_API_KEY', (string)$envKey);
+}
+if (!defined('GEMINI_MODEL')) {
+    $envGeminiModel = getenv('GEMINI_MODEL') ?: ($_ENV['GEMINI_MODEL'] ?? ($dbAiSettings['gemini_model'] ?? 'gemini-1.5-flash'));
+    define('GEMINI_MODEL', (string)$envGeminiModel);
+}
 
-// MODEL SELECTION — pick based on your hardware. Smaller model = much
-// faster, works on low-spec laptops, but slightly less nuanced analysis.
-// After changing this, run: ollama pull <model-name>
-//
-//   'llama3.2:1b'   <- DEFAULT. ~1.3GB, runs well on 4-8GB RAM, no GPU
-//                      needed. Best choice for low-spec / older laptops.
-//   'qwen2.5:0.5b'  <- Even lighter (~400MB) if 1b is still too slow —
-//                      very low-spec / very old hardware.
-//   'llama3.2:3b'   <- ~2GB, better quality, needs ~8GB+ RAM.
-//   'llama3.1:8b'   <- Best quality, but needs 8-16GB+ RAM and/or a GPU.
-//                      Will time out on low-spec hardware — this is what
-//                      caused the original "timed out after 60 seconds" error.
-define('OLLAMA_MODEL', 'llama3.2:1b');
+// ---- Ollama Settings (Fallback / Offline) --------------------------
+if (!defined('OLLAMA_BASE_URL')) {
+    $envUrl = getenv('OLLAMA_BASE_URL') ?: ($_ENV['OLLAMA_BASE_URL'] ?? 'http://127.0.0.1:11434');
+    define('OLLAMA_BASE_URL', rtrim((string)$envUrl, '/'));
+}
+if (!defined('OLLAMA_MODEL')) {
+    $envModel = getenv('OLLAMA_MODEL') ?: ($_ENV['OLLAMA_MODEL'] ?? 'llama3.2:1b');
+    define('OLLAMA_MODEL', (string)$envModel);
+}
+if (!defined('AI_CONNECT_TIMEOUT_SECONDS')) define('AI_CONNECT_TIMEOUT_SECONDS', 5);
+if (!defined('AI_REQUEST_TIMEOUT_SECONDS')) define('AI_REQUEST_TIMEOUT_SECONDS', 120);
+if (!defined('AI_MAX_RESPONSE_TOKENS')) define('AI_MAX_RESPONSE_TOKENS', 450);
+if (!defined('AI_MODEL_KEEP_ALIVE_MINUTES')) define('AI_MODEL_KEEP_ALIVE_MINUTES', 30);
 
-// Generous timeouts: even a light model can be slow on very old hardware
-// the first time it loads into memory. These are upper bounds, not
-// expected typical times (a warm llama3.2:1b usually answers in 2-10s).
-define('AI_CONNECT_TIMEOUT_SECONDS', 5);    // time to establish a connection to Ollama
-define('AI_REQUEST_TIMEOUT_SECONDS', 120);  // time to wait for the full analysis response
-
-// Caps how many tokens the model is allowed to generate per analysis.
-// Our JSON response is short (sentiment/summary/keywords/etc.), so capping
-// this speeds up generation significantly without losing anything useful —
-// the single biggest lever for speed on slow hardware, alongside model size.
-define('AI_MAX_RESPONSE_TOKENS', 400);
-
-// Keeps the model loaded in memory between requests (in minutes) so
-// repeated analyses don't pay the "cold load" cost every single time.
-// Increase if you have RAM to spare and submit feedback frequently.
-define('AI_MODEL_KEEP_ALIVE_MINUTES', 30);
-
-// ---- Behavior ---------------------------------------------------------
-// Sentiment values considered "negative" for flagging/notification purposes.
-define('AI_NEGATIVE_SENTIMENT_VALUE', 'Negative');
-
-// Where the human-readable AI debug log is written (in addition to the
-// structured ai_request_logs database table).
-define('AI_LOG_FILE', __DIR__ . '/../logs/ai.log');
+if (!defined('AI_NEGATIVE_SENTIMENT_VALUE')) define('AI_NEGATIVE_SENTIMENT_VALUE', 'Negative');
+if (!defined('AI_FLAG_NEGATIVE_HIGH_URGENCY')) define('AI_FLAG_NEGATIVE_HIGH_URGENCY', true);
+if (!defined('AI_LOG_FILE')) define('AI_LOG_FILE', __DIR__ . '/../logs/ai.log');

@@ -483,7 +483,7 @@ $statusIcons = [
                     <th><i class="bi bi-tag"></i> Invitation Code</th>
                     <th>
                         <a class="sort-link" data-sort="status">
-                            <i class="bi bi-circle"></i> Status
+                            Status
                             <?php if ($sortBy === 'status'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
@@ -578,12 +578,6 @@ $statusIcons = [
                                             title="Email Template"
                                             data-id="<?= (int)$row['id'] ?>">
                                         <i class="bi bi-envelope"></i>
-                                    </button>
-                                    <button type="button" class="btn-action delete" 
-                                            title="Delete"
-                                            data-confirm-delete="this invitation"
-                                            data-delete-url="<?= e(APP_URL) ?>/modules/stakeholders/ajax_invitation_delete.php?id=<?= (int)$row['id'] ?>">
-                                        <i class="bi bi-trash"></i>
                                     </button>
                                 <?php endif; ?>
                             </div>

@@ -52,7 +52,7 @@ include __DIR__ . '/../layouts/header.php';
         --rv-cyan: #06B6D4;
         --rv-orange: #F97316;
         --rv-teal: #14B8A6;
-        --rv-indigo: #6366F1;
+        --rv-indigo: #0F2137;
     }
 
     /* Breadcrumb Bar */

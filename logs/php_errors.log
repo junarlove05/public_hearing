@@ -72,3 +72,199 @@
 [24-Aug-2026 19:42:08 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\lph\pages\ajax_user_save.php:60
 [24-Aug-2026 19:42:43 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\lph\pages\ajax_user_save.php:60
 [27-Aug-2026 14:10:40 Asia/Manila] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xamppp\htdocs\lph\layouts\sidebar.php on line 118
+[28-Aug-2026 23:44:22 Asia/Manila] Action save error: SQLSTATE[HY093]: Invalid parameter number
+[28-Aug-2026 23:44:29 Asia/Manila] Action save error: SQLSTATE[HY093]: Invalid parameter number
+[28-Aug-2026 23:44:36 Asia/Manila] Action save error: SQLSTATE[HY093]: Invalid parameter number
+[28-Aug-2026 23:44:56 Asia/Manila] Action save error: SQLSTATE[HY093]: Invalid parameter number
+[29-Aug-2026 00:42:34 Asia/Manila] Action save error: SQLSTATE[HY093]: Invalid parameter number
+[29-Aug-2026 01:10:12 Asia/Manila] Action assign error: SQLSTATE[HY093]: Invalid parameter number
+[29-Aug-2026 01:10:15 Asia/Manila] Action assign error: SQLSTATE[HY093]: Invalid parameter number
+[03-Sep-2026 08:48:29 Asia/Manila] Uncaught exception: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ai.analysis_scope' in 'field list' in C:\xampp\htdocs\lph\modules\feedback\index.php:65
+[03-Sep-2026 08:48:32 Asia/Manila] Uncaught exception: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ai.analysis_scope' in 'field list' in C:\xampp\htdocs\lph\modules\feedback\index.php:65
+[03-Sep-2026 08:48:33 Asia/Manila] Uncaught exception: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ai.analysis_scope' in 'field list' in C:\xampp\htdocs\lph\modules\feedback\index.php:65
+[03-Sep-2026 08:57:18 Asia/Manila] Uncaught exception: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '?' at line 1 in C:\xampp\htdocs\lph\pages\system_health.php:20
+[15-Sep-2026 20:05:58 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 73
+[15-Sep-2026 20:05:58 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 74
+[15-Sep-2026 20:05:58 Asia/Manila] PHP Warning:  session_name(): Session name cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 76
+[15-Sep-2026 20:05:58 Asia/Manila] PHP Warning:  session_set_cookie_params(): Session cookie parameters cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 77
+[15-Sep-2026 20:05:58 Asia/Manila] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 84
+[15-Sep-2026 20:05:58 Asia/Manila] Uncaught exception: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in C:\Users\DELL\.gemini\antigravity-ide\brain\278e5f93-b83f-414e-b816-5c9d6679b91b\scratch\run_e2e.php:54
+[15-Sep-2026 22:44:44 Asia/Manila] Uncaught exception: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '?' at line 1 in C:\xampp\htdocs\legislative\lph\pages\system_health.php:20
+[16-Sep-2026 05:39:28 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'role' in 'field list' in Command line code:1
+Stack trace:
+#0 Command line code(1): PDO->query('SELECT username...')
+#1 {main}
+  thrown in Command line code on line 1
+[16-Sep-2026 05:39:28 Asia/Manila] Fatal error: Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'role' in 'field list' in Command line code:1
+Stack trace:
+#0 Command line code(1): PDO->query('SELECT username...')
+#1 {main}
+  thrown in Command line code:1
+[16-Sep-2026 13:26:14 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[16-Sep-2026 13:26:19 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[16-Sep-2026 16:10:52 Asia/Manila] PHP Fatal error:  Uncaught Error: Call to undefined function db() in C:\Users\DELL\.gemini\antigravity-ide\brain\16c2c8b5-dfdd-4882-87f3-3d0b20405b1b\scratch\test_db.php:3
+Stack trace:
+#0 {main}
+  thrown in C:\Users\DELL\.gemini\antigravity-ide\brain\16c2c8b5-dfdd-4882-87f3-3d0b20405b1b\scratch\test_db.php on line 3
+[16-Sep-2026 18:42:30 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[16-Sep-2026 18:55:04 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\modules\attendance\index.php:15
+[16-Sep-2026 18:55:05 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\modules\attendance\index.php:15
+[16-Sep-2026 19:01:06 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\modules\attendance\index.php:15
+[16-Sep-2026 19:01:07 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\modules\attendance\index.php:15
+[16-Sep-2026 19:01:08 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\modules\attendance\index.php:15
+[16-Sep-2026 19:01:12 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\dashboard.php:9
+[16-Sep-2026 19:02:43 Asia/Manila] Login error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.users' doesn't exist
+[16-Sep-2026 19:11:02 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\dashboard.php:9
+[16-Sep-2026 19:11:03 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\dashboard.php:9
+[16-Sep-2026 19:11:04 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\dashboard.php:9
+[16-Sep-2026 19:11:05 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\dashboard.php:9
+[16-Sep-2026 19:11:07 Asia/Manila] Uncaught exception: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearings' doesn't exist in C:\xampp\htdocs\legislative\lph\dashboard.php:9
+[16-Sep-2026 19:17:33 Asia/Manila] Uncaught exception: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.attendance_date' in 'field list' in C:\xampp\htdocs\legislative\lph\modules\attendance\index.php:90
+[16-Sep-2026 19:17:47 Asia/Manila] Uncaught exception: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.attendance_date' in 'field list' in C:\xampp\htdocs\legislative\lph\modules\attendance\index.php:90
+[16-Sep-2026 19:37:08 Asia/Manila] Uncaught exception: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.attendance_date' in 'field list' in C:\xampp\htdocs\legislative\lph\modules\attendance\index.php:90
+[19-Sep-2026 13:57:54 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[19-Sep-2026 23:12:45 Asia/Manila] Uncaught exception: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'role' in 'field list' in C:\Users\DELL\.gemini\antigravity-ide\brain\e69bc1a2-5ffe-475a-9a24-48df2d5b5ab6\scratch\inspect_data.php:21
+[20-Sep-2026 05:37:43 Asia/Manila] Uncaught exception: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'citizen_name' in 'field list' in C:\Users\DELL\.gemini\antigravity-ide\brain\e69bc1a2-5ffe-475a-9a24-48df2d5b5ab6\scratch\inspect_feedback.php:16
+[20-Sep-2026 07:42:13 Asia/Manila] PHP Fatal error:  Uncaught Error: Call to undefined function getDbConnection() in C:\Users\DELL\.gemini\antigravity-ide\brain\e69bc1a2-5ffe-475a-9a24-48df2d5b5ab6\scratch\inspect_inv_reg.php:3
+Stack trace:
+#0 {main}
+  thrown in C:\Users\DELL\.gemini\antigravity-ide\brain\e69bc1a2-5ffe-475a-9a24-48df2d5b5ab6\scratch\inspect_inv_reg.php on line 3
+[20-Sep-2026 07:42:28 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.public_hearings' doesn't exist in C:\Users\DELL\.gemini\antigravity-ide\brain\e69bc1a2-5ffe-475a-9a24-48df2d5b5ab6\scratch\inspect_inv_reg.php:16
+Stack trace:
+#0 C:\Users\DELL\.gemini\antigravity-ide\brain\e69bc1a2-5ffe-475a-9a24-48df2d5b5ab6\scratch\inspect_inv_reg.php(16): PDO->query('SELECT id, refe...')
+#1 {main}
+  thrown in C:\Users\DELL\.gemini\antigravity-ide\brain\e69bc1a2-5ffe-475a-9a24-48df2d5b5ab6\scratch\inspect_inv_reg.php on line 16
+[20-Sep-2026 12:16:10 Asia/Manila] PHP Fatal error:  Uncaught Error: Call to undefined function canManage() in C:\xampp\htdocs\legislative\lph\modules\issues\table.php:682
+Stack trace:
+#0 C:\Users\DELL\.gemini\antigravity-ide\brain\8d8f8b8e-3e3d-4273-bdc7-bc839112c0a3\scratch\test_status.php(8): include()
+#1 {main}
+  thrown in C:\xampp\htdocs\legislative\lph\modules\issues\table.php on line 682
+[21-Sep-2026 17:33:17 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[22-Sep-2026 19:52:16 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'location' in 'field list' in Command line code:1
+Stack trace:
+#0 Command line code(1): PDO->query('SELECT id, refe...')
+#1 {main}
+  thrown in Command line code on line 1
+[22-Sep-2026 19:52:16 Asia/Manila] Fatal error: Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'location' in 'field list' in Command line code:1
+Stack trace:
+#0 Command line code(1): PDO->query('SELECT id, refe...')
+#1 {main}
+  thrown in Command line code:1
+[23-Sep-2026 11:18:20 Asia/Manila] Uncaught exception: SQLSTATE[HY000]: General error: 2006 MySQL server has gone away in C:\Users\DELL\.gemini\antigravity-ide\brain\849b9318-fc35-4a59-a55d-c0f9b9b95330\scratch\test_multi_day_hearings.php:101
+[23-Sep-2026 11:19:54 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[23-Sep-2026 12:46:57 Asia/Manila] PHP Warning:  require(lph/includes/db.php): Failed to open stream: No such file or directory in Command line code on line 3
+[23-Sep-2026 12:46:57 Asia/Manila] PHP Fatal error:  Uncaught Error: Failed opening required 'lph/includes/db.php' (include_path='C:\xampp\php\PEAR') in Command line code:3
+Stack trace:
+#0 {main}
+  thrown in Command line code on line 3
+[23-Sep-2026 13:06:41 Asia/Manila] PHP Warning:  Undefined variable $pdo in C:\xampp\htdocs\legislative\test_hearing_verify.php on line 14
+[23-Sep-2026 13:06:41 Asia/Manila] PHP Fatal error:  Uncaught TypeError: hearingFindConflicts(): Argument #1 ($pdo) must be of type PDO, null given, called in C:\xampp\htdocs\legislative\test_hearing_verify.php on line 14 and defined in C:\xampp\htdocs\legislative\lph\modules\hearings\hearing_helpers.php:117
+Stack trace:
+#0 C:\xampp\htdocs\legislative\test_hearing_verify.php(14): hearingFindConflicts(NULL, 0, '2026-11-20', '09:00:00', '2026-11-22', '15:00:00', NULL, 'Room Test ABC', Array)
+#1 {main}
+  thrown in C:\xampp\htdocs\legislative\lph\modules\hearings\hearing_helpers.php on line 117
+[25-Sep-2026 08:44:45 Asia/Manila] lphGetAdminPasswordPolicyStatus error: SQLSTATE[HY000]: General error: 2006 MySQL server has gone away
+[25-Sep-2026 08:45:02 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[25-Sep-2026 08:51:08 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'subsystem' in 'field list' in C:\Users\DELL\.gemini\antigravity-ide\brain\379873c3-f390-4a44-b150-50232f90ecee\scratch\check_ai_logs.php:5
+Stack trace:
+#0 C:\Users\DELL\.gemini\antigravity-ide\brain\379873c3-f390-4a44-b150-50232f90ecee\scratch\check_ai_logs.php(5): PDO->query('SELECT id, subs...')
+#1 {main}
+  thrown in C:\Users\DELL\.gemini\antigravity-ide\brain\379873c3-f390-4a44-b150-50232f90ecee\scratch\check_ai_logs.php on line 5
+[25-Sep-2026 10:05:59 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'role' in 'field list' in Command line code:1
+Stack trace:
+#0 Command line code(1): PDO->query('SELECT id, user...')
+#1 {main}
+  thrown in Command line code on line 1
+[25-Sep-2026 12:25:16 Asia/Manila] PHP Warning:  Undefined variable $stakeholders in C:\xampp\htdocs\legislative\lph\modules\stakeholders\invitations.php on line 340
+[25-Sep-2026 12:25:16 Asia/Manila] Uncaught exception: count(): Argument #1 ($value) must be of type Countable|array, null given in C:\xampp\htdocs\legislative\lph\modules\stakeholders\invitations.php:340
+[25-Sep-2026 13:46:03 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\legislative\lph\modules\stakeholders\registrations.php:174
+[25-Sep-2026 13:46:05 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\legislative\lph\modules\stakeholders\registrations.php:174
+[25-Sep-2026 13:48:40 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 73
+[25-Sep-2026 13:48:40 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 74
+[25-Sep-2026 13:48:40 Asia/Manila] PHP Warning:  session_name(): Session name cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 76
+[25-Sep-2026 13:48:40 Asia/Manila] PHP Warning:  session_set_cookie_params(): Session cookie parameters cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 77
+[25-Sep-2026 13:48:40 Asia/Manila] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 84
+[25-Sep-2026 13:48:40 Asia/Manila] PHP Fatal error:  Cannot redeclare lphInitials() (previously declared in C:\xampp\htdocs\legislative\lph\modules\stakeholders\registrations.php:58) in C:\xampp\htdocs\legislative\lph\modules\stakeholders\invitations.php on line 187
+[25-Sep-2026 13:48:40 Asia/Manila] Fatal error: Cannot redeclare lphInitials() (previously declared in C:\xampp\htdocs\legislative\lph\modules\stakeholders\registrations.php:58) in C:\xampp\htdocs\legislative\lph\modules\stakeholders\invitations.php:187
+[25-Sep-2026 13:49:24 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 73
+[25-Sep-2026 13:49:24 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 74
+[25-Sep-2026 13:49:24 Asia/Manila] PHP Warning:  session_name(): Session name cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 76
+[25-Sep-2026 13:49:24 Asia/Manila] PHP Warning:  session_set_cookie_params(): Session cookie parameters cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 77
+[25-Sep-2026 13:49:24 Asia/Manila] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 84
+[25-Sep-2026 13:49:24 Asia/Manila] PHP Warning:  Cannot modify header information - headers already sent by (output started at C:\Users\DELL\.gemini\antigravity-ide\brain\379873c3-f390-4a44-b150-50232f90ecee\scratch\test_render_pages.php:7) in C:\xampp\htdocs\legislative\lph\includes\functions.php on line 34
+[25-Sep-2026 13:49:47 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\legislative\lph\modules\stakeholders\registrations.php:174
+[25-Sep-2026 13:49:50 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\legislative\lph\modules\stakeholders\registrations.php:174
+[25-Sep-2026 13:49:59 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 73
+[25-Sep-2026 13:49:59 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 74
+[25-Sep-2026 13:49:59 Asia/Manila] PHP Warning:  session_name(): Session name cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 76
+[25-Sep-2026 13:49:59 Asia/Manila] PHP Warning:  session_set_cookie_params(): Session cookie parameters cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 77
+[25-Sep-2026 13:49:59 Asia/Manila] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 84
+[25-Sep-2026 13:52:58 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\legislative\lph\modules\stakeholders\registrations.php:174
+[25-Sep-2026 13:52:59 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\legislative\lph\modules\stakeholders\registrations.php:174
+[25-Sep-2026 14:16:19 Asia/Manila] Uncaught exception: SQLSTATE[HY093]: Invalid parameter number in C:\xampp\htdocs\legislative\lph\scratch\test_att_query.php:29
+[25-Sep-2026 14:24:17 Asia/Manila] PHP Fatal error:  Uncaught Error: Call to undefined function db() in C:\xampp\htdocs\legislative\lph\scratch\test_dynamic_sync.php:11
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\legislative\lph\scratch\test_dynamic_sync.php on line 11
+[25-Sep-2026 15:48:20 Asia/Manila] PHP Warning:  require(c:/xampp/htdocs/legislative/config/ai_config.php): Failed to open stream: No such file or directory in C:\Users\DELL\.gemini\antigravity-ide\brain\379873c3-f390-4a44-b150-50232f90ecee\scratch\test_feedback_query.php on line 3
+[25-Sep-2026 15:48:20 Asia/Manila] Uncaught exception: Failed opening required 'c:/xampp/htdocs/legislative/config/ai_config.php' (include_path='C:\xampp\php\PEAR') in C:\Users\DELL\.gemini\antigravity-ide\brain\379873c3-f390-4a44-b150-50232f90ecee\scratch\test_feedback_query.php:3
+[25-Sep-2026 17:06:01 Asia/Manila] Uncaught exception: Unmatched '}' in C:\xampp\htdocs\legislative\lph\includes\AI\AIAnalysisManager.php:673
+[25-Sep-2026 17:06:03 Asia/Manila] Uncaught exception: Unmatched '}' in C:\xampp\htdocs\legislative\lph\includes\AI\AIAnalysisManager.php:673
+[25-Sep-2026 19:52:03 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'hearing_code' in 'field list' in C:\xampp\htdocs\legislative\scratch\check_lookup_data.php:6
+Stack trace:
+#0 C:\xampp\htdocs\legislative\scratch\check_lookup_data.php(6): PDO->query('SELECT id, titl...')
+#1 {main}
+  thrown in C:\xampp\htdocs\legislative\scratch\check_lookup_data.php on line 6
+[26-Sep-2026 07:58:55 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'legislative_management_db.hearing_action' doesn't exist in C:\xampp\htdocs\legislative\scratch\verify_seed_data.php:9
+Stack trace:
+#0 C:\xampp\htdocs\legislative\scratch\verify_seed_data.php(9): PDO->query('\n    SELECT hi....')
+#1 {main}
+  thrown in C:\xampp\htdocs\legislative\scratch\verify_seed_data.php on line 9
+[26-Sep-2026 15:48:12 Asia/Manila] Uncaught exception: Call to undefined function showCols() in C:\xampp\htdocs\legislative\lph\scratch_schema.php:12
+[26-Sep-2026 17:21:28 Asia/Manila] Uncaught exception: Call to undefined function uploadFile() in C:\xampp\htdocs\legislative\lph\modules\stakeholders\register.php:83
+[26-Sep-2026 21:03:14 Asia/Manila] Uncaught exception: Call to undefined function uploadFile() in C:\xampp\htdocs\legislative\lph\modules\stakeholders\register.php:83
+[27-Sep-2026 07:22:13 Asia/Manila] [LPH SMTP Attempt smtp.gmail.com:587] SMTP command 'ZHVtbXlhcHBwYXNzd29yZA==' returned unexpected code 535: 535-5.7.8 Username and Password not accepted. For more information, go to
+535 5.7.8  https://support.google.com/mail/?p=BadCredentials 41be03b00d2f7-cc78795dd54sm2655319a12.30 - gsmtp
+
+[27-Sep-2026 11:29:35 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for mysql.railway.internal failed: No such host is known. 
+[27-Sep-2026 11:40:11 Asia/Manila] Uncaught exception: lphSendInvitationEmail(): Argument #1 ($inv) must be of type array, bool given, called in C:\xampp\htdocs\legislative\scratch\test_local_invite.php on line 10 in C:\xampp\htdocs\legislative\lph\includes\mailer.php:585
+[27-Sep-2026 14:24:52 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for mysql.railway.internal failed: No such host is known. 
+[27-Sep-2026 14:30:09 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for mysql.railway.internal failed: No such host is known. 
+[27-Sep-2026 19:09:44 Asia/Manila] PHP Warning:  Undefined variable $qrPassCode in C:\xampp\htdocs\legislative\lph\includes\mailer.php on line 773
+[28-Sep-2026 16:25:18 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[28-Sep-2026 16:29:28 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[28-Sep-2026 18:50:09 Asia/Manila] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[28-Sep-2026 18:59:01 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'created_at' in 'field list' in C:\xampp\htdocs\legislative\scratch\check_counts.php:81
+Stack trace:
+#0 C:\xampp\htdocs\legislative\scratch\check_counts.php(81): PDO->prepare('INSERT IGNORE I...')
+#1 {main}
+  thrown in C:\xampp\htdocs\legislative\scratch\check_counts.php on line 81
+[29-Sep-2026 09:12:29 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 73
+[29-Sep-2026 09:12:29 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 74
+[29-Sep-2026 09:12:29 Asia/Manila] PHP Warning:  session_name(): Session name cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 76
+[29-Sep-2026 09:12:29 Asia/Manila] PHP Warning:  session_set_cookie_params(): Session cookie parameters cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 77
+[29-Sep-2026 09:12:29 Asia/Manila] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 84
+[29-Sep-2026 09:12:29 Asia/Manila] PHP Warning:  Cannot modify header information - headers already sent by (output started at C:\xampp\htdocs\legislative\scratch\test_ajax.php:5) in C:\xampp\htdocs\legislative\lph\modules\stakeholders\ajax_stakeholder_hearings.php on line 9
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 73
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  ini_set(): Session ini settings cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 74
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  session_name(): Session name cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 76
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  session_set_cookie_params(): Session cookie parameters cannot be changed after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 77
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in C:\xampp\htdocs\legislative\lph\includes\auth.php on line 84
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  Cannot modify header information - headers already sent by (output started at C:\xampp\htdocs\legislative\scratch\test_ajax.php:5) in C:\xampp\htdocs\legislative\lph\modules\stakeholders\ajax_stakeholder_hearings.php on line 9
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 17
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 18
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 18
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 19
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 20
+[29-Sep-2026 09:13:21 Asia/Manila] PHP Warning:  foreach() argument must be of type array|object, null given in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 20
+[29-Sep-2026 09:13:57 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 15
+[29-Sep-2026 09:13:57 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 16
+[29-Sep-2026 09:13:57 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 16
+[29-Sep-2026 09:13:57 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 17
+[29-Sep-2026 09:13:57 Asia/Manila] PHP Warning:  Trying to access array offset on value of type null in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 18
+[29-Sep-2026 09:13:57 Asia/Manila] PHP Warning:  foreach() argument must be of type array|object, null given in C:\xampp\htdocs\legislative\scratch\test_ajax.php on line 18
+[29-Sep-2026 14:56:14 Asia/Manila] Hearing issue save error: SQLSTATE[HY093]: Invalid parameter number
+[02-Oct-2026 09:02:57 Asia/Manila] PHP Fatal error:  Uncaught Error: Undefined constant "AI_PROVIDER" in C:\xampp\htdocs\legislative\scratch\test_ai_check.php:9
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\legislative\scratch\test_ai_check.php on line 9

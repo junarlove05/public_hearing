@@ -145,6 +145,18 @@ try {
         'Welcome back, '.$user['full_name'].'!'
     );
 
+    // Check if Administrator password has expired under the 3-week policy
+    if (strcasecmp((string)$user['role_name'], 'Administrator') === 0) {
+        $adminPolicy = lphGetAdminPasswordPolicyStatus((int)$user['id']);
+        if ($adminPolicy['has_expired']) {
+            setFlash(
+                'warning',
+                'Security Notice: Your administrator password has expired under the 3-week rotation policy. Please update your password now.'
+            );
+            redirect(APP_URL . '/pages/profile.php');
+        }
+    }
+
     redirect(APP_URL . '/dashboard.php');
 } catch (Throwable $e) {
     error_log('Login error: '.$e->getMessage());

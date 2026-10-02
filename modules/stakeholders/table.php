@@ -60,6 +60,28 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
         border: 1px solid rgba(10, 22, 40, 0.04);
     }
 
+    .stakeholders-table-wrap .table-responsive {
+        max-height: 65vh;
+        overflow-y: auto;
+        overflow-x: auto;
+        position: relative;
+    }
+
+    .stakeholders-table-wrap .table-responsive::-webkit-scrollbar {
+        width: 7px;
+        height: 7px;
+    }
+    .stakeholders-table-wrap .table-responsive::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    .stakeholders-table-wrap .table-responsive::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    .stakeholders-table-wrap .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
     .stakeholders-table-wrap .table {
         margin-bottom: 0;
     }
@@ -243,11 +265,11 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
         font-size: 0.7rem;
     }
 
-    .status-badge.active { background: #D1FAE5; color: #065F46; }
-    .status-badge.active i { color: #10B981; }
+    .status-badge.active, .status-badge.verified { background: #D1FAE5; color: #065F46; }
+    .status-badge.active i, .status-badge.verified i { color: #10B981; }
 
-    .status-badge.pending { background: #FEF3C7; color: #92400E; }
-    .status-badge.pending i { color: #F59E0B; }
+    .status-badge.pending, .status-badge.pending-verification { background: #FEF3C7; color: #92400E; }
+    .status-badge.pending i, .status-badge.pending-verification i { color: #F59E0B; }
 
     .status-badge.inactive { background: #F1F5F9; color: #475569; }
     .status-badge.inactive i { color: #94A3B8; }
@@ -313,6 +335,19 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
     .stakeholders-table-wrap .btn-action:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .stakeholders-table-wrap .btn-action.view {
+        color: #0284c7;
+        background: #f0f9ff;
+        border-color: #bae6fd;
+    }
+
+    .stakeholders-table-wrap .btn-action.view:hover {
+        background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%);
+        color: #ffffff;
+        border-color: #0284c7;
+        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.35);
     }
 
     .stakeholders-table-wrap .btn-action.qr:hover {
@@ -590,7 +625,7 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
                     <th><i class="bi bi-tags"></i> Category</th>
                     <th>
                         <a class="sort-link" data-sort="status">
-                            <i class="bi bi-circle"></i> Status
+                            Status
                             <?php if ($sortBy === 'status'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
@@ -616,9 +651,9 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
                     $userHash = crc32($row['full_name'] ?? '');
                     $avatarColor = $userColors[abs($userHash) % count($userColors)];
                     $initial = strtoupper(substr($row['full_name'] ?? '?', 0, 1));
-                    $statusLower = strtolower($row['status']);
+                    $statusClass = strtolower(str_replace(' ', '-', $row['status'] ?? ''));
                     $statusIcon = match($row['status']) {
-                        'Active', 'Approved' => 'bi-check-circle',
+                        'Active', 'Approved', 'Verified' => 'bi-check-circle',
                         'Pending' => 'bi-clock-history',
                         'Inactive' => 'bi-pause-circle',
                         'Suspended', 'Rejected' => 'bi-x-circle',
@@ -663,7 +698,7 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
                             <?php endif; ?>
                         </td>
                         <td>
-                            <span class="status-badge <?= e($statusLower) ?>">
+                            <span class="status-badge <?= e($statusClass) ?>">
                                 <i class="bi <?= e($statusIcon) ?>"></i>
                                 <?= e($row['status']) ?>
                             </span>
@@ -675,12 +710,26 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
                         </td>
                         <td class="text-end no-print">
                             <div class="btn-group">
-                                <a href="<?= e(APP_URL) ?>/modules/stakeholders/qr.php?id=<?= (int)$row['id'] ?>"
-                                   class="btn-action qr" title="QR Code">
-                                    <i class="bi bi-qr-code"></i>
-                                </a>
+                                <button type="button" class="btn-action view btn-view-assigned-hearings" 
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#stakeholderHearingsModal"
+                                        data-stakeholder-id="<?= (int)$row['id'] ?>" 
+                                        data-name="<?= e($row['full_name']) ?>"
+                                        data-avatar-style="<?= e(lphAvatarStyle($row['full_name'])) ?>"
+                                        data-initials="<?= e(lphInitials($row['full_name'])) ?>"
+                                        data-email="<?= e($row['email'] ?? '') ?>"
+                                        data-org="<?= e($row['organization'] ?? '') ?>"
+                                        title="View Assigned Hearings">
+                                    <i class="bi bi-calendar2-week"></i>
+                                </button>
+                                <?php if (!empty($row['qr_code']) && in_array($row['status'], ['Verified', 'Approved', 'Active'], true)): ?>
+                                    <a href="<?= e(APP_URL) ?>/modules/stakeholders/qr.php?id=<?= (int)$row['id'] ?>"
+                                       class="btn-action qr" title="Attendance QR Pass">
+                                        <i class="bi bi-qr-code"></i>
+                                    </a>
+                                <?php endif; ?>
                                 <?php if (canManage()): ?>
-                                    <?php if ($row['status'] !== 'Approved' && $row['status'] !== 'Active'): ?>
+                                    <?php if ($row['status'] !== 'Approved' && $row['status'] !== 'Active' && $row['status'] !== 'Verified'): ?>
                                         <button type="button" class="btn-action approve btn-set-status" 
                                                 data-id="<?= (int)$row['id'] ?>" data-status="Approved" title="Approve">
                                             <i class="bi bi-check-lg"></i>
@@ -693,14 +742,10 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
                                         </button>
                                     <?php endif; ?>
                                     <button type="button" class="btn-action edit btn-edit-stakeholder" 
-                                            data-id="<?= (int)$row['id'] ?>" title="Edit">
+                                            data-id="<?= (int)$row['id'] ?>" 
+                                            data-row="<?= htmlspecialchars(json_encode($row, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>" 
+                                            title="Edit">
                                         <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button type="button" class="btn-action delete" 
-                                            title="Delete"
-                                            data-confirm-delete="stakeholder &quot;<?= e($row['full_name']) ?>&quot;"
-                                            data-delete-url="<?= e(APP_URL) ?>/modules/stakeholders/ajax_delete.php?id=<?= (int)$row['id'] ?>">
-                                        <i class="bi bi-trash"></i>
                                     </button>
                                 <?php endif; ?>
                             </div>

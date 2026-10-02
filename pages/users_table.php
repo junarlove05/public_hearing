@@ -497,7 +497,7 @@ $roleColors = [
                     <th><i class="bi bi-shield"></i> Role</th>
                     <th>
                         <a class="sort-link" data-sort="status">
-                            <i class="bi bi-circle"></i> Status
+                            Status
                             <?php if ($sortBy === 'status'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
@@ -591,14 +591,6 @@ $roleColors = [
                                         data-id="<?= (int)$row['id'] ?>" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </button>
-                                <?php if ((int)$row['id'] !== $currentUserId): ?>
-                                    <button type="button" class="btn-action delete" 
-                                            title="Delete"
-                                            data-confirm-delete="user &quot;<?= e($row['full_name']) ?>&quot;"
-                                            data-delete-url="<?= e(APP_URL) ?>/pages/ajax_user_delete.php?id=<?= (int)$row['id'] ?>">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>

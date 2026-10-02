@@ -22,7 +22,8 @@ class Database
     public static function getInstance(): PDO
     {
         if (self::$instance === null) {
-            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
+            $port = defined('DB_PORT') && DB_PORT ? ';port=' . DB_PORT : '';
+            $dsn = 'mysql:host=' . DB_HOST . $port . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
 
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -32,6 +33,11 @@ class Database
 
             try {
                 self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
+                try {
+                    self::$instance->exec("SET SESSION sql_mode = (SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
+                } catch (Throwable $t) {
+                    // Ignore if sql_mode cannot be changed
+                }
             } catch (PDOException $e) {
                 error_log('Database connection failed: ' . $e->getMessage());
                 if (APP_DEBUG) {

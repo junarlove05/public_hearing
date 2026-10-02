@@ -64,6 +64,26 @@ try{
         f.replied_by=:user,f.updated_at=NOW()
     WHERE i.id=:issue"
   )->execute([':reply'=>$r['response_text'],':user'=>currentUserId(),':issue'=>$r['issue_id']]);
+
+  // Also auto-update linked Citizen Portal submission (CEF) and send official followup
+  $cefStmt = $pdo->prepare("SELECT cef_submission_id FROM hearing_issues WHERE id=:issue LIMIT 1");
+  $cefStmt->execute([':issue'=>$r['issue_id']]);
+  $cefSubId = (int)$cefStmt->fetchColumn();
+  if($cefSubId > 0){
+    $pdo->prepare("UPDATE cef_submissions SET status='Responded', updated_at=NOW() WHERE id=:id AND status NOT IN ('Closed','Resolved')")
+        ->execute([':id'=>$cefSubId]);
+    if($pdo->query("SHOW TABLES LIKE 'cef_followups'")->fetchColumn()){
+      $pdo->prepare(
+        "INSERT INTO cef_followups (submission_id, response_id, direction, sender_user_id, sender_name, message, public_visible, created_at)
+         VALUES (:sub_id, :resp_id, 'Council to Citizen', :user_id, 'City Council (Official Response)', :message, 1, NOW())"
+      )->execute([
+        ':sub_id'  => $cefSubId,
+        ':resp_id' => $id,
+        ':user_id' => currentUserId(),
+        ':message' => $r['response_text']
+      ]);
+    }
+  }
  }
 
  logActivity(currentUserId(),'Official Response Workflow',"Response #{$id}: {$r['status']} -> {$status}.");

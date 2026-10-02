@@ -184,7 +184,7 @@ unset($filterQuery['page']);
             $scheduleEnd .= ' · ends ' . formatDate($row['end_date']);
         }
         ?>
-        <tr>
+        <tr data-id="<?= (int)$row['id'] ?>" id="hearing-row-<?= (int)$row['id'] ?>">
             <td>
                 <span class="hearing-ref"><?= e($row['reference_number'] ?: ('H-' . $row['id'])) ?></span>
                 <div class="small text-muted"><?= e($row['type_name'] ?: 'Unspecified type') ?></div>
@@ -257,23 +257,19 @@ unset($filterQuery['page']);
 
             <td class="text-end no-print">
                 <div class="btn-group btn-group-sm">
-                    <a href="<?= e(APP_URL) ?>/modules/hearings/view.php?id=<?= (int)$row['id'] ?>" class="btn btn-outline-secondary" title="View">
+                    <a href="<?= e(APP_URL) ?>/modules/hearings/view.php?id=<?= (int)$row['id'] ?>" class="btn btn-outline-secondary" title="View Details">
                         <i class="bi bi-eye"></i>
                     </a>
 
-                    <?php if (canManage()): ?>
+                    <?php if ($row['status'] !== 'Completed' && $row['status'] !== 'Cancelled'): ?>
+                        <a href="<?= e(APP_URL) ?>/modules/attendance/index.php?hearing_id=<?= (int)$row['id'] ?>" class="btn btn-outline-primary" title="Attendance Tracking & QR Scanner">
+                            <i class="bi bi-qr-code-scan"></i>
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if (canManage() && $row['status'] !== 'Completed'): ?>
                         <button type="button" class="btn btn-outline-primary btn-edit-hearing" data-id="<?= (int)$row['id'] ?>" title="Edit">
                             <i class="bi bi-pencil-square"></i>
-                        </button>
-
-                        <button
-                            type="button"
-                            class="btn btn-outline-danger"
-                            data-confirm-delete="hearing &quot;<?= e($row['title']) ?>&quot;"
-                            data-delete-url="<?= e(APP_URL) ?>/modules/hearings/ajax_delete.php?id=<?= (int)$row['id'] ?>"
-                            title="Delete"
-                        >
-                            <i class="bi bi-trash"></i>
                         </button>
                     <?php endif; ?>
                 </div>

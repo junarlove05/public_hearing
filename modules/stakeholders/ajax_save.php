@@ -27,7 +27,10 @@ $allowedStatus = ['Pending', 'Approved', 'Rejected'];
 
 $errors = [];
 if ($fullName === '') $errors[] = 'Full name is required.';
-if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email address is required.';
+$isUnlistedEmail = in_array(strtolower($email), ['not publicly listed', 'unlisted', 'n/a', 'none'], true);
+if ($email === '' || (!$isUnlistedEmail && !filter_var($email, FILTER_VALIDATE_EMAIL))) {
+    $errors[] = 'A valid email address (or "Not publicly listed") is required.';
+}
 if (!in_array($status, $allowedStatus, true)) $errors[] = 'Invalid status value.';
 
 if (!empty($errors)) jsonResponse(false, implode(' ', $errors));
@@ -35,11 +38,12 @@ if (!empty($errors)) jsonResponse(false, implode(' ', $errors));
 $pdo = db();
 
 try {
-    // Uniqueness check on email (table has UNIQUE constraint, but we validate first for a friendly message).
-    $dupStmt = $pdo->prepare('SELECT id FROM stakeholders WHERE email = :email AND id != :id');
-    $dupStmt->execute([':email' => $email, ':id' => $id]);
-    if ($dupStmt->fetch()) {
-        jsonResponse(false, 'A stakeholder with this email address already exists.');
+    if (!$isUnlistedEmail && $email !== '') {
+        $dupStmt = $pdo->prepare('SELECT id FROM stakeholders WHERE email = :email AND id != :id');
+        $dupStmt->execute([':email' => $email, ':id' => $id]);
+        if ($dupStmt->fetch()) {
+            jsonResponse(false, 'A stakeholder with this email address already exists.');
+        }
     }
 
     if ($id > 0) {
@@ -51,6 +55,18 @@ try {
             ':name' => $fullName, ':email' => $email, ':phone' => $phone,
             ':org' => $organization, ':cat' => $categoryId, ':status' => $status, ':id' => $id,
         ]);
+        $isVerified = in_array($status, ['Verified', 'Approved', 'Active'], true);
+        if ($isVerified) {
+            $qrCheck = $pdo->prepare('SELECT code_value FROM qr_codes WHERE stakeholder_id = :sid LIMIT 1');
+            $qrCheck->execute([':sid' => $id]);
+            if (!$qrCheck->fetchColumn()) {
+                $code = 'STK-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+                $pdo->prepare('INSERT INTO qr_codes (stakeholder_id, code_value, created_at) VALUES (:sid, :code, NOW())')
+                    ->execute([':sid' => $id, ':code' => $code]);
+            }
+        } else {
+            $pdo->prepare('DELETE FROM qr_codes WHERE stakeholder_id = :sid')->execute([':sid' => $id]);
+        }
         logActivity(currentUserId(), 'Update', 'Updated stakeholder #' . $id . ' (' . $fullName . ')');
         jsonResponse(true, 'Stakeholder updated successfully.', ['id' => $id]);
     }
@@ -66,10 +82,12 @@ try {
     ]);
     $id = (int)$pdo->lastInsertId();
 
-    // Auto-generate a unique QR identification code for this stakeholder.
-    $code = generateCode('STK-');
-    $qrStmt = $pdo->prepare('INSERT INTO qr_codes (stakeholder_id, code_value, created_at) VALUES (:sid, :code, NOW())');
-    $qrStmt->execute([':sid' => $id, ':code' => $code]);
+    $isVerified = in_array($status, ['Verified', 'Approved', 'Active'], true);
+    if ($isVerified) {
+        $code = 'STK-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+        $qrStmt = $pdo->prepare('INSERT INTO qr_codes (stakeholder_id, code_value, created_at) VALUES (:sid, :code, NOW())');
+        $qrStmt->execute([':sid' => $id, ':code' => $code]);
+    }
 
     logActivity(currentUserId(), 'Insert', 'Created stakeholder #' . $id . ' (' . $fullName . ')');
     jsonResponse(true, 'Stakeholder created successfully.', ['id' => $id]);

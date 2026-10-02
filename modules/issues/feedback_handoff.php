@@ -35,17 +35,71 @@ include __DIR__.'/../../layouts/header.php';
 <td class="text-end"><?php if($r['existing_issue_id']): ?><a class="btn btn-sm btn-outline-success" href="workflow.php?id=<?= (int)$r['existing_issue_id'] ?>"><i class="bi bi-check-circle"></i> <?= e($r['issue_reference']) ?></a><?php else: ?><button class="btn btn-sm btn-primary btn-convert" data-row='<?= e(json_encode($r,JSON_HEX_APOS|JSON_HEX_QUOT)) ?>'><i class="bi bi-arrow-right-circle"></i> Create Issue</button><?php endif; ?></td>
 </tr><?php endforeach; ?>
 </tbody></table></div></div>
-</div></div>
-
-<div class="modal fade" id="convertModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form id="convertForm"><?= csrfField() ?><input type="hidden" name="feedback_id" id="cf_feedback">
-<div class="modal-header bg-dark text-white"><h5 class="modal-title">Create Issue from Feedback</h5><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal"></button></div>
-<div class="modal-body"><div id="cf_source" class="lphwf-message p-3 bg-light rounded mb-3"></div><div class="row g-3">
-<div class="col-md-8"><label class="form-label">Issue Title *</label><input class="form-control" name="title" id="cf_title" required></div>
-<div class="col-md-4"><label class="form-label">Priority</label><select class="form-select" name="priority"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></div>
-<div class="col-md-4"><label class="form-label">Category</label><select class="form-select" name="category_id"><option value="">Uncategorized</option><?php foreach($categories as $c): ?><option value="<?= (int)$c['id'] ?>"><?= e($c['name']) ?></option><?php endforeach; ?></select></div>
-<div class="col-md-4"><label class="form-label">Assigned Office</label><select class="form-select" name="assigned_office_id"><option value="">Unassigned</option><?php foreach($offices as $o): ?><option value="<?= (int)$o['id'] ?>"><?= e($o['name']) ?></option><?php endforeach; ?></select></div>
-<div class="col-md-4"><label class="form-label">Due Date</label><input type="datetime-local" class="form-control" name="due_at"></div>
-</div></div><div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Create Issue</button></div></form></div></div></div>
+</div></div><div class="modal fade" id="convertModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 820px;">
+    <div class="modal-content border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+      <form id="convertForm"><?= csrfField() ?>
+        <input type="hidden" name="feedback_id" id="cf_feedback">
+        <div class="modal-header py-3 px-4 bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style="width: 36px; height: 36px;">
+              <i class="bi bi-arrow-right-circle fs-5"></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" style="font-size: 1.05rem;">Create Issue from Feedback</h5>
+              <small class="text-muted" style="font-size: 0.8rem;">Escalate public feedback into a formal tracked issue</small>
+            </div>
+          </div>
+          <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div id="cf_source" class="lphwf-message p-3 bg-light rounded mb-3 small border"></div>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label small fw-semibold text-secondary mb-1">Issue Title *</label>
+              <input class="form-control" name="title" id="cf_title" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold text-secondary mb-1">Priority</label>
+              <select class="form-select" name="priority">
+                <option>Low</option>
+                <option selected>Medium</option>
+                <option>High</option>
+                <option>Critical</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Category</label>
+              <select class="form-select" name="category_id">
+                <option value="">Uncategorized</option>
+                <?php foreach($categories as $c): ?>
+                  <option value="<?= (int)$c['id'] ?>"><?= e($c['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Assigned Office</label>
+              <select class="form-select" name="assigned_office_id">
+                <option value="">Unassigned</option>
+                <?php foreach($offices as $o): ?>
+                  <option value="<?= (int)$o['id'] ?>"><?= e($o['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Due Date</label>
+              <input type="datetime-local" class="form-control" name="due_at">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer py-2.5 px-4 bg-light border-top d-flex justify-content-end gap-2">
+          <button class="btn btn-light border px-3" type="button" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary px-4 fw-semibold shadow-sm" type="submit"><i class="bi bi-arrow-right-circle me-1"></i> Create Issue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded',function(){

@@ -1,0 +1,280 @@
+/**
+ * assets/css/lph-mobile-responsive.css
+ * ------------------------------------------------------------------
+ * Comprehensive mobile phone & tablet responsiveness enhancement
+ * for Subsystem 7: Legislative Public Hearing (LPH).
+ * Optimizes navigation, tables, modals, touch tap targets, and forms
+ * for screens from 320px up to 1024px.
+ * ------------------------------------------------------------------
+ */
+
+/* ==================================================================
+   1. GLOBAL MOBILE LAYOUT & SPACING
+   ================================================================== */
+@media (max-width: 991.98px) {
+  html, body {
+    overflow-x: hidden !important;
+    font-size: 14px;
+  }
+
+  .main-content,
+  .app-wrapper .main-content,
+  body.sidebar-collapsed .main-content {
+    margin-left: 0 !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 4.75rem !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Page headers / Hero bars */
+  .lphwf-head,
+  .breadcrumb-bar,
+  .page-header-wrap {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
+  }
+
+  .lphwf-head h1 {
+    font-size: 1.45rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .lphwf-head p {
+    font-size: 0.85rem !important;
+  }
+
+  .lphwf-head > div:last-child {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+
+  .lphwf-head > div:last-child .btn {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+}
+
+/* ==================================================================
+   2. MOBILE MODALS & POP-UPS
+   ================================================================== */
+@media (max-width: 767.98px) {
+  .modal-dialog {
+    margin: 0.5rem !important;
+    max-width: calc(100vw - 1rem) !important;
+  }
+
+  .modal-content {
+    max-height: calc(100vh - 1rem) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 12px !important;
+  }
+
+  .modal-header {
+    padding: 0.85rem 1rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  .modal-header .modal-title {
+    font-size: 0.98rem !important;
+  }
+
+  .modal-body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 1rem !important;
+    flex: 1 1 auto !important;
+  }
+
+  .modal-footer {
+    padding: 0.65rem 1rem !important;
+    flex-shrink: 0 !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 auto !important;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* ==================================================================
+   3. MOBILE RESPONSIVE TABLES & HORIZONTAL SCROLL GUARDS
+   ================================================================== */
+@media (max-width: 991.98px) {
+  .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 10px !important;
+    border: 1px solid #e2e8f0 !important;
+    margin-bottom: 1rem !important;
+    background: #ffffff !important;
+  }
+
+  /* Force minimum readable width on data tables so content doesn't crush */
+  .table-responsive table.table,
+  .table-responsive .dataTable {
+    min-width: 650px !important;
+  }
+
+  /* Attendance and invitations detail tables */
+  #invitationsTable,
+  #attendanceTable,
+  #hearingsTable,
+  #issuesTable,
+  #actionsTable {
+    min-width: 720px !important;
+  }
+
+  /* Subtle swipe hint gradient indicator */
+  .table-responsive {
+    position: relative !important;
+  }
+}
+
+/* ==================================================================
+   4. TOUCH-FRIENDLY BUTTONS & TAP TARGETS (Minimum 40px)
+   ================================================================== */
+@media (max-width: 767.98px) {
+  .btn:not(.btn-sm) {
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.88rem !important;
+  }
+
+  .btn-sm {
+    min-height: 32px !important;
+    padding: 0.25rem 0.6rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Action buttons inside table rows */
+  .table td .btn-group {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Form controls */
+  .form-control,
+  .form-select {
+    min-height: 42px !important;
+    font-size: 0.92rem !important;
+  }
+}
+
+/* ==================================================================
+   5. MOBILE FILTER BARS & SEARCH INPUTS
+   ================================================================== */
+@media (max-width: 767.98px) {
+  .card-body .row.g-2,
+  .card-body .row.g-3 {
+    --bs-gutter-y: 0.6rem !important;
+  }
+
+  .filter-bar,
+  .search-filter-card {
+    padding: 0.85rem !important;
+  }
+
+  .filter-bar .col-md-3,
+  .filter-bar .col-md-4,
+  .filter-bar .col-md-6 {
+    width: 100% !important;
+  }
+
+  /* Quick action buttons in filter bar */
+  .filter-actions {
+    width: 100% !important;
+    display: flex !important;
+    gap: 0.4rem !important;
+  }
+
+  .filter-actions .btn {
+    flex: 1 !important;
+  }
+}
+
+/* ==================================================================
+   6. STATS & FUNNEL CARDS ON MOBILE
+   ================================================================== */
+@media (max-width: 767.98px) {
+  .lphwf-stage,
+  .lphwf-funnel,
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem !important;
+  }
+
+  .lphwf-card-stat,
+  .stat-card {
+    padding: 0.75rem !important;
+  }
+
+  .lphwf-stat strong,
+  .stat-card h3 {
+    font-size: 1.15rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .lphwf-stage,
+  .lphwf-funnel {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ==================================================================
+   7. QR CODE SCANNER ON MOBILE (CAMERA ADAPTATION)
+   ================================================================== */
+#cameraReader,
+#cameraReader video {
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 12px !important;
+  object-fit: cover !important;
+}
+
+#cameraSelectWrap {
+  margin-top: 0.5rem !important;
+}
+
+@media (max-width: 576px) {
+  .scanner-control-bar {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  .scanner-control-bar .btn {
+    width: 100% !important;
+  }
+}
+
+/* ==================================================================
+   8. TABS & NAVIGATION SCROLL ON MOBILE
+   ================================================================== */
+@media (max-width: 991.98px) {
+  .nav-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+  }
+
+  .nav-tabs .nav-link {
+    white-space: nowrap !important;
+    padding: 0.5rem 0.85rem !important;
+    font-size: 0.8rem !important;
+  }
+}

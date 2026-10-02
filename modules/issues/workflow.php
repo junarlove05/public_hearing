@@ -64,7 +64,11 @@ include __DIR__.'/../../layouts/header.php';
 <?php if($issue['resolution_summary']): ?><div class="alert alert-success mt-3 mb-0"><strong>Resolution</strong><div><?= nl2br(e($issue['resolution_summary'])) ?></div></div><?php endif; ?>
 </div></div>
 
-<?php if(canManage()): ?>
+<?php 
+$isAdmin = (function_exists('isAdmin') && isAdmin()) || (isset($_SESSION['role_id']) && (int)$_SESSION['role_id'] === 1);
+$canUpdateWorkflow = $isAdmin || canManage() || ((int)($issue['assigned_user_id'] ?? 0) === (int)(currentUserId() ?? 0) && (int)(currentUserId() ?? 0) > 0);
+if ($canUpdateWorkflow): 
+?>
 <div class="card lphwf-card mb-3"><div class="card-header">Workflow Transition</div><div class="card-body"><form id="transitionForm" class="row g-2"><?= csrfField() ?><input type="hidden" name="id" value="<?= $id ?>"><div class="col-md-3"><select class="form-select" name="status"><?php foreach(['Open','In Progress','Resolved','Closed'] as $s): ?><option <?= $issue['status']===$s?'selected':'' ?>><?= e($s) ?></option><?php endforeach; ?></select></div><div class="col-md-7"><textarea class="form-control" name="resolution_summary" rows="2" placeholder="Resolution summary required for Resolved / Closed"><?= e($issue['resolution_summary']?:'') ?></textarea></div><div class="col-md-2"><button class="btn btn-primary w-100">Save</button></div></form></div></div>
 <?php endif; ?>
 
@@ -80,5 +84,5 @@ include __DIR__.'/../../layouts/header.php';
 </div>
 </div>
 </div></div>
-<?php if(canManage()): ?><script>document.addEventListener('DOMContentLoaded',()=>{transitionForm.onsubmit=async e=>{e.preventDefault();const r=await appPostForm(APP_URL+'/modules/issues/ajax_transition.php',transitionForm);if(r.success){appToast('success',r.message);setTimeout(()=>location.reload(),350);}else if(!r.session_expired)Swal.fire('Workflow Error',r.message,'error');};});</script><?php endif; ?>
+<?php if($canUpdateWorkflow): ?><script>document.addEventListener('DOMContentLoaded',()=>{if(window.transitionForm){transitionForm.onsubmit=async e=>{e.preventDefault();const r=await appPostForm(APP_URL+'/modules/issues/ajax_transition.php',transitionForm);if(r.success){appToast('success',r.message);setTimeout(()=>location.reload(),350);}else if(!r.session_expired)Swal.fire('Workflow Error',r.message,'error');};}});</script><?php endif; ?>
 <?php include __DIR__.'/../../layouts/footer.php'; ?>

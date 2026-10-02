@@ -13,9 +13,15 @@ $pdo = db();
 $hearingId = (int)($_GET['hearing_id'] ?? 0);
 $search    = clean($_GET['search'] ?? '');
 $statusFil = clean($_GET['status'] ?? '');
+$sessionDate = clean($_GET['session_date'] ?? $_GET['date'] ?? '');
 
 $where = ['a.hearing_id = :hearing_id'];
 $params = [':hearing_id' => $hearingId];
+
+if ($sessionDate !== '') {
+    $where[] = 'a.attendance_date = :adate';
+    $params[':adate'] = $sessionDate;
+}
 
 if ($search !== '') {
     $where[] = '(s.full_name LIKE :search1 OR s.email LIKE :search2 OR s.organization LIKE :search3)';
@@ -431,7 +437,7 @@ $statusIcons = [
                 <tr>
                     <th><i class="bi bi-person"></i> Stakeholder</th>
                     <th><i class="bi bi-building"></i> Organization</th>
-                    <th><i class="bi bi-circle"></i> Status</th>
+                    <th>Status</th>
                     <th><i class="bi bi-clock"></i> Checked In At</th>
                     <th class="text-end no-print"><i class="bi bi-tools"></i> Actions</th>
                 </tr>
@@ -490,14 +496,7 @@ $statusIcons = [
                             </span>
                         </td>
                         <td class="text-end no-print">
-                            <?php if (canManage() || hasRole([ROLE_COMMITTEE])): ?>
-                                <button type="button" class="btn-action delete" 
-                                        title="Remove Record"
-                                        data-confirm-delete="this attendance record"
-                                        data-delete-url="<?= e(APP_URL) ?>/modules/attendance/ajax_delete.php?id=<?= (int)$row['id'] ?>">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            <?php endif; ?>
+                            <span class="text-muted" style="font-size: 0.8rem;">—</span>
                         </td>
                     </tr>
                 <?php endforeach; ?>

@@ -32,8 +32,22 @@ $offices = $pdo->query(
      ORDER BY name"
 )->fetchAll();
 
+// Assignable users: strictly staff/committee members, excluding Administrators and Public users
+$assignableUsers = $pdo->query(
+    "SELECT u.id, u.full_name, u.username, u.email, r.name AS role_name, o.name AS office_name, u.office_id
+     FROM users u
+     LEFT JOIN roles r ON r.id = u.role_id
+     LEFT JOIN offices o ON o.id = u.office_id
+     WHERE u.deleted_at IS NULL AND u.status = 'Active'
+       AND LOWER(COALESCE(r.name, '')) NOT LIKE '%admin%'
+       AND LOWER(COALESCE(r.name, '')) NOT LIKE '%public%'
+       AND LOWER(COALESCE(r.name, '')) NOT LIKE '%stakeholder%'
+       AND LOWER(COALESCE(u.username, '')) != 'admin'
+       AND u.id != 1
+     ORDER BY u.full_name ASC"
+)->fetchAll();
+
 include __DIR__ . '/../../layouts/header.php';
-$issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
 ?>
 <style>
     /* Issues - Dark Cards, Gray Labels, Colored Icons */
@@ -56,7 +70,7 @@ $issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
         --is-cyan: #06B6D4;
         --is-orange: #F97316;
         --is-teal: #14B8A6;
-        --is-indigo: #6366F1;
+        --is-indigo: #0F2137;
     }
 
     /* Breadcrumb Bar */
@@ -226,12 +240,11 @@ $issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
     }
 
     .table tbody tr {
-        transition: all 0.2s ease;
+        transition: background-color 0.15s ease;
     }
 
     .table tbody tr:hover {
         background: #FFFBEB;
-        transform: scale(1.002);
     }
 
     .table tbody tr:last-child td {
@@ -383,7 +396,7 @@ $issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
     }
 
     .btn-action:hover {
-        transform: scale(1.15);
+        transform: translateY(-2px);
     }
 
     .btn-action.edit {
@@ -575,38 +588,46 @@ $issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
   </div>
 </div>
 
-<?php if (canManage()): ?>
+<?php if (canManage() || (function_exists('isLoggedIn') && isLoggedIn())): ?>
 <div class="modal fade" id="issueModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 820px;">
+    <div class="modal-content border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
       <form id="issueForm">
         <?= csrfField() ?>
         <input type="hidden" name="id" id="is_id" value="0">
-        <div class="modal-header">
-          <h5 class="modal-title" id="issueModalTitle"><i class="bi bi-exclamation-triangle"></i> Log Issue</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header py-3 px-4 bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style="width: 36px; height: 36px;">
+              <i class="bi bi-exclamation-triangle fs-5 text-warning"></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" id="issueModalTitle" style="font-size: 1.05rem;">Log Issue</h5>
+              <small class="text-muted" style="font-size: 0.8rem;">Record citizen concern, feedback topic, and routing</small>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body p-4">
           <div class="row g-3">
             <div class="col-12">
-              <label class="form-label">Title <span class="text-danger">*</span></label>
-              <input type="text" name="title" id="is_title" class="form-control" required maxlength="255">
+              <label class="form-label small fw-semibold text-secondary mb-1">Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" id="is_title" class="form-control" placeholder="Enter concise issue summary" required maxlength="255">
             </div>
             <div class="col-12">
-              <label class="form-label">Description <span class="text-danger">*</span></label>
-              <textarea name="description" id="is_description" class="form-control" rows="4" required></textarea>
+              <label class="form-label small fw-semibold text-secondary mb-1">Description <span class="text-danger">*</span></label>
+              <textarea name="description" id="is_description" class="form-control" rows="3" placeholder="Provide full details and background of the issue..." required></textarea>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Category</label>
+              <label class="form-label small fw-semibold text-secondary mb-1">Category</label>
               <select name="category_id" id="is_category" class="form-select">
-                <option value="">-- Select --</option>
+                <option value="">-- Select Category --</option>
                 <?php foreach ($categories as $c): ?>
                   <option value="<?= (int)$c['id'] ?>"><?= e($c['name']) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Related Hearing</label>
+              <label class="form-label small fw-semibold text-secondary mb-1">Related Hearing</label>
               <select name="hearing_id" id="is_hearing" class="form-select">
                 <option value="">-- None --</option>
                 <?php foreach ($hearings as $h): ?>
@@ -614,66 +635,56 @@ $issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-3">
-            <label class="form-label">Priority</label>
-
-            <select name="priority" id="is_priority" class="form-select">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Priority</label>
+              <select name="priority" id="is_priority" class="form-select">
                 <?php foreach (['Low', 'Medium', 'High', 'Critical'] as $p): ?>
-                <option
-                    value="<?= e($p) ?>"
-                    <?= $p === 'Medium' ? 'selected' : '' ?>
-                >
-                    <?= e($p) ?>
-                </option>
+                <option value="<?= e($p) ?>" <?= $p === 'Medium' ? 'selected' : '' ?>><?= e($p) ?></option>
                 <?php endforeach; ?>
-            </select>
+              </select>
             </div>
-
-            <div class="col-md-3">
-            <label class="form-label">Status</label>
-
-            <select name="status" id="is_status" class="form-select">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
+              <select name="status" id="is_status" class="form-select">
                 <?php foreach (['Open', 'In Progress', 'Resolved', 'Closed'] as $s): ?>
-                <option value="<?= e($s) ?>">
-                    <?= e($s) ?>
-                </option>
+                <option value="<?= e($s) ?>"><?= e($s) ?></option>
                 <?php endforeach; ?>
-            </select>
+              </select>
             </div>
-
-            <div class="col-md-3">
-            <label class="form-label">Assigned Office</label>
-
-            <select
-                name="assigned_office_id"
-                id="is_office"
-                class="form-select"
-            >
-                <option value="">-- Unassigned --</option>
-
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Assigned Office</label>
+              <select name="assigned_office_id" id="is_office" class="form-select">
+                <option value="">-- Unassigned Office --</option>
                 <?php foreach ($offices as $office): ?>
-                <option value="<?= (int)$office['id'] ?>">
-                    <?= e($office['name']) ?>
+                <option value="<?= (int)$office['id'] ?>"><?= e($office['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">
+                <i class="bi bi-person-check text-primary me-1"></i> Assigned Staff / Person
+              </label>
+              <select name="assigned_user_id" id="is_user" class="form-select">
+                <option value="">-- Unassigned Staff --</option>
+                <?php foreach ($assignableUsers as $u): ?>
+                <option value="<?= (int)$u['id'] ?>" data-office-id="<?= (int)($u['office_id'] ?? 0) ?>">
+                  <?= e($u['full_name']) ?> (<?= e($u['role_name'] ?: 'Staff') ?><?= $u['office_name'] ? ' · ' . e($u['office_name']) : '' ?>)
                 </option>
                 <?php endforeach; ?>
-            </select>
+              </select>
+              <div class="form-text text-muted" style="font-size: 0.72rem;">
+                <i class="bi bi-shield-check text-success"></i> Administrators are excluded from assignment.
+              </div>
             </div>
-
-            <div class="col-md-3">
-            <label class="form-label">Due Date</label>
-
-            <input
-                type="datetime-local"
-                name="due_at"
-                id="is_due_at"
-                class="form-control"
-            >
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Due Date</label>
+              <input type="datetime-local" name="due_at" id="is_due_at" class="form-control">
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Save Issue</button>
+        <div class="modal-footer py-2.5 px-4 bg-light border-top d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-light border px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm"><i class="bi bi-check-circle me-1"></i> Save Issue</button>
         </div>
       </form>
     </div>
@@ -683,12 +694,5 @@ $issueHandoffUrl = APP_URL . '/modules/issues/feedback_handoff.php';
 
 <?php
 $extraJs = [APP_URL . '/assets/js/issues.js'];
-?>
-<div class="position-fixed bottom-0 end-0 p-3 no-print" style="z-index:1040">
-  <a class="btn btn-warning shadow" href="<?= e(APP_URL) ?>/modules/issues/feedback_handoff.php">
-    <i class="bi bi-arrow-left-right"></i> Feedback Handoff
-  </a>
-</div>
-<?php
 include __DIR__ . '/../../layouts/footer.php';
 ?>

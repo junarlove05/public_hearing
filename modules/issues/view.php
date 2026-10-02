@@ -11,6 +11,9 @@
 require_once __DIR__ . '/../../includes/auth.php';
 requireRole([ROLE_ADMIN, ROLE_STAFF, ROLE_COMMITTEE]);
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
 $id = (int)($_GET['id'] ?? 0);
 $pdo = db();
 
@@ -19,7 +22,10 @@ $stmt = $pdo->prepare(
         i.*,
         ic.name AS category_name,
         h.title AS hearing_title,
-        o.name AS assigned_office
+        o.name AS assigned_office,
+        u.full_name AS assigned_user_name,
+        u.email AS assigned_user_email,
+        cs.reference_number AS cef_reference_number
      FROM hearing_issues i
      LEFT JOIN hearing_issue_categories ic
         ON ic.id = i.category_id
@@ -27,6 +33,10 @@ $stmt = $pdo->prepare(
         ON h.id = i.hearing_id
      LEFT JOIN offices o
         ON o.id = i.assigned_office_id
+     LEFT JOIN users u
+        ON u.id = i.assigned_user_id
+     LEFT JOIN cef_submissions cs
+        ON cs.id = i.cef_submission_id
      WHERE i.id = :id'
 );
 $stmt->execute([':id' => $id]);
@@ -35,6 +45,117 @@ $issue = $stmt->fetch();
 if (!$issue) {
     setFlash('danger', 'Issue not found.');
     redirect(APP_URL . '/modules/issues/index.php');
+}
+
+$isAdmin = (function_exists('isAdmin') && isAdmin()) || (isset($_SESSION['role_id']) && (int)$_SESSION['role_id'] === 1);
+$currentUid = (int)(currentUserId() ?? 0);
+$isAssignedUser = ($currentUid > 0 && (int)($issue['assigned_user_id'] ?? 0) === $currentUid);
+$canManageIssue = $isAdmin || canManage() || $isAssignedUser;
+
+// Assignable users: strictly staff/committee members, excluding Administrators and Public users
+$assignableUsers = $pdo->query(
+    "SELECT u.id, u.full_name, u.username, u.email, r.name AS role_name, o.name AS office_name, u.office_id
+     FROM users u
+     LEFT JOIN roles r ON r.id = u.role_id
+     LEFT JOIN offices o ON o.id = u.office_id
+     WHERE u.deleted_at IS NULL AND u.status = 'Active'
+       AND LOWER(COALESCE(r.name, '')) NOT LIKE '%admin%'
+       AND LOWER(COALESCE(r.name, '')) NOT LIKE '%public%'
+       AND LOWER(COALESCE(r.name, '')) NOT LIKE '%stakeholder%'
+       AND LOWER(COALESCE(u.username, '')) != 'admin'
+       AND u.id != 1
+     ORDER BY u.full_name ASC"
+)->fetchAll();
+
+$officesList = $pdo->query(
+    "SELECT id, name, code FROM offices WHERE status = 'Active' ORDER BY name ASC"
+)->fetchAll();
+
+$categories = $pdo->query(
+    "SELECT id, name FROM hearing_issue_categories ORDER BY name ASC"
+)->fetchAll();
+
+$hearings = $pdo->query(
+    "SELECT id, title FROM hearings ORDER BY hearing_date DESC, hearing_time DESC"
+)->fetchAll();
+
+// Fallback: direct POST processing for status & note update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unified_update'])) {
+    requireCsrf();
+    $postStatus = clean($_POST['status'] ?? '');
+    $postNote = clean($_POST['note'] ?? '');
+    $postResolution = trim((string)($_POST['resolution_summary'] ?? ''));
+    if ($postResolution === '' && $postNote !== '') {
+        $postResolution = $postNote;
+    }
+
+    $currentUid = (int)(currentUserId() ?? 0);
+    $isAssigned = ((int)($issue['assigned_user_id'] ?? 0) === $currentUid && $currentUid > 0);
+    if (!canManage() && !$isAdmin && !$isAssigned) {
+        setFlash('danger', 'You do not have permission to update this issue.');
+        redirect(APP_URL . '/modules/issues/view.php?id=' . $id);
+    }
+
+    $allowed = ['Open', 'In Progress', 'Resolved', 'Closed'];
+    if (in_array($postStatus, $allowed, true)) {
+        $statusChanged = ($issue['status'] !== $postStatus);
+
+        if (in_array($postStatus, ['Resolved', 'Closed'], true) && $postResolution === '' && $postNote === '') {
+            $postResolution = "Marked as {$postStatus} by " . (currentUser()['full_name'] ?? 'Assigned Staff');
+            $postNote = $postResolution;
+        }
+
+        $resolvedAt = in_array($postStatus, ['Resolved', 'Closed'], true) ? ($issue['resolved_at'] ?: date('Y-m-d H:i:s')) : null;
+        $resolvedBy = in_array($postStatus, ['Resolved', 'Closed'], true) ? ($issue['resolved_by'] ?: currentUserId()) : null;
+        $closedAt   = ($postStatus === 'Closed') ? ($issue['closed_at'] ?: date('Y-m-d H:i:s')) : null;
+
+        $pdo->prepare(
+            'UPDATE hearing_issues
+             SET status = :status,
+                 resolution_summary = CASE WHEN :summary <> "" THEN :summary_val ELSE resolution_summary END,
+                 resolved_by = :resolved_by,
+                 resolved_at = :resolved_at,
+                 closed_at = :closed_at,
+                 updated_at = NOW()
+             WHERE id = :id'
+        )->execute([
+            ':status'      => $postStatus,
+            ':summary'     => $postResolution,
+            ':summary_val' => $postResolution ?: null,
+            ':resolved_by' => $resolvedBy,
+            ':resolved_at' => $resolvedAt,
+            ':closed_at'   => $closedAt,
+            ':id'          => $id,
+        ]);
+
+        if (!in_array($postStatus, ['Resolved', 'Closed'], true)) {
+            $pdo->prepare('UPDATE hearing_issues SET closed_at = NULL, resolved_at = NULL WHERE id = :id')->execute([':id' => $id]);
+        }
+
+        if ($statusChanged && $postNote !== '') {
+            $hist = "Status changed from {$issue['status']} to {$postStatus}. Note: {$postNote}";
+        } elseif ($statusChanged) {
+            $hist = "Status changed from {$issue['status']} to {$postStatus}." . ($postResolution !== '' ? ' Resolution: ' . $postResolution : '');
+        } else {
+            $hist = $postNote;
+        }
+
+        if ($hist !== '') {
+            $pdo->prepare(
+                'INSERT INTO hearing_issue_history (issue_id, note, created_by, created_at)
+                 VALUES (:id, :note, :user, NOW())'
+            )->execute([
+                ':id'   => $id,
+                ':note' => $hist,
+                ':user' => currentUserId(),
+            ]);
+        }
+
+        logActivity(currentUserId(), 'Issue Workflow', "{$issue['reference_number']} status {$issue['status']} -> {$postStatus}." . ($postNote !== '' ? " Note: {$postNote}" : ''));
+
+        setFlash('success', 'Issue status and progress note updated successfully.');
+        redirect(APP_URL . '/modules/issues/view.php?id=' . $id . '&_t=' . time());
+    }
 }
 
 // Merge issue_history notes and issue_assignments into one chronological timeline.
@@ -142,7 +263,7 @@ include __DIR__ . '/../../layouts/header.php';
         --iv-cyan: #06B6D4;
         --iv-orange: #F97316;
         --iv-teal: #14B8A6;
-        --iv-indigo: #6366F1;
+        --iv-indigo: #0F2137;
     }
 
     /* Breadcrumb Bar */
@@ -467,12 +588,18 @@ include __DIR__ . '/../../layouts/header.php';
   <?php include __DIR__ . '/../../layouts/sidebar.php'; ?>
 
   <div class="main-content">
-    <div class="breadcrumb-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <?php include __DIR__ . '/../../layouts/top_controls.php'; ?>
+    <div class="breadcrumb-bar d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
       <div>
         <a href="index.php" class="text-decoration-none small no-print"><i class="bi bi-arrow-left"></i> Back to Issue Logging</a>
         <h5 class="mb-0 mt-1"><i class="bi bi-exclamation-triangle"></i> <?= e($issue['title']) ?></h5>
       </div>
-      <div class="d-flex gap-2 no-print">
+      <div class="d-flex gap-2 align-items-center no-print">
+        <?php if ($canManageIssue): ?>
+          <button type="button" class="btn btn-primary btn-sm fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#updateIssueModal">
+            <i class="bi bi-pencil-square me-1"></i> Edit Issue
+          </button>
+        <?php endif; ?>
         <?= priorityBadge($issue['priority']) ?>
         <?= statusBadge($issue['status']) ?>
       </div>
@@ -484,85 +611,336 @@ include __DIR__ . '/../../layouts/header.php';
           <div class="card-header"><i class="bi bi-info-circle"></i> Issue Details</div>
           <div class="card-body">
             <table class="table table-borderless mb-0">
-              <tr><th class="text-muted small" style="width:30%;">Category</th><td><?= e($issue['category_name'] ?? '-') ?></td></tr>
+              <tr><th class="text-muted small" style="width:30%;">Reference No.</th><td><span class="badge bg-secondary"><?= e($issue['reference_number']) ?></span></td></tr>
+              <tr><th class="text-muted small">Category</th><td><?= e($issue['category_name'] ?? '-') ?></td></tr>
               <tr><th class="text-muted small">Related Hearing</th><td><?= e($issue['hearing_title'] ?? '-') ?></td></tr>
-              <tr><th class="text-muted small">Assigned Office</th><td id="currentOffice"><?= e($issue['assigned_office'] ?: 'Unassigned') ?></td></tr>
+              <tr>
+                <th class="text-muted small">Assigned To</th>
+                <td>
+                  <?php if (!empty($issue['assigned_user_name'])): ?>
+                    <span class="badge bg-primary text-white"><i class="bi bi-person-fill me-1"></i> <?= e($issue['assigned_user_name']) ?></span>
+                    <?php if (!empty($issue['assigned_office'])): ?>
+                      <span class="badge bg-light text-dark border ms-1"><i class="bi bi-building me-1"></i> <?= e($issue['assigned_office']) ?></span>
+                    <?php endif; ?>
+                  <?php elseif (!empty($issue['assigned_office'])): ?>
+                    <span class="badge bg-light text-dark border"><i class="bi bi-building me-1"></i> <?= e($issue['assigned_office']) ?></span>
+                  <?php else: ?>
+                    <span class="text-muted fst-italic">Unassigned</span>
+                  <?php endif; ?>
+                </td>
+              </tr>
               <tr><th class="text-muted small">Priority</th><td><?= priorityBadge($issue['priority']) ?></td></tr>
               <tr><th class="text-muted small">Status</th><td><?= statusBadge($issue['status']) ?></td></tr>
+              <?php if (!empty($issue['cef_reference_number'])): ?>
+                <tr>
+                  <th class="text-muted small">Citizen Portal</th>
+                  <td>
+                    <a href="<?= e(APP_URL) ?>/modules/feedback/cef_ai_review.php?id=<?= (int)$issue['cef_submission_id'] ?>" class="badge bg-primary text-white text-decoration-none">
+                      <i class="bi bi-person-lines-fill me-1"></i> <?= e($issue['cef_reference_number']) ?>
+                    </a>
+                  </td>
+                </tr>
+              <?php endif; ?>
               <tr><th class="text-muted small">Logged</th><td><?= formatDateTime($issue['created_at']) ?></td></tr>
+              <?php if (!empty($issue['due_at'])): ?>
+                <tr><th class="text-muted small">Due Date</th><td><?= formatDateTime($issue['due_at']) ?></td></tr>
+              <?php endif; ?>
+              <?php if (!empty($issue['resolution_summary'])): ?>
+                <tr>
+                  <th class="text-muted small">Resolution</th>
+                  <td><div class="alert alert-success py-2 px-3 mb-0 small"><?= nl2br(e($issue['resolution_summary'])) ?></div></td>
+                </tr>
+              <?php endif; ?>
               <tr><th class="text-muted small">Description</th><td><?= nl2br(e($issue['description'])) ?></td></tr>
             </table>
           </div>
         </div>
 
-        <?php if (!empty($linkedActions)): ?>
         <div class="card">
-          <div class="card-header"><i class="bi bi-link-45deg"></i> Linked Response &amp; Action Records</div>
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-link-45deg"></i> Linked Response &amp; Action Records</span>
+            <?php if (canManage()): ?>
+              <a href="<?= e(APP_URL) ?>/modules/actions/index.php" class="btn btn-primary btn-sm no-print">
+                <i class="bi bi-arrow-up-right-square me-1"></i> Response &amp; Action Tracking
+              </a>
+            <?php endif; ?>
+          </div>
           <div class="list-group list-group-flush">
-            <?php foreach ($linkedActions as $a): ?>
-              <div class="list-group-item d-flex justify-content-between align-items-center">
-                <a href="<?= e(APP_URL) ?>/modules/actions/view.php?id=<?= (int)$a['id'] ?>" class="text-decoration-none"><?= e($a['title']) ?></a>
-                <div class="d-flex gap-2 align-items-center">
-                  <?php if ($a['deadline']): ?><span class="text-muted small">Due <?= formatDate($a['deadline']) ?></span><?php endif; ?>
-                  <?= statusBadge($a['status']) ?>
+            <?php if (empty($linkedActions)): ?>
+              <div class="list-group-item text-muted small">No action records linked to this issue yet.</div>
+            <?php else: ?>
+              <?php foreach ($linkedActions as $a): ?>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <a href="<?= e(APP_URL) ?>/modules/actions/view.php?id=<?= (int)$a['id'] ?>" class="text-decoration-none fw-semibold">
+                    <i class="bi bi-arrow-right-circle text-primary me-1"></i><?= e($a['title']) ?>
+                  </a>
+                  <div class="d-flex gap-2 align-items-center">
+                    <?php if ($a['deadline']): ?><span class="text-muted small">Due <?= formatDate($a['deadline']) ?></span><?php endif; ?>
+                    <?= statusBadge($a['status']) ?>
+                  </div>
                 </div>
-              </div>
-            <?php endforeach; ?>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </div>
         </div>
-        <?php endif; ?>
       </div>
 
       <div class="col-lg-5">
-        <?php if (canManage()): ?>
-        <div class="card mb-3 no-print">
-          <div class="card-header"><i class="bi bi-diagram-3"></i> Assign / Reassign</div>
-          <div class="card-body">
-            <form id="assignForm" class="d-flex gap-2">
-              <?= csrfField() ?>
-              <input type="hidden" name="id" value="<?= (int)$issue['id'] ?>">
-              <input type="text" name="assigned_to" class="form-control form-control-sm" placeholder="Office or person name" required>
-              <button type="submit" class="btn btn-primary btn-sm text-nowrap"><i class="bi bi-send"></i> Assign</button>
-            </form>
+        <!-- 1. Assign Issue Card (Admin / Staff) -->
+        <?php if ($isAdmin || canManage()): ?>
+        <div class="card mb-3 no-print shadow-sm" style="border-top: 3.5px solid #0F2137;">
+          <div class="card-header bg-white d-flex align-items-center justify-content-between py-2.5">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-diagram-3 text-primary fs-5"></i>
+              <span class="fw-bold text-dark">Assign Issue</span>
+            </div>
+            <span class="badge bg-secondary"><?= $isAdmin ? 'Administrator' : 'Staff' ?></span>
           </div>
-        </div>
-
-        <div class="card mb-3 no-print">
-          <div class="card-header"><i class="bi bi-pencil-square"></i> Add Note</div>
-          <div class="card-body">
-            <form id="noteForm">
+          <div class="card-body p-3">
+            <form id="assignForm">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$issue['id'] ?>">
-              <textarea name="note" class="form-control form-control-sm mb-2" rows="3" placeholder="Add a progress note or update..." required></textarea>
-              <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-circle"></i> Add Note</button>
+
+              <div class="mb-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">
+                  <i class="bi bi-person-check text-primary me-1"></i> Assign to Staff / Person
+                </label>
+                <select name="assigned_user_id" id="assignUserSelect" class="form-select form-select-sm" required>
+                  <option value="">— Select Staff / Committee Member —</option>
+                  <?php foreach ($assignableUsers as $u): ?>
+                    <option value="<?= (int)$u['id'] ?>" 
+                            data-office-id="<?= (int)($u['office_id'] ?? 0) ?>"
+                            <?= ((int)($issue['assigned_user_id'] ?? 0) === (int)$u['id']) ? 'selected' : '' ?>>
+                      <?= e($u['full_name']) ?> (<?= e($u['role_name'] ?: 'Staff') ?><?= $u['office_name'] ? ' · ' . e($u['office_name']) : '' ?>)
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+                <div class="form-text text-muted" style="font-size: 0.72rem;">
+                  <i class="bi bi-shield-check text-success"></i> Administrators cannot be assigned to issues.
+                </div>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">
+                  <i class="bi bi-building text-primary me-1"></i> Assigned Office
+                </label>
+                <select name="assigned_office_id" id="assignOfficeSelect" class="form-select form-select-sm">
+                  <option value="">— Select Office —</option>
+                  <?php foreach ($officesList as $o): ?>
+                    <option value="<?= (int)$o['id'] ?>" <?= ((int)($issue['assigned_office_id'] ?? 0) === (int)$o['id']) ? 'selected' : '' ?>>
+                      <?= e($o['name']) ?><?= $o['code'] ? ' (' . e($o['code']) . ')' : '' ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">Remarks / Instructions</label>
+                <input type="text" name="remarks" class="form-control form-control-sm" placeholder="e.g. Assigned to investigate and take action">
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm mt-2" id="btnSaveAssign">
+                <i class="bi bi-send me-1"></i> Save Assignment
+              </button>
             </form>
           </div>
         </div>
         <?php endif; ?>
 
-        <div class="card">
-          <div class="card-header"><i class="bi bi-clock-history"></i> Timeline</div>
+        <!-- 2. Update Status & Progress Card -->
+        <?php if ($canManageIssue): ?>
+        <div class="card mb-3 no-print shadow-sm">
+          <div class="card-header bg-white d-flex align-items-center justify-content-between py-2.5">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-check2-circle text-success fs-5"></i>
+              <span class="fw-bold text-dark">Update Status &amp; Notes</span>
+            </div>
+          </div>
+          <div class="card-body p-3">
+            <form id="unifiedUpdateForm">
+              <?= csrfField() ?>
+              <input type="hidden" name="id" value="<?= (int)$issue['id'] ?>">
+              <div class="mb-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
+                <select name="status" id="unifiedStatusSelect" class="form-select form-select-sm">
+                  <?php foreach (['Open', 'In Progress', 'Resolved', 'Closed'] as $s): ?>
+                    <option value="<?= e($s) ?>" <?= ($issue['status'] === $s) ? 'selected' : '' ?>><?= e($s) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label class="form-label small fw-semibold text-secondary mb-1" id="unifiedNoteLabel">
+                  <i class="bi bi-chat-left-text text-primary me-1"></i> Progress Note / Status Remarks
+                </label>
+                <textarea name="note" id="unifiedNoteInput" class="form-control form-control-sm" rows="3" placeholder="Enter progress updates, actions taken, or remarks..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm" id="btnSaveUnified">
+                <i class="bi bi-save me-1"></i> Update Issue
+              </button>
+            </form>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- 3. Issue History Timeline -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-white"><i class="bi bi-clock-history"></i> Issue History</div>
           <div class="list-group list-group-flush" id="timelineList">
             <?php if (empty($timeline)): ?>
-              <div class="list-group-item text-muted small">No history yet.</div>
-            <?php endif; ?>
-            <?php foreach ($timeline as $t): ?>
-              <div class="list-group-item">
-                <div class="d-flex align-items-start gap-2">
-                  <i class="bi <?= $t['type'] === 'assignment' ? 'bi-diagram-3' : 'bi-chat-left-text' ?>"></i>
-                  <div>
-                    <div class="small"><?= e($t['text']) ?></div>
-                    <div class="text-muted" style="font-size:11px;"><?= formatDateTime($t['at']) ?></div>
+              <div class="list-group-item text-muted small">No history logged yet.</div>
+            <?php else: ?>
+              <?php foreach ($timeline as $t): ?>
+                <div class="list-group-item">
+                  <div class="d-flex align-items-start gap-2">
+                    <i class="bi <?= $t['type'] === 'assignment' ? 'bi-diagram-3 text-warning' : 'bi-chat-left-text text-primary' ?>"></i>
+                    <div>
+                      <div class="small"><?= e($t['text']) ?></div>
+                      <div class="text-muted" style="font-size:11px;"><?= formatDateTime($t['at']) ?></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            <?php endforeach; ?>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Full Update Issue Modal (Admin & Managers) -->
+<?php if ($canManageIssue): ?>
+<div class="modal fade" id="updateIssueModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 800px;">
+    <div class="modal-content border-0 shadow">
+      <form id="updateIssueForm">
+        <?= csrfField() ?>
+        <input type="hidden" name="id" value="<?= (int)$issue['id'] ?>">
+        <div class="modal-header py-3 px-4 bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-pencil-square fs-5 text-warning"></i>
+            <h5 class="modal-title fw-bold text-dark mb-0">Edit Issue: <?= e($issue['reference_number']) ?></h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label small fw-semibold text-secondary mb-1">Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" class="form-control" value="<?= e($issue['title']) ?>" required maxlength="255">
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold text-secondary mb-1">Description <span class="text-danger">*</span></label>
+              <textarea name="description" class="form-control" rows="3" required><?= e($issue['description']) ?></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Category</label>
+              <select name="category_id" class="form-select">
+                <option value="">-- Select Category --</option>
+                <?php foreach ($categories as $c): ?>
+                  <option value="<?= (int)$c['id'] ?>" <?= ((int)$issue['category_id'] === (int)$c['id']) ? 'selected' : '' ?>>
+                    <?= e($c['name']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Related Hearing</label>
+              <select name="hearing_id" class="form-select">
+                <option value="">-- None --</option>
+                <?php foreach ($hearings as $h): ?>
+                  <option value="<?= (int)$h['id'] ?>" <?= ((int)$issue['hearing_id'] === (int)$h['id']) ? 'selected' : '' ?>>
+                    <?= e($h['title']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Priority</label>
+              <select name="priority" class="form-select">
+                <?php foreach (['Low', 'Medium', 'High', 'Critical'] as $p): ?>
+                  <option value="<?= e($p) ?>" <?= ($issue['priority'] === $p) ? 'selected' : '' ?>><?= e($p) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
+              <select name="status" id="modalStatusSelect" class="form-select">
+                <?php foreach (['Open', 'In Progress', 'Resolved', 'Closed'] as $s): ?>
+                  <option value="<?= e($s) ?>" <?= ($issue['status'] === $s) ? 'selected' : '' ?>><?= e($s) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Assigned Office</label>
+              <select name="assigned_office_id" id="modalOfficeSelect" class="form-select">
+                <option value="">-- Unassigned Office --</option>
+                <?php foreach ($officesList as $office): ?>
+                  <option value="<?= (int)$office['id'] ?>" <?= ((int)$issue['assigned_office_id'] === (int)$office['id']) ? 'selected' : '' ?>>
+                    <?= e($office['name']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">
+                <i class="bi bi-person-check text-primary me-1"></i> Assigned Staff / Person
+              </label>
+              <select name="assigned_user_id" id="modalUserSelect" class="form-select">
+                <option value="">-- Unassigned Staff --</option>
+                <?php foreach ($assignableUsers as $u): ?>
+                  <option value="<?= (int)$u['id'] ?>" 
+                          data-office-id="<?= (int)($u['office_id'] ?? 0) ?>"
+                          <?= ((int)$issue['assigned_user_id'] === (int)$u['id']) ? 'selected' : '' ?>>
+                    <?= e($u['full_name']) ?> (<?= e($u['role_name'] ?: 'Staff') ?><?= $u['office_name'] ? ' · ' . e($u['office_name']) : '' ?>)
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <div class="form-text text-muted" style="font-size: 0.72rem;">
+                <i class="bi bi-shield-check text-success"></i> Administrators cannot be assigned to issues.
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">Due Date</label>
+              <input type="datetime-local" name="due_at" class="form-control" 
+                     value="<?= !empty($issue['due_at']) ? date('Y-m-d\TH:i', strtotime($issue['due_at'])) : '' ?>">
+            </div>
+            <div class="col-12" id="modalResolutionWrap" style="<?= in_array($issue['status'], ['Resolved', 'Closed'], true) ? '' : 'display:none;' ?>">
+              <label class="form-label small fw-semibold text-secondary mb-1">Resolution Summary</label>
+              <textarea name="resolution_summary" class="form-control" rows="2" placeholder="Describe the resolution or actions completed..."><?= e($issue['resolution_summary'] ?? '') ?></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer py-2.5 px-4 bg-light border-top d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-light border px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm"><i class="bi bi-check-circle me-1"></i> Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Auto-sync office dropdown when user is selected in Assign form or Modal
+  function syncUserOffice(userElId, officeElId) {
+    var userEl = document.getElementById(userElId);
+    var officeEl = document.getElementById(officeElId);
+    if (userEl && officeEl) {
+      userEl.addEventListener('change', function () {
+        var opt = this.options[this.selectedIndex];
+        var offId = opt ? opt.dataset.officeId : null;
+        if (offId && parseInt(offId, 10) > 0 && !officeEl.value) {
+          officeEl.value = offId;
+        }
+      });
+    }
+  }
+  syncUserOffice('assignUserSelect', 'assignOfficeSelect');
+  syncUserOffice('modalUserSelect', 'modalOfficeSelect');
+});
+</script>
 
 <?php
 $extraJs = [APP_URL . '/assets/js/issue-view.js'];

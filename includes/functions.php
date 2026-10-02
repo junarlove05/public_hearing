@@ -13,16 +13,16 @@ require_once __DIR__ . '/../config/config.php';
  * OUTPUT / SANITIZATION
  * ========================================================= */
 
-/** Escape a string for safe HTML output (XSS protection). */
-function e(?string $value): string
+/** Escape a string or numeric value for safe HTML output (XSS protection). */
+function e(string|int|float|null $value): string
 {
-    return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
 /** Trim + strip tags from user input (generic sanitizer). */
-function clean(?string $value): string
+function clean(string|int|float|null $value): string
 {
-    return trim(strip_tags($value ?? ''));
+    return trim(strip_tags((string)($value ?? '')));
 }
 
 /* =========================================================
@@ -85,7 +85,7 @@ function requireCsrf(): void
     if (!verifyCsrf()) {
         http_response_code(403);
         if (isAjaxRequest()) {
-            jsonResponse(false, 'Invalid or expired security token. Please refresh the page and try again.');
+            jsonResponse(false, 'Invalid or expired security token. Please refresh the page and try again.', ['csrf_failed' => true]);
         }
         die('Invalid or expired security token. Please refresh the page and try again.');
     }
@@ -97,8 +97,13 @@ function requireCsrf(): void
 
 function isAjaxRequest(): bool
 {
-    return !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
-        && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    $script = (string)($_SERVER['SCRIPT_NAME'] ?? '');
+    $accept = (string)($_SERVER['HTTP_ACCEPT'] ?? '');
+    $requestedWith = (string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '');
+
+    return (strtolower($requestedWith) === 'xmlhttprequest')
+        || (str_contains($accept, 'application/json'))
+        || (str_contains($script, 'ajax_'));
 }
 
 /**
@@ -457,6 +462,58 @@ function handleUpload(array $file, string $subfolder): array
         'message'   => 'File uploaded successfully.',
         'file_name' => $file['name'],
         'file_path' => trim($subfolder, '/') . '/' . $safeName, // stored relative to uploads dir
+    ];
+}
+
+/**
+ * Generic uploadFile helper alias compatible with uploadFile($file, $subfolder, $allowedExtensions, $maxSize).
+ *
+ * @param array $file
+ * @param string $subfolder
+ * @param array|null $allowedExtensions
+ * @param int|null $maxSize
+ * @return array{success:bool, message:string, file_name?:string, file_path?:string}
+ */
+function uploadFile(array $file, string $subfolder, ?array $allowedExtensions = null, ?int $maxSize = null): array
+{
+    if (!isset($file['error']) || $file['error'] === UPLOAD_ERR_NO_FILE) {
+        return ['success' => false, 'message' => 'No file was uploaded.'];
+    }
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return ['success' => false, 'message' => 'File upload error (code ' . $file['error'] . ').'];
+    }
+
+    $limit = $maxSize ?? (defined('MAX_UPLOAD_SIZE') ? MAX_UPLOAD_SIZE : 10 * 1024 * 1024);
+    if ($file['size'] > $limit) {
+        return ['success' => false, 'message' => 'File exceeds maximum allowed size of ' . round($limit / (1024 * 1024), 1) . 'MB.'];
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowed = $allowedExtensions ?? (defined('ALLOWED_UPLOAD_EXT') ? ALLOWED_UPLOAD_EXT : ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg']);
+    if (!in_array($ext, $allowed, true)) {
+        return ['success' => false, 'message' => 'File type not allowed. Allowed: ' . implode(', ', $allowed)];
+    }
+
+    $baseUploadDir = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../assets/uploads/');
+    $targetDir = rtrim($baseUploadDir, '/') . '/' . trim($subfolder, '/') . '/';
+    if (!is_dir($targetDir)) {
+        if (!@mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
+            return ['success' => false, 'message' => "Could not create uploads directory ($targetDir)."];
+        }
+    }
+
+    $safeName = (function_exists('generateCode') ? generateCode() : strtoupper(bin2hex(random_bytes(6)))) . '_' . time() . '.' . $ext;
+    $destination = $targetDir . $safeName;
+
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        return ['success' => false, 'message' => 'Failed to save uploaded file. Check folder permissions.'];
+    }
+
+    return [
+        'success'   => true,
+        'message'   => 'File uploaded successfully.',
+        'file_name' => $file['name'],
+        'file_path' => trim($subfolder, '/') . '/' . $safeName,
     ];
 }
 

@@ -51,28 +51,50 @@
     const eventsByDay = {};
 
     events.forEach(function (event) {
-      const startDate = new Date(event.hearing_date + 'T00:00:00');
-      const endDate = new Date((event.end_date || event.hearing_date) + 'T00:00:00');
+      if (event.sessions && event.sessions.length > 0) {
+        event.sessions.forEach(function (sess) {
+          const sDate = new Date(sess.date + 'T00:00:00');
+          if (
+            sDate.getFullYear() === viewYear
+            && sDate.getMonth() + 1 === viewMonth
+          ) {
+            const day = sDate.getDate();
+            if (!eventsByDay[day]) {
+              eventsByDay[day] = [];
+            }
+            const dayEvent = Object.assign({}, event, {
+              hearing_date: sess.date,
+              hearing_time: sess.start_time || event.hearing_time,
+              end_time: sess.end_time || event.end_time,
+              session_day_number: sess.day_number
+            });
+            eventsByDay[day].push(dayEvent);
+          }
+        });
+      } else {
+        const startDate = new Date(event.hearing_date + 'T00:00:00');
+        const endDate = new Date((event.end_date || event.hearing_date) + 'T00:00:00');
 
-      for (
-        let current = new Date(startDate);
-        current <= endDate;
-        current.setDate(current.getDate() + 1)
-      ) {
-        if (
-          current.getFullYear() !== viewYear
-          || current.getMonth() + 1 !== viewMonth
+        for (
+          let current = new Date(startDate);
+          current <= endDate;
+          current.setDate(current.getDate() + 1)
         ) {
-          continue;
+          if (
+            current.getFullYear() !== viewYear
+            || current.getMonth() + 1 !== viewMonth
+          ) {
+            continue;
+          }
+
+          const day = current.getDate();
+
+          if (!eventsByDay[day]) {
+            eventsByDay[day] = [];
+          }
+
+          eventsByDay[day].push(event);
         }
-
-        const day = current.getDate();
-
-        if (!eventsByDay[day]) {
-          eventsByDay[day] = [];
-        }
-
-        eventsByDay[day].push(event);
       }
     });
 

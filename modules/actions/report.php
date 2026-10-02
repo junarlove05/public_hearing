@@ -88,7 +88,7 @@ new Chart(document.getElementById('statusChart'), {
   type: 'doughnut',
   data: {
     labels: <?= json_encode(array_column($byStatus, 'status')) ?>,
-    datasets: [{ data: <?= json_encode(array_map('intval', array_column($byStatus, 'total'))) ?>, backgroundColor: ['#b5750f','#1d6fb8','#157a6e','#a4302a'] }]
+    datasets: [{ data: <?= json_encode(array_map('intval', array_column($byStatus, 'total'))) ?>, backgroundColor: ['#a97900','#0F2137','#157a6e','#a4302a'] }]
   },
   options: { plugins: { legend: { position: 'bottom' } } }
 });
@@ -96,7 +96,7 @@ new Chart(document.getElementById('officeChart'), {
   type: 'bar',
   data: {
     labels: <?= json_encode(array_column($byOffice, 'office')) ?>,
-    datasets: [{ label: 'Actions', data: <?= json_encode(array_map('intval', array_column($byOffice, 'total'))) ?>, backgroundColor: '#1d6fb8' }]
+    datasets: [{ label: 'Actions', data: <?= json_encode(array_map('intval', array_column($byOffice, 'total'))) ?>, backgroundColor: '#0F2137' }]
   },
   options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
 });

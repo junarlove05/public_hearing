@@ -36,26 +36,67 @@ try {
     }
 
     if (!$assignedOfficeId && $assignedOfficeName !== '') {
+        /*
+         * PDO uses native prepared statements in LPH
+         * (PDO::ATTR_EMULATE_PREPARES = false), so every named
+         * placeholder must be unique. Reusing :value more than once
+         * causes SQLSTATE[HY093] and the generic database error.
+         *
+         * We also allow a simple partial office-name match so values
+         * such as "Budget office" can resolve to "City Budget Office".
+         */
         $officeStmt = $pdo->prepare(
-            "SELECT id, name FROM offices
-             WHERE status = 'Active' AND (name = :value OR code = :value)
+            "SELECT id, name
+             FROM offices
+             WHERE status = 'Active'
+               AND (
+                    LOWER(name) = LOWER(:office_name)
+                    OR LOWER(code) = LOWER(:office_code)
+                    OR LOWER(name) LIKE LOWER(:office_like)
+               )
+             ORDER BY
+               CASE
+                 WHEN LOWER(name) = LOWER(:office_name_exact) THEN 0
+                 WHEN LOWER(code) = LOWER(:office_code_exact) THEN 1
+                 ELSE 2
+               END,
+               name
              LIMIT 1"
         );
-        $officeStmt->execute([':value' => $assignedOfficeName]);
+        $officeStmt->execute([
+            ':office_name' => $assignedOfficeName,
+            ':office_code' => $assignedOfficeName,
+            ':office_like' => '%' . $assignedOfficeName . '%',
+            ':office_name_exact' => $assignedOfficeName,
+            ':office_code_exact' => $assignedOfficeName,
+        ]);
         $office = $officeStmt->fetch();
         if ($office) {
             $assignedOfficeId = (int)$office['id'];
             $assignedOfficeName = $office['name'];
         } else {
             $userStmt = $pdo->prepare(
-                "SELECT id, full_name FROM users
-                 WHERE deleted_at IS NULL AND status = 'Active'
-                   AND (full_name = :value OR email = :value OR username = :value)
+                "SELECT u.id, u.full_name, r.name AS role_name
+                 FROM users u
+                 LEFT JOIN roles r ON r.id = u.role_id
+                 WHERE u.deleted_at IS NULL
+                   AND u.status = 'Active'
+                   AND LOWER(r.name) NOT LIKE '%public%'
+                   AND LOWER(r.name) NOT LIKE '%stakeholder%'
+                   AND (
+                        u.full_name = :user_full_name
+                        OR u.email = :user_email
+                        OR u.username = :user_username
+                   )
                  LIMIT 1"
             );
-            $userStmt->execute([':value' => $assignedOfficeName]);
+            $userStmt->execute([
+                ':user_full_name' => $assignedOfficeName,
+                ':user_email' => $assignedOfficeName,
+                ':user_username' => $assignedOfficeName,
+            ]);
             $user = $userStmt->fetch();
-            if (!$user) jsonResponse(false, 'The assignee was not found. Use an existing active office or user.');
+            if (!$user) jsonResponse(false, 'The assignee was not found or is a public user. Use an existing active office or official staff/member.');
             $assignedUserId = (int)$user['id'];
             $assignedOfficeName = $user['full_name'];
         }
@@ -81,6 +122,11 @@ try {
         if ($assignedOfficeName === '' && !$assignedOfficeId && !$assignedUserId) {
             $assignedOfficeId = $before['assigned_office_id'] ? (int)$before['assigned_office_id'] : null;
             $assignedUserId = $before['assigned_user_id'] ? (int)$before['assigned_user_id'] : null;
+        }
+
+        // If a user has already been assigned, lock it so it cannot be reassigned
+        if (!empty($before['assigned_user_id'])) {
+            $assignedUserId = (int)$before['assigned_user_id'];
         }
 
         $completedAt = null;

@@ -46,7 +46,8 @@
   function bindRowEvents() {
     wrap.querySelectorAll('.sort-link').forEach(el => {
       el.style.cursor = 'pointer';
-      el.addEventListener('click', function () {
+      el.addEventListener('click', function (e) {
+        if (e) e.preventDefault();
         const col = el.getAttribute('data-sort');
         currentDir = (currentSort === col && currentDir === 'asc') ? 'desc' : 'asc';
         currentSort = col;
@@ -87,12 +88,28 @@
   const modal = new bootstrap.Modal(modalEl);
   const form = document.getElementById('issueForm');
 
-  document.getElementById('btnAddIssue').addEventListener('click', function () {
-    form.reset();
-    document.getElementById('is_id').value = 0;
-    document.getElementById('issueModalTitle').innerHTML = '<i class="bi bi-exclamation-triangle"></i> Log Issue';
-    modal.show();
-  });
+  const btnAdd = document.getElementById('btnAddIssue');
+  if (btnAdd) {
+    btnAdd.addEventListener('click', function () {
+      form.reset();
+      document.getElementById('is_id').value = 0;
+      if (document.getElementById('is_user')) document.getElementById('is_user').value = '';
+      document.getElementById('issueModalTitle').innerHTML = '<i class="bi bi-exclamation-triangle"></i> Log Issue';
+      modal.show();
+    });
+  }
+
+  const userSelect = document.getElementById('is_user');
+  const officeSelect = document.getElementById('is_office');
+  if (userSelect && officeSelect) {
+    userSelect.addEventListener('change', function () {
+      const selected = this.options[this.selectedIndex];
+      const officeId = selected ? selected.dataset.officeId : null;
+      if (officeId && officeId > 0 && !officeSelect.value) {
+        officeSelect.value = officeId;
+      }
+    });
+  }
 
   function openEditModal(id) {
     appGet(window.APP_URL + '/modules/issues/ajax_get.php?id=' + id).then(data => {
@@ -108,6 +125,7 @@
       document.getElementById('is_status').value = iss.status || 'Open';
       document.getElementById('is_due_at').value = iss.due_at ? String(iss.due_at).replace(' ', 'T').slice(0, 16) : '';
       document.getElementById('is_office').value = iss.assigned_office_id || '';
+      if (document.getElementById('is_user')) document.getElementById('is_user').value = iss.assigned_user_id || '';
       document.getElementById('issueModalTitle').innerHTML = '<i class="bi bi-pencil-square"></i> Edit Issue';
       modal.show();
     });

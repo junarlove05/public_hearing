@@ -2,23 +2,40 @@
 /**
  * modules/stakeholders/invitation_download.php
  * ------------------------------------------------------------------
- * Serves the same invitation document as invitation_print.php, but
- * as a downloadable .html file (Content-Disposition: attachment)
- * instead of rendering inline for printing. The downloaded file is
- * self-contained and can be opened, emailed, or printed offline.
+ * Serves the official invitation document as a downloadable self-contained
+ * .html file (Content-Disposition: attachment).
  * ------------------------------------------------------------------
  */
 
+declare(strict_types=1);
 require_once __DIR__ . '/../../includes/auth.php';
 requireLogin();
 
 $id = (int)($_GET['id'] ?? 0);
 $stmt = db()->prepare(
-    'SELECT i.*, s.full_name, s.email, s.organization, h.title AS hearing_title, h.venue, h.hearing_date, h.hearing_time,
+    'SELECT i.*, 
+            s.full_name, s.email, s.organization, s.phone, s.sector, 
+            sc.name AS category_name,
+            h.id AS hearing_id, h.title AS hearing_title, h.reference_number, h.venue, 
+            h.hearing_date, h.hearing_time, h.status AS hearing_status,
+            hsd.day_number, hsd.start_time AS session_start_time, hsd.end_time AS session_end_time,
+            COALESCE(i.session_date, hsd.session_date, h.hearing_date) AS effective_session_date,
+            r.attendance_type, r.registration_code,
             (SELECT code_value FROM qr_codes q WHERE q.stakeholder_id = s.id LIMIT 1) AS qr_code
      FROM invitations i
      JOIN stakeholders s ON s.id = i.stakeholder_id
+     LEFT JOIN stakeholder_categories sc ON sc.id = s.category_id
      LEFT JOIN hearings h ON h.id = i.hearing_id
+     LEFT JOIN hearing_session_days hsd ON (hsd.id = i.session_day_id)
+     LEFT JOIN registrations r ON (
+         r.hearing_id = i.hearing_id 
+         AND r.stakeholder_id = s.id 
+         AND (
+             (i.session_date IS NOT NULL AND r.session_date = i.session_date)
+             OR (i.session_day_id IS NOT NULL AND r.session_day_id = i.session_day_id)
+             OR (i.session_date IS NULL AND r.session_date IS NULL)
+         )
+     )
      WHERE i.id = :id'
 );
 $stmt->execute([':id' => $id]);
@@ -31,53 +48,252 @@ if (!$inv) {
 
 logActivity(currentUserId(), 'Download', 'Downloaded invitation #' . $id . ' for ' . $inv['full_name']);
 
+// Base64 logo for self-contained document
+$logoPath = __DIR__ . '/../../assets/images/manila.png';
+$logoDataUri = file_exists($logoPath)
+    ? 'data:image/png;base64,' . base64_encode((string)file_get_contents($logoPath))
+    : '';
+
+$qrValue = !empty($inv['qr_code']) ? $inv['qr_code'] : $inv['invitation_code'];
+$attendanceMode = !empty($inv['attendance_type']) ? $inv['attendance_type'] : 'On-site';
+
 ob_start();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Invitation - <?= e($inv['full_name']) ?></title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Official Invitation - <?= e($inv['full_name']) ?> · <?= e($inv['invitation_code']) ?></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: Arial, Helvetica, sans-serif; padding: 40px; background: #fff; }
-  .invite-card { max-width: 600px; margin: 0 auto; border: 2px solid #0b3d6e; border-radius: 12px; padding: 32px; }
-  .invite-header { text-align: center; border-bottom: 1px solid #e1e5ea; padding-bottom: 16px; margin-bottom: 20px; }
-  .invite-code { font-family: monospace; font-size: 18px; background: #f4f6f9; padding: 8px 16px; border-radius: 6px; display: inline-block; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-  td, th { padding: 6px 4px; text-align: left; vertical-align: top; }
-  th { width: 35%; color: #555; font-weight: 600; }
-  .center { text-align: center; }
+  :root {
+    --navy-primary: #0a2540;
+    --navy-deep: #06192c;
+    --gold-primary: #c59b27;
+    --gold-light: #f7edd4;
+    --gold-accent: #d4af37;
+    --slate-text: #2d3748;
+    --muted-text: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background-color: #f1f5f9;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--slate-text);
+    margin: 0;
+    padding: 30px 15px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .invitation-document {
+    max-width: 720px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 2px solid var(--gold-primary);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 12px 35px rgba(10,37,64,0.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .inner-border {
+    border: 1.5px solid var(--navy-primary);
+    border-radius: 8px;
+    padding: 34px 38px;
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+  }
+  .watermark-seal {
+    position: absolute;
+    top: 52%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 440px;
+    height: 440px;
+    background-image: url('<?= $logoDataUri ?>');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.07;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .doc-content { position: relative; z-index: 2; }
+  .doc-header { text-align: center; margin-bottom: 22px; }
+  .header-logo-wrap { margin-bottom: 10px; }
+  .header-logo-wrap img { width: 82px; height: 82px; object-fit: contain; }
+  .rep-ph { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted-text); margin: 0; }
+  .city-mnl { font-size: 1.15rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--navy-primary); margin: 2px 0; }
+  .council-title { font-family: 'Cinzel', serif; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; color: var(--navy-deep); margin: 0; }
+  .subsystem-tag { display: inline-block; font-size: 0.78rem; font-weight: 600; color: var(--gold-primary); letter-spacing: 0.4px; margin-top: 4px; text-transform: uppercase; }
+  .gold-divider { height: 3px; background: linear-gradient(90deg, transparent 0%, var(--gold-primary) 25%, var(--gold-accent) 50%, var(--gold-primary) 75%, transparent 100%); margin: 16px 0 20px 0; border-radius: 2px; }
+  .doc-badge-wrap { text-align: center; margin-bottom: 22px; }
+  .doc-badge { display: inline-block; background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy-primary) 100%); color: #ffffff; padding: 6px 20px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; border: 1px solid var(--gold-accent); }
+  .salutation-block { margin-bottom: 20px; line-height: 1.6; }
+  .salutation-block .salute-name { font-size: 1.2rem; font-weight: 700; color: var(--navy-primary); }
+  .salutation-block p { font-size: 0.95rem; color: #334155; margin: 6px 0 0 0; }
+  .details-box { background: rgba(248, 250, 252, 0.88); border: 1px solid #e2e8f0; border-left: 4px solid var(--navy-primary); border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }
+  .details-table { width: 100%; border-collapse: collapse; }
+  .details-table tr:not(:last-child) { border-bottom: 1px dashed #e2e8f0; }
+  .details-table th { width: 28%; padding: 9px 8px; font-size: 0.82rem; font-weight: 600; text-transform: uppercase; color: var(--muted-text); letter-spacing: 0.5px; vertical-align: top; }
+  .details-table td { padding: 9px 8px; font-size: 0.94rem; color: var(--navy-deep); vertical-align: top; }
+  .details-table td strong { font-weight: 700; color: var(--navy-primary); }
+  .mode-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 600; padding: 2px 10px; border-radius: 12px; background: #eef6ff; color: #0b3d6e; border: 1px solid #bad9fc; }
+  .security-credential-card { background: linear-gradient(135deg, #ffffff 0%, #fafcff 100%); border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 18px; margin-bottom: 22px; text-align: center; }
+  .cred-header { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted-text); margin-bottom: 6px; }
+  .code-display { display: inline-block; font-family: monospace; font-size: 1.15rem; font-weight: 700; color: var(--navy-deep); background: #f8fafc; border: 1.5px dashed var(--gold-primary); padding: 6px 18px; border-radius: 6px; letter-spacing: 1.5px; margin-bottom: 14px; }
+  .qr-frame { display: inline-flex; align-items: center; justify-content: center; padding: 10px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; }
+  .qr-caption { font-size: 0.8rem; font-weight: 600; color: var(--navy-primary); margin-top: 8px; }
+  .advisory-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 0.82rem; color: #92400e; line-height: 1.5; margin-bottom: 24px; }
+  .doc-footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 0.75rem; color: var(--muted-text); }
+  .doc-footer-left { max-width: 58%; line-height: 1.5; }
+  .doc-footer-right { text-align: right; }
+  .doc-footer-right .sig-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--navy-primary); font-size: 0.78rem; }
+  @media print {
+    body { background: #ffffff; padding: 0; margin: 0; }
+    .invitation-document { border: 1.5px solid #c59b27 !important; box-shadow: none !important; max-width: 100% !important; width: 100% !important; padding: 6px !important; border-radius: 0 !important; }
+    .inner-border { padding: 24px 28px !important; border-radius: 0 !important; }
+    @page { size: A4 portrait; margin: 8mm; }
+  }
 </style>
 </head>
 <body>
-<div class="invite-card">
-  <div class="invite-header">
-    <h2 style="margin:0;"><?= e(APP_NAME) ?></h2>
-    <div style="color:#777;font-size:13px;">Official Invitation to Public Hearing / Consultation</div>
+<div class="invitation-document">
+  <div class="inner-border">
+    <div class="watermark-seal" aria-hidden="true"></div>
+
+    <div class="doc-content">
+      <div class="doc-header">
+        <?php if (!empty($logoDataUri)): ?>
+        <div class="header-logo-wrap">
+          <img src="<?= $logoDataUri ?>" alt="City of Manila Official Seal">
+        </div>
+        <?php endif; ?>
+        <p class="rep-ph">Republic of the Philippines</p>
+        <h2 class="city-mnl">City of Manila</h2>
+        <h3 class="council-title">Sangguniang Panlungsod</h3>
+        <span class="subsystem-tag">Legislative Public Hearing &amp; Consultation Management System</span>
+        <div class="gold-divider"></div>
+      </div>
+
+      <div class="doc-badge-wrap">
+        <span class="doc-badge">Official Invitation to Public Hearing / Consultation</span>
+      </div>
+
+      <div class="salutation-block">
+        <div class="salute-name">Dear <?= e($inv['full_name']) ?>,</div>
+        <p>You are cordially invited to participate as an official stakeholder in the legislative proceedings detailed below:</p>
+      </div>
+
+      <div class="details-box">
+        <table class="details-table">
+          <tr>
+            <th>Hearing</th>
+            <td>
+              <strong><?= e($inv['hearing_title'] ?? 'General Public Consultation') ?></strong>
+              <?php if (!empty($inv['reference_number'])): ?>
+                <span style="font-family:monospace;font-size:0.75rem;padding:2px 6px;background:#e2e8f0;border-radius:4px;margin-left:4px;">
+                  <?= e($inv['reference_number']) ?>
+                </span>
+              <?php endif; ?>
+            </td>
+          </tr>
+          <?php 
+            $invDate = !empty($inv['effective_session_date']) ? $inv['effective_session_date'] : ($inv['hearing_date'] ?? '');
+            $invDayNum = !empty($inv['day_number']) ? (int)$inv['day_number'] : null;
+            $invTimeStart = !empty($inv['session_start_time']) ? $inv['session_start_time'] : ($inv['hearing_time'] ?? '');
+            $invTimeEnd = !empty($inv['session_end_time']) ? $inv['session_end_time'] : null;
+            $invTimeStr = $invTimeStart ? formatTime($invTimeStart) : '';
+            if ($invTimeEnd) {
+                $invTimeStr .= ' - ' . formatTime($invTimeEnd);
+            }
+          ?>
+          <?php if (!empty($invDate)): ?>
+          <tr>
+            <th>Date &amp; Schedule</th>
+            <td>
+              <strong><?= formatDate($invDate) ?></strong>
+              <?php if ($invDayNum): ?>
+                <span class="badge bg-primary text-white ms-1 fw-bold" style="font-size:0.75rem; letter-spacing:0.3px; padding:2px 6px; border-radius:4px; background:#0a2540;">Day <?= $invDayNum ?></span>
+              <?php endif; ?>
+              <?php if ($invTimeStr): ?>
+                <span class="ms-1">at <strong><?= $invTimeStr ?></strong></span>
+              <?php endif; ?>
+            </td>
+          </tr>
+          <tr>
+            <th>Venue</th>
+            <td><?= e($inv['venue'] ?: 'Session Hall, Manila City Hall') ?></td>
+          </tr>
+          <?php endif; ?>
+          <tr>
+            <th>Organization</th>
+            <td><?= e($inv['organization'] ?: 'Individual / Unspecified') ?></td>
+          </tr>
+          <?php if (!empty($inv['category_name'])): ?>
+          <tr>
+            <th>Sector / Group</th>
+            <td><?= e($inv['category_name']) ?></td>
+          </tr>
+          <?php endif; ?>
+          <tr>
+            <th>Attendance Mode</th>
+            <td>
+              <span class="mode-chip">
+                <?= e($attendanceMode) ?>
+              </span>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="security-credential-card">
+        <div class="cred-header">Official Invitation Code</div>
+        <div>
+          <span class="code-display"><?= e($inv['invitation_code']) ?></span>
+        </div>
+
+        <div class="qr-frame">
+          <div id="qrHolder"></div>
+        </div>
+        <div class="qr-caption">
+          Present this QR code upon check-in
+        </div>
+      </div>
+
+      <div class="advisory-box">
+        <strong>Important Reminder:</strong> Please bring this official invitation (printed copy or digital mobile display) and a valid government-issued ID upon arrival at the venue.
+      </div>
+
+      <div class="doc-footer">
+        <div class="doc-footer-left">
+          <div><strong>Verification:</strong> <?= e($inv['invitation_code']) ?> · LPHCMS-SECURE</div>
+          <div>Issued by Authority of the City Council &amp; Committee Secretariat</div>
+        </div>
+        <div class="doc-footer-right">
+          <div class="sig-title">Office of the City Council</div>
+          <div style="font-size:0.72rem;color:#64748b;">City of Manila</div>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <p>Dear <strong><?= e($inv['full_name']) ?></strong>,</p>
-  <p>You are cordially invited to participate in:</p>
-
-  <table>
-    <tr><th>Hearing</th><td><?= e($inv['hearing_title'] ?? 'General Public Consultation') ?></td></tr>
-    <?php if ($inv['hearing_date']): ?>
-    <tr><th>Date &amp; Time</th><td><?= formatDate($inv['hearing_date']) ?> at <?= formatTime($inv['hearing_time']) ?></td></tr>
-    <tr><th>Venue</th><td><?= e($inv['venue'] ?: 'To be announced') ?></td></tr>
-    <?php endif; ?>
-    <tr><th>Organization</th><td><?= e($inv['organization'] ?: '-') ?></td></tr>
-  </table>
-
-  <p class="center">
-    <span style="display:block;font-size:12px;color:#777;">Your Invitation Code</span>
-    <span class="invite-code"><?= e($inv['invitation_code']) ?></span>
-  </p>
-
-  <p style="font-size:12px;color:#777;margin-top:24px;">
-    Please bring this invitation (printed or digital) and a valid ID upon arrival.
-    Present your invitation code or stakeholder QR code (available in the system) at check-in.
-  </p>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  new QRCode(document.getElementById('qrHolder'), {
+    text: <?= json_encode($qrValue) ?>,
+    width: 130,
+    height: 130,
+    colorDark: "#0a2540",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H
+  });
+</script>
 </body>
 </html>
 <?php

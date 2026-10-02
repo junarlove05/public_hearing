@@ -508,14 +508,7 @@ $userColors = ['#4A7EB5', '#a97900', '#10B981', '#8B5CF6', '#F43F5E', '#06B6D4',
                             </span>
                         </td>
                         <td class="text-end no-print">
-                            <?php if (canManage()): ?>
-                                <button type="button" class="btn-action delete" 
-                                        title="Delete Registration"
-                                        data-confirm-delete="this registration"
-                                        data-delete-url="<?= e(APP_URL) ?>/modules/stakeholders/ajax_registration_delete.php?id=<?= (int)$row['id'] ?>">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            <?php endif; ?>
+                            <span class="text-muted" style="font-size: 0.8rem;">—</span>
                         </td>
                     </tr>
                 <?php endforeach; ?>

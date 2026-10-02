@@ -20,11 +20,14 @@ $address = trim((string)($_POST['address'] ?? ''));
 $sector = clean($_POST['sector'] ?? '');
 $status = clean($_POST['status'] ?? 'Pending');
 
-$allowedStatuses = ['Pending','Verified','Inactive','Rejected'];
+$allowedStatuses = ['Pending', 'Verified', 'Inactive', 'Rejected', 'Active', 'Approved'];
 
 $errors = [];
 if ($fullName === '') $errors[] = 'Full name is required.';
-if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email address is required.';
+$isUnlistedEmail = in_array(strtolower($email), ['not publicly listed', 'unlisted', 'n/a', 'none'], true);
+if ($email === '' || (!$isUnlistedEmail && !filter_var($email, FILTER_VALIDATE_EMAIL))) {
+    $errors[] = 'A valid email address (or "Not publicly listed") is required.';
+}
 if (!in_array($status, $allowedStatuses, true)) $errors[] = 'Invalid stakeholder status.';
 
 if ($categoryId) {
@@ -33,10 +36,8 @@ if ($categoryId) {
     if ((int)$check->fetchColumn()===0) $errors[]='Selected stakeholder category does not exist.';
 }
 
-$dup = $pdo->prepare('SELECT id FROM stakeholders WHERE LOWER(email)=LOWER(:email) AND id<>:id LIMIT 1');
-$dup->execute([':email'=>$email, ':id'=>$id]);
-if ($dup->fetch()) $errors[]='Another stakeholder already uses this email address.';
-
+// Email validation: allow any valid email or unlisted
+// We do NOT block updating emails so admins can freely change stakeholder Gmails.
 $existing = null;
 if ($id > 0) {
     $stmt = $pdo->prepare('SELECT * FROM stakeholders WHERE id=:id');
@@ -53,7 +54,7 @@ try {
     $verifiedAt = null;
     $verifiedBy = null;
 
-    if ($status === 'Verified') {
+    if (in_array($status, ['Verified', 'Approved', 'Active'], true)) {
         $verifiedAt = !empty($existing['verified_at']) ? $existing['verified_at'] : date('Y-m-d H:i:s');
         $verifiedBy = !empty($existing['verified_by']) ? $existing['verified_by'] : currentUserId();
     }
@@ -75,6 +76,29 @@ try {
             ':verified_at'=>$verifiedAt, ':verified_by'=>$verifiedBy, ':id'=>$id,
         ]);
 
+        if (!empty($existing['user_id'])) {
+            $pdo->prepare('UPDATE users SET email = :email, updated_at = NOW() WHERE id = :uid')
+                ->execute([':email' => $email, ':uid' => (int)$existing['user_id']]);
+        }
+
+        $isVerified = in_array($status, ['Verified', 'Approved', 'Active'], true);
+        $code = null;
+
+        if ($isVerified) {
+            // Ensure verified stakeholder has an active QR code
+            $qrCheck = $pdo->prepare('SELECT code_value FROM qr_codes WHERE stakeholder_id = :sid LIMIT 1');
+            $qrCheck->execute([':sid' => $id]);
+            $code = $qrCheck->fetchColumn();
+            if (!$code) {
+                $code = 'STK-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+                $pdo->prepare('INSERT INTO qr_codes (stakeholder_id, code_value, created_at) VALUES (:sid, :code, NOW())')
+                    ->execute([':sid' => $id, ':code' => $code]);
+            }
+        } else {
+            // Unverified: Remove any existing QR code
+            $pdo->prepare('DELETE FROM qr_codes WHERE stakeholder_id = :sid')->execute([':sid' => $id]);
+        }
+
         lphHistory(
             $pdo, 'stakeholder', $id,
             $oldStatus !== $status ? 'Status Change' : 'Update',
@@ -83,7 +107,7 @@ try {
         );
 
         logActivity(currentUserId(), 'Update Stakeholder', "Updated stakeholder {$fullName} ({$email}).");
-        $message = 'Stakeholder updated successfully.';
+        $message = $isVerified ? 'Stakeholder updated successfully. Attendance QR code is active.' : 'Stakeholder updated successfully. Status is Pending (QR code is issued upon verification).';
     } else {
         $stmt = $pdo->prepare(
             'INSERT INTO stakeholders
@@ -101,13 +125,37 @@ try {
         ]);
         $id = (int)$pdo->lastInsertId();
 
+        $isVerified = in_array($status, ['Verified', 'Approved', 'Active'], true);
+        $code = null;
+
+        // Auto-generate QR identification code ONLY IF account is Verified
+        if ($isVerified) {
+            $code = 'STK-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+            $qrStmt = $pdo->prepare('INSERT INTO qr_codes (stakeholder_id, code_value, created_at) VALUES (:sid, :code, NOW())');
+            $qrStmt->execute([':sid' => $id, ':code' => $code]);
+            $message = 'Stakeholder created successfully. Attendance QR pass generated.';
+        } else {
+            $message = 'Stakeholder registered successfully. Note: Attendance QR pass will be generated once account is Verified.';
+        }
+
         lphHistory($pdo, 'stakeholder', $id, 'Create', null, null, "Created stakeholder {$fullName}.");
         logActivity(currentUserId(), 'Create Stakeholder', "Created stakeholder {$fullName} ({$email}).");
-        $message = 'Stakeholder created successfully.';
     }
 
     $pdo->commit();
-    jsonResponse(true, $message, ['id'=>$id]);
+    jsonResponse(true, $message, [
+        'id'          => $id,
+        'full_name'   => $fullName,
+        'email'       => $email,
+        'phone'       => $phone,
+        'organization'=> $organization,
+        'sector'      => $sector,
+        'status'      => $status,
+        'category_id' => $categoryId,
+        'is_verified' => $isVerified,
+        'code_value'  => $code,
+        'qr_url'      => ($isVerified && $code) ? (APP_URL . '/modules/stakeholders/qr.php?id=' . $id) : null
+    ]);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     error_log('Stakeholder save error: '.$e->getMessage());

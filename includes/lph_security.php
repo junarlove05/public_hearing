@@ -93,6 +93,7 @@ function lphLegacyPermissionFallback(string $code): bool
     $allAuthenticated = [
         'lph.dashboard.view',
         'lph.hearings.view',
+        'lph.attendance.view',
         'lph.feedback.submit',
     ];
 
@@ -334,3 +335,94 @@ function lphRecordLoginAttempt(string $email, bool $successful): void
         error_log('Login-attempt logging failed: '.$e->getMessage());
     }
 }
+
+/**
+ * 3-Week (21 Days) Administrator Password Rotation Policy Helper.
+ *
+ * @param int|null $userId Optional specific user ID. If null, queries the primary active Administrator.
+ * @return array Policy details including status, elapsed time, remaining seconds/days, and formatted dates.
+ */
+function lphGetAdminPasswordPolicyStatus(?int $userId = null): array
+{
+    $default = [
+        'has_expired'       => false,
+        'days_since_change' => 0,
+        'days_remaining'    => 21,
+        'seconds_remaining' => 21 * 86400,
+        'last_changed_at'   => null,
+        'deadline_at'       => null,
+        'is_admin'          => false,
+        'admin_name'        => '',
+        'admin_email'       => '',
+        'percent_elapsed'   => 0.0,
+    ];
+
+    try {
+        if ($userId !== null && $userId > 0) {
+            $stmt = db()->prepare(
+                "SELECT u.id, u.full_name, u.email, u.password_changed_at, u.created_at, r.name AS role_name
+                 FROM users u
+                 JOIN roles r ON r.id = u.role_id
+                 WHERE u.id = :id AND u.deleted_at IS NULL
+                 LIMIT 1"
+            );
+            $stmt->execute([':id' => $userId]);
+            $row = $stmt->fetch();
+        } else {
+            // Find active Administrator with earliest password timestamp
+            $stmt = db()->prepare(
+                "SELECT u.id, u.full_name, u.email, u.password_changed_at, u.created_at, r.name AS role_name
+                 FROM users u
+                 JOIN roles r ON r.id = u.role_id
+                 WHERE r.name = 'Administrator'
+                   AND u.status = 'Active'
+                   AND u.deleted_at IS NULL
+                 ORDER BY COALESCE(u.password_changed_at, u.created_at) ASC
+                 LIMIT 1"
+            );
+            $stmt->execute();
+            $row = $stmt->fetch();
+        }
+
+        if (!$row) {
+            return $default;
+        }
+
+        $isAdmin = strcasecmp((string)$row['role_name'], 'Administrator') === 0;
+        if (!$isAdmin && $userId !== null) {
+            return $default;
+        }
+
+        $lastChangedStr = $row['password_changed_at'] ?: $row['created_at'];
+        $lastChangedTs = $lastChangedStr ? strtotime((string)$lastChangedStr) : time();
+        if ($lastChangedTs <= 0) {
+            $lastChangedTs = time();
+        }
+
+        $rotationPeriod = 21 * 86400; // 3 weeks in seconds
+        $deadlineTs = $lastChangedTs + $rotationPeriod;
+        $secondsRemaining = $deadlineTs - time();
+        $daysSince = (int)floor((time() - $lastChangedTs) / 86400);
+        $daysRemaining = (int)ceil($secondsRemaining / 86400);
+        $hasExpired = ($secondsRemaining <= 0);
+
+        $percentElapsed = min(100.0, max(0.0, ((time() - $lastChangedTs) / $rotationPeriod) * 100));
+
+        return [
+            'has_expired'       => $hasExpired,
+            'days_since_change' => max(0, $daysSince),
+            'days_remaining'    => max(0, $daysRemaining),
+            'seconds_remaining' => max(0, $secondsRemaining),
+            'last_changed_at'   => $lastChangedStr ? date('M j, Y h:i A', $lastChangedTs) : 'Never',
+            'deadline_at'       => date('M j, Y h:i A', $deadlineTs),
+            'is_admin'          => true,
+            'admin_name'        => (string)$row['full_name'],
+            'admin_email'       => (string)$row['email'],
+            'percent_elapsed'   => round($percentElapsed, 1),
+        ];
+    } catch (Throwable $e) {
+        error_log('lphGetAdminPasswordPolicyStatus error: ' . $e->getMessage());
+        return $default;
+    }
+}
+

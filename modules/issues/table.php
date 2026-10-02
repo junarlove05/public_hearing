@@ -76,6 +76,8 @@ $fromSql = "
         ON h.id = i.hearing_id
     LEFT JOIN offices o
         ON o.id = i.assigned_office_id
+    LEFT JOIN users u
+        ON u.id = i.assigned_user_id
 ";
 
 $countStmt = $pdo->prepare(
@@ -95,6 +97,7 @@ $sql = "
         ic.name AS category_name,
         h.title AS hearing_title,
         o.name AS assigned_office,
+        u.full_name AS assigned_user_name,
         (
             SELECT COUNT(*)
             FROM hearing_issue_history ih
@@ -191,7 +194,7 @@ $priorityIcons = [
     }
 
     .issues-table-wrap .table tbody tr {
-        transition: all 0.2s ease;
+        transition: background-color 0.15s ease;
     }
 
     .issues-table-wrap .table tbody tr:hover {
@@ -298,34 +301,39 @@ $priorityIcons = [
 
     /* Status Badges */
     .issues-table-wrap .status-badge {
-        display: inline-flex;
+        display: inline-flex !important;
         align-items: center;
         gap: 0.4rem;
-        padding: 0.3rem 0.8rem;
+        padding: 0.35rem 0.8rem;
         border-radius: 20px;
         font-weight: 600;
-        font-size: 0.7rem;
+        font-size: 0.72rem;
         text-transform: uppercase;
         letter-spacing: 0.3px;
         border: none;
-        transition: all 0.3s ease;
+        height: auto !important;
+        overflow: visible !important;
+        line-height: 1.25;
+        white-space: nowrap;
+        box-sizing: border-box;
+        transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .issues-table-wrap .status-badge i {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
     }
 
-    .status-badge.open { background: #FEE2E2; color: #991B1B; }
-    .status-badge.open i { color: #EF4444; }
+    .status-badge.open { background: #FEE2E2 !important; color: #991B1B !important; }
+    .status-badge.open i { color: #EF4444 !important; }
 
-    .status-badge.in-progress { background: #DBEAFE; color: #1E40AF; }
-    .status-badge.in-progress i { color: #3B82F6; }
+    .status-badge.in-progress { background: #DBEAFE !important; color: #1E40AF !important; }
+    .status-badge.in-progress i { color: #2563EB !important; }
 
-    .status-badge.resolved { background: #D1FAE5; color: #065F46; }
-    .status-badge.resolved i { color: #10B981; }
+    .status-badge.resolved { background: #D1FAE5 !important; color: #065F46 !important; }
+    .status-badge.resolved i { color: #10B981 !important; }
 
-    .status-badge.closed { background: #F1F5F9; color: #475569; }
-    .status-badge.closed i { color: #94A3B8; }
+    .status-badge.closed { background: #F1F5F9 !important; color: #475569 !important; }
+    .status-badge.closed i { color: #94A3B8 !important; }
 
     /* Created At */
     .issues-table-wrap .created-at {
@@ -568,41 +576,41 @@ $priorityIcons = [
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr>
-                    <th>
-                        <a class="sort-link" data-sort="title">
+                    <th style="width: 32%;">
+                        <a class="sort-link" data-sort="title" role="button" title="Sort by Title">
                             <i class="bi bi-megaphone"></i> Title
                             <?php if ($sortBy === 'title'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
                         </a>
                     </th>
-                    <th><i class="bi bi-tags"></i> Category</th>
-                    <th><i class="bi bi-building"></i> Assigned Office</th>
-                    <th>
-                        <a class="sort-link" data-sort="priority">
+                    <th style="width: 13%;"><i class="bi bi-tags"></i> Category</th>
+                    <th style="width: 16%;"><i class="bi bi-building"></i> Assigned Office</th>
+                    <th style="width: 11%;">
+                        <a class="sort-link" data-sort="priority" role="button" title="Sort by Priority">
                             <i class="bi bi-flag"></i> Priority
                             <?php if ($sortBy === 'priority'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
                         </a>
                     </th>
-                    <th>
-                        <a class="sort-link" data-sort="status">
-                            <i class="bi bi-circle"></i> Status
+                    <th style="width: 12%;">
+                        <a class="sort-link" data-sort="status" role="button" title="Sort by Status">
+                            Status
                             <?php if ($sortBy === 'status'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
                         </a>
                     </th>
-                    <th>
-                        <a class="sort-link" data-sort="created_at">
+                    <th style="width: 10%;">
+                        <a class="sort-link" data-sort="created_at" role="button" title="Sort by Date Logged">
                             <i class="bi bi-clock"></i> Logged
                             <?php if ($sortBy === 'created_at'): ?>
                                 <span class="sort-icon"><?= $sortDir === 'ASC' ? '↑' : '↓' ?></span>
                             <?php endif; ?>
                         </a>
                     </th>
-                    <th class="text-end no-print"><i class="bi bi-tools"></i> Actions</th>
+                    <th style="width: 6%;" class="text-end no-print"><i class="bi bi-tools"></i> Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -620,7 +628,14 @@ $priorityIcons = [
                 <?php foreach ($rows as $row): 
                     $priorityClass = $priorityColors[$row['priority']] ?? 'medium';
                     $priorityIcon = $priorityIcons[$row['priority']] ?? 'bi-dash-circle';
-                    $statusLower = strtolower($row['status']);
+                    $statusSlug = strtolower(str_replace(' ', '-', (string)$row['status']));
+                    $statusIcon = match($row['status']) {
+                        'Open' => 'bi-exclamation-circle',
+                        'In Progress' => 'bi-play-circle',
+                        'Resolved' => 'bi-check-circle',
+                        'Closed' => 'bi-check-circle-fill',
+                        default => 'bi-circle'
+                    };
                 ?>
                     <tr>
                         <td>
@@ -641,9 +656,16 @@ $priorityIcons = [
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php if ($row['assigned_office']): ?>
+                            <?php if (!empty($row['assigned_user_name']) || !empty($row['assigned_office'])): ?>
                                 <span class="assigned-office">
-                                    <i class="bi bi-building"></i> <?= e($row['assigned_office']) ?>
+                                    <?php if (!empty($row['assigned_user_name'])): ?>
+                                        <i class="bi bi-person-fill text-primary"></i> <strong><?= e($row['assigned_user_name']) ?></strong>
+                                        <?php if (!empty($row['assigned_office'])): ?>
+                                            <span class="text-muted d-block small" style="font-size:0.75rem;"><i class="bi bi-building"></i> <?= e($row['assigned_office']) ?></span>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <i class="bi bi-building"></i> <?= e($row['assigned_office']) ?>
+                                    <?php endif; ?>
                                 </span>
                             <?php else: ?>
                                 <span class="assigned-office">
@@ -658,14 +680,8 @@ $priorityIcons = [
                             </span>
                         </td>
                         <td>
-                            <span class="status-badge <?= e($statusLower) ?>">
-                                <i class="bi <?= match($row['status']) {
-                                    'Open' => 'bi-exclamation-circle',
-                                    'In Progress' => 'bi-play-circle',
-                                    'Resolved' => 'bi-check-circle',
-                                    'Closed' => 'bi-check-circle',
-                                    default => 'bi-circle'
-                                } ?>"></i>
+                            <span class="status-badge <?= e($statusSlug) ?>">
+                                <i class="bi <?= e($statusIcon) ?>"></i>
                                 <?= e($row['status']) ?>
                             </span>
                         </td>
@@ -679,16 +695,14 @@ $priorityIcons = [
                                 <a href="view.php?id=<?= (int)$row['id'] ?>" class="btn-action view" title="View">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <?php if (canManage()): ?>
+                                <?php 
+                                $isAdmin = (function_exists('isAdmin') && isAdmin()) || (isset($_SESSION['role_id']) && (int)$_SESSION['role_id'] === 1);
+                                $canEditRow = $isAdmin || canManage() || ((int)($row['assigned_user_id'] ?? 0) === (int)(currentUserId() ?? 0) && (int)(currentUserId() ?? 0) > 0);
+                                if ($canEditRow): 
+                                ?>
                                     <button type="button" class="btn-action edit btn-edit-issue" 
                                             data-id="<?= (int)$row['id'] ?>" title="Edit">
                                         <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button type="button" class="btn-action delete" 
-                                            title="Delete"
-                                            data-confirm-delete="issue &quot;<?= e($row['title']) ?>&quot;"
-                                            data-delete-url="<?= e(APP_URL) ?>/modules/issues/ajax_delete.php?id=<?= (int)$row['id'] ?>">
-                                        <i class="bi bi-trash"></i>
                                     </button>
                                 <?php endif; ?>
                             </div>

@@ -101,9 +101,14 @@ if (!headers_sent()) {
 // which is exactly why forms intermittently showed "A network error
 // occurred." instead of a real error: the request actually succeeded in
 // reaching the server, but the *expired session* response wasn't JSON.
-// AJAX requests now get a proper JSON body describing what happened.
+/* ---- Idle timeout (aligned with standard 8-hour session lifetime) -- */
 if (isset($_SESSION['user_id'])) {
-    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > SESSION_LIFETIME) {
+    $idleTimeout = defined('INACTIVITY_TIMEOUT') ? INACTIVITY_TIMEOUT : (defined('SESSION_LIFETIME') ? SESSION_LIFETIME : 28800);
+    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $idleTimeout) {
+        $timedOutUser = (int)($_SESSION['user_id'] ?? 0);
+        if ($timedOutUser > 0) {
+            logActivity($timedOutUser, 'Auto Logout', 'User session expired after inactivity.');
+        }
         session_unset();
         session_destroy();
         if (isAjaxRequest()) {

@@ -12,10 +12,6 @@
 require_once __DIR__ . '/../../includes/auth.php';
 requireLogin();
 
-if (!canManage()) {
-    jsonResponse(false, 'You do not have permission to perform this action.');
-}
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(false, 'Invalid request method.');
 }
@@ -23,13 +19,32 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 requireCsrf();
 
 $id          = (int)($_POST['id'] ?? 0);
-$title       = clean($_POST['title'] ?? '');
-$description = clean($_POST['description'] ?? '');
-$categoryId  = (int)($_POST['category_id'] ?? 0) ?: null;
-$hearingId   = (int)($_POST['hearing_id'] ?? 0) ?: null;
-$priority    = clean($_POST['priority'] ?? 'Medium');
-$status      = clean($_POST['status'] ?? 'Open');
-$dueAt       = clean($_POST['due_at'] ?? '');
+$pdo         = db();
+
+$isAdmin = (function_exists('isAdmin') && isAdmin()) || (isset($_SESSION['role_id']) && (int)$_SESSION['role_id'] === 1);
+$isAssignedUser = false;
+$existingIssue  = null;
+if ($id > 0) {
+    $chkStmt = $pdo->prepare('SELECT id, assigned_user_id, hearing_id, legislative_item_id, category_id, assigned_office_id FROM hearing_issues WHERE id = :id');
+    $chkStmt->execute([':id' => $id]);
+    $existingIssue = $chkStmt->fetch();
+    if ($existingIssue && function_exists('currentUserId') && currentUserId() && (int)($existingIssue['assigned_user_id'] ?? 0) === currentUserId()) {
+        $isAssignedUser = true;
+    }
+}
+
+if (!canManage() && !$isAdmin && !$isAssignedUser) {
+    jsonResponse(false, 'You do not have permission to perform this action.');
+}
+
+$title          = clean($_POST['title'] ?? '');
+$description    = clean($_POST['description'] ?? '');
+$categoryId     = (int)($_POST['category_id'] ?? 0) ?: null;
+$hearingId      = (int)($_POST['hearing_id'] ?? 0) ?: null;
+$priority       = clean($_POST['priority'] ?? 'Medium');
+$status         = clean($_POST['status'] ?? 'Open');
+$dueAt          = clean($_POST['due_at'] ?? '');
+$assignedUserId = (int)($_POST['assigned_user_id'] ?? 0) ?: null;
 
 /*
  * Preferred new field: assigned_office_id
@@ -37,6 +52,32 @@ $dueAt       = clean($_POST['due_at'] ?? '');
  */
 $assignedOfficeId   = (int)($_POST['assigned_office_id'] ?? 0) ?: null;
 $assignedOfficeName = clean($_POST['assigned_office'] ?? '');
+
+if ($assignedUserId) {
+    $chkUser = $pdo->prepare(
+        "SELECT u.id, u.full_name, u.office_id, u.role_id, u.username, r.name AS role_name
+         FROM users u
+         LEFT JOIN roles r ON r.id = u.role_id
+         WHERE u.id = :id AND u.deleted_at IS NULL AND u.status = 'Active'"
+    );
+    $chkUser->execute([':id' => $assignedUserId]);
+    $uData = $chkUser->fetch();
+    if ($uData) {
+        $rName = strtolower(trim((string)($uData['role_name'] ?? '')));
+        $uName = strtolower(trim((string)($uData['username'] ?? '')));
+        if ($rName === 'administrator' || (int)($uData['role_id'] ?? 0) === 1 || $uName === 'admin' || str_contains($rName, 'admin')) {
+            jsonResponse(false, 'Hindi maaaring i-assign ang Administrator sa issue. Mangyaring pumili ng Legislative Staff o Committee Member.');
+        }
+        if (str_contains($rName, 'public') || str_contains($rName, 'stakeholder')) {
+            jsonResponse(false, 'Hindi maaaring i-assign ang mga Public User o Stakeholder sa issue.');
+        }
+        if (!$assignedOfficeId && !empty($uData['office_id'])) {
+            $assignedOfficeId = (int)$uData['office_id'];
+        }
+    } else {
+        jsonResponse(false, 'Ang napiling user ay hindi natagpuan o hindi aktibo.');
+    }
+}
 
 $statusAliases = [
     'Processing' => 'In Progress',
@@ -152,6 +193,18 @@ try {
         $legislativeItemId = $hearing['legislative_item_id'] ?: null;
     }
 
+    if ($id > 0 && $existingIssue) {
+        if (!$categoryId) { $categoryId = $existingIssue['category_id'] ? (int)$existingIssue['category_id'] : null; }
+        if (!$hearingId) { 
+            $hearingId = $existingIssue['hearing_id'] ? (int)$existingIssue['hearing_id'] : null;
+            $legislativeItemId = $existingIssue['legislative_item_id'] ? (int)$existingIssue['legislative_item_id'] : null;
+        }
+        if (!$assignedOfficeId) { $assignedOfficeId = $existingIssue['assigned_office_id'] ? (int)$existingIssue['assigned_office_id'] : null; }
+        if (!isset($_POST['assigned_user_id']) && !empty($existingIssue['assigned_user_id'])) {
+            $assignedUserId = (int)$existingIssue['assigned_user_id'];
+        }
+    }
+
     $pdo->beginTransaction();
 
     if ($id > 0) {
@@ -159,7 +212,11 @@ try {
             'SELECT
                 title,
                 status,
-                assigned_office_id
+                assigned_office_id,
+                assigned_user_id,
+                resolved_at,
+                resolved_by,
+                resolution_summary
              FROM hearing_issues
              WHERE id = :id
              FOR UPDATE'
@@ -177,6 +234,10 @@ try {
             ? date('Y-m-d H:i:s')
             : null;
 
+        $resSummary = trim((string)($_POST['resolution_summary'] ?? ''));
+        $resolvedAt = in_array($status, ['Resolved', 'Closed'], true) ? date('Y-m-d H:i:s') : null;
+        $resolvedBy = in_array($status, ['Resolved', 'Closed'], true) ? currentUserId() : null;
+
         $updateStmt = $pdo->prepare(
             'UPDATE hearing_issues
              SET
@@ -188,8 +249,13 @@ try {
                 priority = :priority,
                 status = :status,
                 assigned_office_id = :assigned_office_id,
+                assigned_user_id = :assigned_user_id,
                 due_at = :due_at,
-                closed_at = :closed_at
+                resolution_summary = CASE WHEN :res_summary <> "" THEN :res_summary_val ELSE resolution_summary END,
+                resolved_at = CASE WHEN :status IN ("Resolved", "Closed") THEN COALESCE(resolved_at, :resolved_at) ELSE resolved_at END,
+                resolved_by = CASE WHEN :status IN ("Resolved", "Closed") THEN COALESCE(resolved_by, :resolved_by) ELSE resolved_by END,
+                closed_at = :closed_at,
+                updated_at = NOW()
              WHERE id = :id'
         );
 
@@ -202,7 +268,12 @@ try {
             ':priority'            => $priority,
             ':status'              => $status,
             ':assigned_office_id'  => $assignedOfficeId,
+            ':assigned_user_id'    => $assignedUserId,
             ':due_at'              => $dueAt ?: null,
+            ':res_summary'         => $resSummary,
+            ':res_summary_val'     => $resSummary ?: null,
+            ':resolved_at'         => $resolvedAt,
+            ':resolved_by'         => $resolvedBy,
             ':closed_at'           => $closedAt,
             ':id'                  => $id,
         ]);
@@ -234,19 +305,21 @@ try {
         }
 
         if (
-            (int)($before['assigned_office_id'] ?? 0)
-            !== (int)($assignedOfficeId ?? 0)
+            (int)($before['assigned_office_id'] ?? 0) !== (int)($assignedOfficeId ?? 0) ||
+            (int)($before['assigned_user_id'] ?? 0) !== (int)($assignedUserId ?? 0)
         ) {
             $assignmentStmt = $pdo->prepare(
                 'INSERT INTO hearing_issue_assignments (
                     issue_id,
                     assigned_office_id,
+                    assigned_user_id,
                     assigned_by,
                     remarks,
                     assigned_at
                  ) VALUES (
                     :issue_id,
                     :assigned_office_id,
+                    :assigned_user_id,
                     :assigned_by,
                     :remarks,
                     NOW()
@@ -254,11 +327,29 @@ try {
             );
 
             $assignmentStmt->execute([
-                ':issue_id'          => $id,
+                ':issue_id'           => $id,
                 ':assigned_office_id' => $assignedOfficeId,
-                ':assigned_by'       => currentUserId(),
-                ':remarks'           => 'Issue assignment updated.',
+                ':assigned_user_id'   => $assignedUserId,
+                ':assigned_by'        => currentUserId(),
+                ':remarks'            => 'Issue assignment updated.',
             ]);
+
+            // Notify newly assigned staff
+            if ($assignedUserId && $assignedUserId !== (int)($before['assigned_user_id'] ?? 0)) {
+                $refNo = $existingIssue['reference_number'] ?? ('ISS-' . $id);
+                $pdo->prepare(
+                    "INSERT INTO notifications
+                        (user_id, system_id, notification_type, title, message, target_url, is_read, created_at)
+                     VALUES
+                        (:uid, :sys, 'Issue Assignment', :title, :msg, :url, 0, NOW())"
+                )->execute([
+                    ':uid'   => $assignedUserId,
+                    ':sys'   => function_exists('lphSystemId') ? lphSystemId() : 4,
+                    ':title' => "Assigned to Hearing Issue: {$refNo}",
+                    ':msg'   => "Nakatoka sa iyong account ang issue: \"{$title}\". Pindutin upang matingnan at maaksyunan.",
+                    ':url'   => APP_URL . '/modules/issues/view.php?id=' . $id,
+                ]);
+            }
         }
 
         $message = 'Issue updated successfully.';
@@ -281,6 +372,7 @@ try {
                 priority,
                 status,
                 assigned_office_id,
+                assigned_user_id,
                 due_at,
                 created_by,
                 created_at
@@ -294,6 +386,7 @@ try {
                 :priority,
                 :status,
                 :assigned_office_id,
+                :assigned_user_id,
                 :due_at,
                 :created_by,
                 NOW()
@@ -310,6 +403,7 @@ try {
             ':priority'            => $priority,
             ':status'              => $status,
             ':assigned_office_id'  => $assignedOfficeId,
+            ':assigned_user_id'    => $assignedUserId,
             ':due_at'              => $dueAt ?: null,
             ':created_by'          => currentUserId(),
         ]);
@@ -340,17 +434,19 @@ try {
             ':created_by' => currentUserId(),
         ]);
 
-        if ($assignedOfficeId) {
+        if ($assignedOfficeId || $assignedUserId) {
             $assignmentStmt = $pdo->prepare(
                 'INSERT INTO hearing_issue_assignments (
                     issue_id,
                     assigned_office_id,
+                    assigned_user_id,
                     assigned_by,
                     remarks,
                     assigned_at
                  ) VALUES (
                     :issue_id,
                     :assigned_office_id,
+                    :assigned_user_id,
                     :assigned_by,
                     :remarks,
                     NOW()
@@ -358,11 +454,27 @@ try {
             );
 
             $assignmentStmt->execute([
-                ':issue_id'          => $id,
+                ':issue_id'           => $id,
                 ':assigned_office_id' => $assignedOfficeId,
-                ':assigned_by'       => currentUserId(),
-                ':remarks'           => 'Initial issue assignment.',
+                ':assigned_user_id'   => $assignedUserId,
+                ':assigned_by'        => currentUserId(),
+                ':remarks'            => 'Initial issue assignment.',
             ]);
+
+            if ($assignedUserId) {
+                $pdo->prepare(
+                    "INSERT INTO notifications
+                        (user_id, system_id, notification_type, title, message, target_url, is_read, created_at)
+                     VALUES
+                        (:uid, :sys, 'Issue Assignment', :title, :msg, :url, 0, NOW())"
+                )->execute([
+                    ':uid'   => $assignedUserId,
+                    ':sys'   => function_exists('lphSystemId') ? lphSystemId() : 4,
+                    ':title' => "Assigned to Hearing Issue: {$referenceNumber}",
+                    ':msg'   => "Nakatoka sa iyong account ang issue: \"{$title}\". Pindutin upang matingnan at maaksyunan.",
+                    ':url'   => APP_URL . '/modules/issues/view.php?id=' . $id,
+                ]);
+            }
         }
 
         $message = 'Issue created successfully.';

@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/lph_module_helpers.php';
+require_once __DIR__ . '/../../config/ai_config.php';
+require_once __DIR__ . '/../../includes/AI/AIAnalysisManager.php';
 
 requireLogin();
 
@@ -108,10 +110,26 @@ try {
 
     $pdo->commit();
 
+    /*
+     * Queue only eligible citizen/public feedback and Complaint entries.
+     * This does NOT call Ollama here, so submission remains fast even
+     * when the local AI model is still loading.
+     */
+    $aiQueue = ['queued'=>false,'eligible'=>false];
+    try {
+        $aiQueue = AIAnalysisManager::queueIfEligible($id);
+    } catch (Throwable $aiError) {
+        error_log('Feedback AI queue error: '.$aiError->getMessage());
+    }
+
     jsonResponse(
         true,
         'Feedback submitted successfully. It is now available for review.',
-        ['id'=>$id]
+        [
+            'id'=>$id,
+            'ai_queued'=>!empty($aiQueue['queued']),
+            'ai_eligible'=>!empty($aiQueue['eligible']),
+        ]
     );
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();

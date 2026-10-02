@@ -77,7 +77,8 @@ $stmt = $pdo->prepare(
         i.created_at,
         ic.name AS category_name,
         h.title AS hearing_title,
-        o.name AS assigned_office
+        o.name AS assigned_office,
+        u.full_name AS assigned_user_name
      FROM hearing_issues i
      LEFT JOIN hearing_issue_categories ic
         ON ic.id = i.category_id
@@ -85,6 +86,8 @@ $stmt = $pdo->prepare(
         ON h.id = i.hearing_id
      LEFT JOIN offices o
         ON o.id = i.assigned_office_id
+     LEFT JOIN users u
+        ON u.id = i.assigned_user_id
      $whereSql
      ORDER BY i.created_at DESC"
 );
@@ -319,7 +322,11 @@ if ($catFil > 0) {
                 </td>
 
                 <td>
-                    <?= e($row['assigned_office'] ?: 'Unassigned') ?>
+                    <?php if (!empty($row['assigned_user_name'])): ?>
+                        <?= e($row['assigned_user_name']) ?><?= !empty($row['assigned_office']) ? ' (' . e($row['assigned_office']) . ')' : '' ?>
+                    <?php else: ?>
+                        <?= e($row['assigned_office'] ?: 'Unassigned') ?>
+                    <?php endif; ?>
                 </td>
 
                 <td>

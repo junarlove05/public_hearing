@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/lph_module_helpers.php';
 
 requireLogin();
-if (!canManage()) jsonResponse(false,'You do not have permission to manage surveys.');
+if (!canManage() && !hasPermission('lph.surveys.manage')) jsonResponse(false,'You do not have permission to manage surveys.');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonResponse(false,'Invalid request method.');
 requireCsrf();
 

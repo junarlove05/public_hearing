@@ -4,9 +4,9 @@
    ========================================================== */
 
 :root {
-  --gov-primary: #0b3d6e;      /* deep government blue */
-  --gov-primary-dark: #082c4f;
-  --gov-accent: #1d6fb8;
+  --gov-primary: #0F2137;      /* executive dark blue */
+  --gov-primary-dark: #0A1628;
+  --gov-accent: #0F2137;
   --gov-gray-bg: #f4f6f9;
   --gov-gray-border: #e1e5ea;
   --gov-sidebar-width: 250px;
@@ -189,3 +189,64 @@ body.sidebar-collapsed .orlms-sidebar-link i {
   .no-print, .sidebar, .topnav, .app-footer, .breadcrumb-bar .btn { display: none !important; }
   .main-content { margin-left: 0 !important; padding: 0 !important; }
 }
+
+
+/* Card header action button visibility and contrast guarantee */
+.card-header .btn-outline-light {
+    color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    background-color: transparent !important;
+}
+.card-header .btn-outline-light:hover {
+    color: #ffffff !important;
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+.card-header .btn-primary {
+    color: #ffffff !important;
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    font-weight: 600;
+}
+.card-header .btn-primary:hover {
+    background-color: #0b5ed7 !important;
+    border-color: #0a58ca !important;
+}
+
+/* ==========================================================
+   Activity Position & Highlight System (Subsystem 7)
+   Preserves screen position and highlights the exact row/card
+   where an activity occurred across all modules
+   ========================================================== */
+@keyframes lphActivityPulse {
+    0% {
+        background-color: rgba(13, 110, 253, 0.35) !important;
+        box-shadow: inset 0 0 0 2px rgba(13, 110, 253, 0.8), 0 0 16px rgba(13, 110, 253, 0.4) !important;
+    }
+    40% {
+        background-color: rgba(13, 110, 253, 0.20) !important;
+        box-shadow: inset 0 0 0 2px rgba(13, 110, 253, 0.5), 0 0 8px rgba(13, 110, 253, 0.25) !important;
+    }
+    100% {
+        background-color: transparent;
+        box-shadow: none !important;
+    }
+}
+
+.table-highlight-flash,
+.lph-activity-highlight {
+    animation: lphActivityPulse 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    position: relative;
+    z-index: 2;
+}
+
+tr.table-highlight-flash > td,
+tr.lph-activity-highlight > td {
+    background-color: rgba(13, 110, 253, 0.16) !important;
+    transition: background-color 2.8s ease;
+}
+
+html {
+    scroll-behavior: auto !important;
+}
+

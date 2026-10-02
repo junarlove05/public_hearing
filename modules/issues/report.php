@@ -414,7 +414,7 @@ new Chart(document.getElementById('categoryChart'), {
                     array_column($byCategory, 'total')
                 )
             ) ?>,
-            backgroundColor: '#1d6fb8',
+            backgroundColor: '#0F2137',
             borderRadius: 6
         }]
     },

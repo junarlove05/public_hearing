@@ -9,8 +9,8 @@
 require_once __DIR__ . '/../../includes/auth.php';
 requireLogin();
 
-if (!(canManage() || hasRole([ROLE_COMMITTEE]))) {
-    jsonResponse(false, 'You do not have permission to perform this action.');
+if (!isAdmin()) {
+    jsonResponse(false, 'Deleting attendance records is restricted to System Administrators.');
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonResponse(false, 'Invalid request method.');
 requireCsrf();
@@ -20,10 +20,14 @@ if ($id <= 0) jsonResponse(false, 'Invalid attendance record id.');
 
 $pdo = db();
 try {
-    $stmt = $pdo->prepare('SELECT stakeholder_id, hearing_id FROM attendance WHERE id = :id');
+    $stmt = $pdo->prepare('SELECT stakeholder_id, hearing_id, checked_in_at, checked_out_at FROM attendance WHERE id = :id');
     $stmt->execute([':id' => $id]);
     $row = $stmt->fetch();
     if (!$row) jsonResponse(false, 'Attendance record not found.');
+
+    if (!empty($row['checked_in_at']) || !empty($row['checked_out_at'])) {
+        jsonResponse(false, 'This attendance record is permanently locked because Time In or Time Out has already been recorded.');
+    }
 
     $del = $pdo->prepare('DELETE FROM attendance WHERE id = :id');
     $del->execute([':id' => $id]);

@@ -46,11 +46,11 @@ try {
     }
 
     $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-    $update = db()->prepare('UPDATE users SET password = :password WHERE id = :id');
+    $update = db()->prepare('UPDATE users SET password = :password, password_changed_at = NOW() WHERE id = :id');
     $update->execute([':password' => $hash, ':id' => currentUserId()]);
 
-    logActivity(currentUserId(), 'Update', 'User changed their password.');
-    setFlash('success', 'Password updated successfully.');
+    logActivity(currentUserId(), 'Update', 'User changed their password (3-week rotation timer reset).');
+    setFlash('success', 'Password updated successfully! Your 3-week rotation countdown has been reset.');
     redirect(APP_URL . '/pages/profile.php');
 
 } catch (PDOException $e) {

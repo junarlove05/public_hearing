@@ -14,8 +14,8 @@ if (isLoggedIn()) {
     redirect(APP_URL . '/dashboard.php');
 }
 
-$timeout = isset($_GET['timeout']);
 $flashMessages = getFlashMessages();
+$adminPolicyStatus = lphGetAdminPasswordPolicyStatus();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -28,6 +28,12 @@ $flashMessages = getFlashMessages();
 
 <link href="<?= e(vendorAsset('bootstrap/bootstrap.min.css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css')) ?>" rel="stylesheet">
 <link href="<?= e(vendorAsset('bootstrap-icons/bootstrap-icons.css', 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css')) ?>" rel="stylesheet">
+
+<!-- Premium Google Fonts matching Landing Page (#subsystems) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
 <link href="assets/css/style.css" rel="stylesheet">
 <style>
     :root {
@@ -38,6 +44,10 @@ $flashMessages = getFlashMessages();
         --primary-yellow-light: #8a6200;
         --primary-white: #FFFFFF;
         --primary-gray: #F3F4F6;
+        --gold-primary: #D4AF37;
+        --gold-light: #E5C07B;
+        --font-serif: 'Cinzel', serif;
+        --font-sans: 'Plus Jakarta Sans', sans-serif;
     }
 
     * {
@@ -49,6 +59,8 @@ $flashMessages = getFlashMessages();
     html, body {
         height: 100%;
         overflow: hidden;
+        font-family: var(--font-sans);
+        line-height: 1.6;
     }
 
     .login-wrapper {
@@ -173,17 +185,29 @@ $flashMessages = getFlashMessages();
         filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.55));
     }
 
-    .brand-title {
-        font-size: 2.5rem;
+    .brand-eyebrow {
+        font-family: var(--font-sans);
+        font-size: 0.75rem;
         font-weight: 800;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: var(--gold-light);
         margin-bottom: 0.5rem;
-        letter-spacing: -1px;
+    }
+
+    .brand-title {
+        font-family: var(--font-serif);
+        font-size: clamp(1.85rem, 2.3vw, 2.35rem);
+        font-weight: 700;
+        margin-bottom: 1.75rem;
+        letter-spacing: 0.5px;
+        line-height: 1.25;
         color: var(--primary-white);
         text-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
     }
 
     .brand-title .highlight {
-        color: var(--primary-yellow);
+        color: var(--gold-light);
         position: relative;
     }
 
@@ -194,13 +218,14 @@ $flashMessages = getFlashMessages();
         left: 0;
         right: 0;
         height: 4px;
-        background: var(--primary-yellow);
+        background: var(--gold-light);
         border-radius: 2px;
         opacity: 0.5;
     }
 
     .brand-description {
-        font-size: 1.1rem;
+        font-family: var(--font-sans);
+        font-size: 0.95rem;
         opacity: 0.9;
         line-height: 1.6;
         margin-bottom: 2rem;
@@ -233,13 +258,15 @@ $flashMessages = getFlashMessages();
     }
 
     .feature-item i {
-        color: var(--primary-yellow);
+        color: var(--gold-light);
         font-size: 1.25rem;
     }
 
     .feature-item span {
-        font-size: 0.85rem;
-        font-weight: 500;
+        font-family: var(--font-sans);
+        font-size: 0.825rem;
+        font-weight: 600;
+        letter-spacing: 0.2px;
         color: var(--primary-white);
     }
 
@@ -253,6 +280,48 @@ $flashMessages = getFlashMessages();
         background: var(--primary-white);
         position: relative;
         min-height: 100vh;
+    }
+
+    /* Back to Subsystems Portal Button - Floating Top-Right */
+    .back-portal-btn {
+        position: absolute;
+        top: 1.75rem;
+        right: 2rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.52rem 1.1rem;
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 999px;
+        color: #475569;
+        font-family: var(--font-sans);
+        font-size: 0.785rem;
+        font-weight: 600;
+        letter-spacing: 0.25px;
+        text-decoration: none;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+        z-index: 20;
+    }
+
+    .back-portal-btn i {
+        font-size: 0.875rem;
+        color: #B89350;
+        transition: transform 0.25s ease, color 0.25s ease;
+    }
+
+    .back-portal-btn:hover {
+        background: #0F172A;
+        border-color: #0F172A;
+        color: #FFFFFF;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.16);
+        transform: translateY(-1px);
+    }
+
+    .back-portal-btn:hover i {
+        color: #F59E0B;
+        transform: translateX(-3px);
     }
 
     /* Yellow accent bar on right side */
@@ -291,14 +360,26 @@ $flashMessages = getFlashMessages();
         margin-bottom: 2rem;
     }
 
+    .login-eyebrow {
+        font-family: var(--font-sans);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: #B89350;
+        margin-bottom: 0.35rem;
+    }
+
     .login-greeting {
-        font-size: 1.75rem;
+        font-family: var(--font-serif);
+        font-size: 1.85rem;
         font-weight: 700;
-        color: var(--primary-blue-dark);
-        margin-bottom: 0.25rem;
+        color: #0F172A;
+        margin-bottom: 0.35rem;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.65rem;
+        line-height: 1.25;
     }
 
     .login-greeting i {
@@ -307,12 +388,14 @@ $flashMessages = getFlashMessages();
     }
 
     .login-subtitle {
-        color: #6B7280;
-        font-size: 0.95rem;
+        font-family: var(--font-sans);
+        color: #64748B;
+        font-size: 0.9rem;
     }
 
     /* Custom Alerts */
     .alert-custom {
+        font-family: var(--font-sans);
         border: none;
         border-radius: 12px;
         padding: 0.75rem 1rem;
@@ -321,7 +404,7 @@ $flashMessages = getFlashMessages();
         align-items: center;
         gap: 0.75rem;
         font-weight: 500;
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         border-left: 4px solid;
     }
 
@@ -353,9 +436,11 @@ $flashMessages = getFlashMessages();
     }
 
     .form-label {
-        font-weight: 600;
-        color: #374151;
-        font-size: 0.85rem;
+        font-family: var(--font-sans);
+        font-weight: 650;
+        color: #071426;
+        font-size: 0.825rem;
+        letter-spacing: 0.2px;
         margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
@@ -384,6 +469,7 @@ $flashMessages = getFlashMessages();
     }
 
     .input-group-modern .form-control {
+        font-family: var(--font-sans);
         padding: 0.75rem 1rem 0.75rem 3rem;
         border-radius: 12px;
         border: 2px solid #E5E7EB;
@@ -395,17 +481,18 @@ $flashMessages = getFlashMessages();
     }
 
     .input-group-modern .form-control:focus {
-        border-color: var(--primary-blue);
+        border-color: #071426;
         background: #FFFFFF;
-        box-shadow: 0 0 0 4px rgba(26, 86, 219, 0.1);
+        box-shadow: 0 0 0 4px rgba(7, 20, 38, 0.12);
         outline: none;
     }
 
     .input-group-modern .form-control:focus ~ .input-icon {
-        color: var(--primary-blue);
+        color: var(--primary-yellow);
     }
 
     .input-group-modern .form-control::placeholder {
+        font-family: var(--font-sans);
         color: #9CA3AF;
         font-weight: 400;
     }
@@ -433,7 +520,7 @@ $flashMessages = getFlashMessages();
         height: 18px;
         border-radius: 6px;
         border: 2px solid #D1D5DB;
-        accent-color: var(--primary-blue);
+        accent-color: #071426;
         cursor: pointer;
         margin: 0;
         transition: all 0.2s ease;
@@ -441,12 +528,13 @@ $flashMessages = getFlashMessages();
     }
 
     .checkbox-custom input[type="checkbox"]:checked {
-        border-color: var(--primary-blue);
-        background-color: var(--primary-blue);
+        border-color: #071426;
+        background-color: #071426;
     }
 
     .checkbox-custom .check-label {
-        font-size: 0.875rem;
+        font-family: var(--font-sans);
+        font-size: 0.85rem;
         color: #4B5563;
         font-weight: 500;
         cursor: pointer;
@@ -454,10 +542,11 @@ $flashMessages = getFlashMessages();
     }
 
     .forgot-link {
-        color: var(--primary-blue);
+        font-family: var(--font-sans);
+        color: #071426;
         text-decoration: none;
-        font-size: 0.875rem;
-        font-weight: 500;
+        font-size: 0.85rem;
+        font-weight: 600;
         transition: all 0.3s ease;
         display: inline-flex;
         align-items: center;
@@ -465,18 +554,21 @@ $flashMessages = getFlashMessages();
     }
 
     .forgot-link:hover {
-        color: var(--primary-blue-dark);
+        color: var(--primary-yellow);
         text-decoration: underline;
     }
 
     /* Login Button */
     .btn-login {
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
+        font-family: var(--font-sans);
+        background: linear-gradient(135deg, #071426 0%, #1a3a5c 100%);
         border: none;
         border-radius: 12px;
         padding: 0.85rem;
-        font-weight: 600;
-        font-size: 1rem;
+        font-weight: 700;
+        font-size: 0.875rem;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
         color: white;
         height: 3.25rem;
         display: flex;
@@ -488,7 +580,7 @@ $flashMessages = getFlashMessages();
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 4px 15px rgba(26, 86, 219, 0.3);
+        box-shadow: 0 4px 15px rgba(7, 20, 38, 0.35);
     }
 
     .btn-login::after {
@@ -507,8 +599,9 @@ $flashMessages = getFlashMessages();
     }
 
     .btn-login:hover {
+        background: linear-gradient(135deg, #0f2137 0%, #b8860b 100%);
         transform: translateY(-2px);
-        box-shadow: 0 8px 30px rgba(26, 86, 219, 0.4);
+        box-shadow: 0 8px 30px rgba(184, 134, 11, 0.4);
         color: white;
     }
 
@@ -527,16 +620,19 @@ $flashMessages = getFlashMessages();
 
     /* Footer */
     .login-footer {
+        font-family: var(--font-sans);
         text-align: center;
         margin-top: 1.5rem;
         padding-top: 1.5rem;
         border-top: 1px solid #F3F4F6;
         color: #9CA3AF;
-        font-size: 0.8rem;
+        font-size: 0.775rem;
+        letter-spacing: 0.2px;
     }
 
     .login-footer a {
-        color: var(--primary-blue);
+        font-family: var(--font-sans);
+        color: #071426;
         text-decoration: none;
         font-weight: 500;
     }
@@ -551,13 +647,16 @@ $flashMessages = getFlashMessages();
 
     /* Divider */
     .divider {
+        font-family: var(--font-sans);
         display: flex;
         align-items: center;
         margin: 1.5rem 0;
         gap: 1rem;
         color: #9CA3AF;
-        font-size: 0.8rem;
-        font-weight: 500;
+        font-size: 0.725rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
     }
 
     .divider::before,
@@ -592,18 +691,26 @@ $flashMessages = getFlashMessages();
         }
 
         .brand-title {
-            font-size: 2rem;
+            font-size: 1.65rem;
+            margin-bottom: 1.25rem;
         }
 
         .brand-logo {
             width: 100px;
             height: 100px;
-            padding: 10px;
+            padding: 8px;
+        }
+
+        .back-portal-btn {
+            top: 1.15rem;
+            right: 1.15rem;
+            padding: 0.42rem 0.85rem;
+            font-size: 0.75rem;
         }
 
         .login-side {
             min-height: 50vh;
-            padding: 2rem 1.5rem;
+            padding: 3.75rem 1.5rem 2rem 1.5rem;
         }
 
         .login-side::before {
@@ -629,13 +736,22 @@ $flashMessages = getFlashMessages();
         }
 
         .brand-title {
-            font-size: 1.6rem;
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
         }
 
         .brand-logo {
             width: 80px;
             height: 80px;
             padding: 8px;
+        }
+
+        .back-portal-btn {
+            top: 0.85rem;
+            right: 0.85rem;
+            padding: 0.38rem 0.75rem;
+            font-size: 0.72rem;
+            gap: 0.35rem;
         }
 
         .login-container {
@@ -657,11 +773,10 @@ $flashMessages = getFlashMessages();
                 <img src="assets/images/logo.png" alt="<?= e(APP_NAME) ?> Logo">
             </div>
             
+            <div class="brand-eyebrow">CITY OF MANILA &bull; CIVIC CONSULTATION</div>
             <h1 class="brand-title">
-                <?= e(APP_NAME) ?>
+                Public Hearing and Consultation Management System
             </h1>
-            
-           
 
             <div class="brand-features">
                 <div class="feature-item">
@@ -686,21 +801,32 @@ $flashMessages = getFlashMessages();
 
     <!-- RIGHT SIDE - Login Form -->
     <div class="login-side">
+        <a href="../index.php#subsystems" class="back-portal-btn">
+            <i class="bi bi-arrow-left"></i>
+            <span>Back to Subsystems Portal</span>
+        </a>
+
         <div class="login-container">
             <!-- Header -->
             <div class="login-header">
+                <div class="login-eyebrow">AUTHENTICATION ACCESS</div>
                 <h2 class="login-greeting">
                     <i class="bi bi-box-arrow-in-right"></i>
                     Welcome Back
                 </h2>
-                <p class="login-subtitle">Sign in to access your account</p>
+                <p class="login-subtitle">Sign in to access your LPH account</p>
             </div>
 
             <!-- Alerts -->
-            <?php if ($timeout): ?>
-                <div class="alert-custom alert-warning">
-                    <i class="bi bi-clock-history"></i>
-                    <span>Your session expired. Please log in again.</span>
+
+            <!-- 3-Week Admin Password Expiry Persistent Notification -->
+            <?php if (!empty($adminPolicyStatus['has_expired'])): ?>
+                <div class="alert-custom alert-danger d-flex align-items-start gap-2 mb-3 text-start" style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #ef4444;border-radius:10px;padding:0.85rem 1rem;color:#991b1b;">
+                    <i class="bi bi-shield-exclamation fs-5 text-danger mt-1"></i>
+                    <div style="font-size:0.825rem;line-height:1.45;">
+                        <strong class="d-block mb-1" style="font-size:0.875rem;color:#7f1d1d;">Security Notice: Administrator Password Expired</strong>
+                        The Administrator password has surpassed the mandatory <strong>3-week (21 days)</strong> rotation policy. Please sign in and update your password immediately in <em>My Profile</em>.
+                    </div>
                 </div>
             <?php endif; ?>
 
@@ -752,20 +878,8 @@ $flashMessages = getFlashMessages();
                     </div>
                 </div>
 
-                <!-- Options -->
-                <div class="form-options">
-                    <label class="checkbox-custom">
-                        <input type="checkbox" name="remember" id="remember">
-                        <span class="check-label">Remember me</span>
-                    </label>
-                    <a href="forgot_password.php" class="forgot-link">
-                        <i class="bi bi-question-circle"></i>
-                        Forgot password?
-                    </a>
-                </div>
-
                 <!-- Submit Button -->
-                <button type="submit" class="btn-login">
+                <button type="submit" class="btn-login mt-4">
                     <i class="bi bi-box-arrow-in-right"></i>
                     Sign In
                 </button>

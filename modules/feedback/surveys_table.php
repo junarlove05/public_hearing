@@ -68,11 +68,6 @@ $rows = $stmt->fetchAll();
               <?php endif; ?>
               <?php if (canManage()): ?>
               <button type="button" class="btn btn-outline-primary btn-edit-survey" data-id="<?= (int)$row['id'] ?>" title="Edit"><i class="bi bi-pencil"></i></button>
-              <button type="button" class="btn btn-outline-danger" title="Delete"
-                      data-confirm-delete="survey &quot;<?= e($row['title']) ?>&quot;"
-                      data-delete-url="<?= e(APP_URL) ?>/modules/feedback/ajax_survey_delete.php?id=<?= (int)$row['id'] ?>">
-                <i class="bi bi-trash"></i>
-              </button>
               <?php endif; ?>
             </div>
           </td>
