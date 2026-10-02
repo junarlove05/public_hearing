@@ -405,6 +405,36 @@ include __DIR__ . '/../../layouts/header.php';
     font-size: 1.2rem;
     flex-shrink: 0;
 }
+/* Table Action Buttons - Uniform size & Simple Clean Styling */
+.inv-action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+.inv-action-btn {
+    height: 31px !important;
+    padding: 0 10px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    border-radius: 6px !important;
+    transition: all 0.15s ease !important;
+    white-space: nowrap !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+.inv-action-btn.icon-only {
+    width: 31px !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+}
+.inv-action-btn i {
+    font-size: 0.85rem !important;
+}
 </style>
 
 <div class="app-wrapper"><?php include __DIR__.'/../../layouts/sidebar.php'; ?><div class="main-content">
@@ -721,9 +751,6 @@ include __DIR__ . '/../../layouts/header.php';
                     <button type="button" class="btn btn-outline-secondary px-3" id="btnResetForm">
                         <i class="bi bi-arrow-counterclockwise me-1"></i> Clear Selection
                     </button>
-                    <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold shadow-sm" id="btnSubmitBottom">
-                        <i class="bi bi-send-fill me-2"></i> Create Invitation(s)
-                    </button>
                 </div>
             </div>
         </form>
@@ -982,10 +1009,10 @@ include __DIR__ . '/../../layouts/header.php';
                                         <span class="badge <?= $badgeClass ?> px-2.5 py-1.5"><?= e($st) ?></span>
                                     </td>
                                     <td class="text-end text-nowrap">
-                                        <div class="d-inline-flex align-items-center gap-1.5">
+                                        <div class="inv-action-group">
                                             <?php if ($r['status'] !== 'Accepted'): ?>
                                                 <button type="button" 
-                                                        class="btn btn-sm btn-success btn-invite-status fw-semibold" 
+                                                        class="btn btn-success inv-action-btn btn-invite-status" 
                                                         data-id="<?= (int)$r['id'] ?>" 
                                                         data-sid="<?= (int)$r['stakeholder_id'] ?>"
                                                         data-status="Accepted"
@@ -1003,7 +1030,7 @@ include __DIR__ . '/../../layouts/header.php';
                                                 <a href="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>" 
                                                    target="_blank" 
                                                    rel="noopener noreferrer"
-                                                   class="btn btn-sm btn-outline-danger fw-semibold" 
+                                                   class="btn btn-outline-danger inv-action-btn" 
                                                    data-name="<?= e($r['full_name']) ?>"
                                                    data-email="<?= e($r['email'] ?? '') ?>"
                                                    data-code="<?= e($r['invitation_code']) ?>"
@@ -1014,30 +1041,28 @@ include __DIR__ . '/../../layouts/header.php';
                                                    data-id="<?= (int)$r['id'] ?>"
                                                    onclick="handleGmailWithRichClipboard(this, event)"
                                                    title="Open & Send official invitation letter in Gmail">
-                                                    <i class="bi bi-google me-1"></i>Gmail
+                                                    <i class="bi bi-google me-1"></i>Send via Gmail
                                                 </a>
-                                                <div class="btn-group btn-group-sm">
-                                                    <button type="button" 
-                                                            class="btn btn-outline-danger btn-invite-status <?= $r['status']==='Declined'?'active fw-bold':'' ?>" 
-                                                            data-id="<?= (int)$r['id'] ?>" 
-                                                            data-status="Declined"
-                                                            title="Mark as Declined">
-                                                        <i class="bi bi-x-circle me-1"></i>Decline
-                                                    </button>
-                                                    <button type="button" 
-                                                            class="btn btn-outline-secondary btn-invite-status <?= $r['status']==='Cancelled'?'active fw-bold':'' ?>" 
-                                                            data-id="<?= (int)$r['id'] ?>" 
-                                                            data-status="Cancelled"
-                                                            title="Mark as Cancelled">
-                                                        <i class="bi bi-slash-circle me-1"></i>Cancel
-                                                    </button>
-                                                </div>
+                                                <button type="button" 
+                                                        class="btn btn-outline-danger inv-action-btn icon-only btn-invite-status <?= $r['status']==='Declined'?'active':'' ?>" 
+                                                        data-id="<?= (int)$r['id'] ?>" 
+                                                        data-status="Declined"
+                                                        title="Mark as Declined">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn btn-outline-secondary inv-action-btn icon-only btn-invite-status <?= $r['status']==='Cancelled'?'active':'' ?>" 
+                                                        data-id="<?= (int)$r['id'] ?>" 
+                                                        data-status="Cancelled"
+                                                        title="Mark as Cancelled">
+                                                    <i class="bi bi-slash-circle"></i>
+                                                </button>
                                             <?php else: ?>
-                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 me-1">
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 me-1" style="font-size:0.75rem;">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Approved &amp; Sent
                                                 </span>
                                                 <button type="button" 
-                                                        class="btn btn-sm btn-outline-primary btn-direct-send-email fw-semibold" 
+                                                        class="btn btn-outline-primary inv-action-btn btn-direct-send-email" 
                                                         data-id="<?= (int)$r['id'] ?>" 
                                                         data-sid="<?= (int)$r['stakeholder_id'] ?>"
                                                         data-name="<?= e($r['full_name']) ?>"
@@ -1055,7 +1080,7 @@ include __DIR__ . '/../../layouts/header.php';
                                                 <a href="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>" 
                                                    target="_blank" 
                                                    rel="noopener noreferrer"
-                                                   class="btn btn-sm btn-danger text-white fw-semibold shadow-sm" 
+                                                   class="btn btn-outline-danger inv-action-btn" 
                                                    data-name="<?= e($r['full_name']) ?>"
                                                    data-email="<?= e($r['email'] ?? '') ?>"
                                                    data-code="<?= e($r['invitation_code']) ?>"
@@ -1069,17 +1094,17 @@ include __DIR__ . '/../../layouts/header.php';
                                                     <i class="bi bi-google me-1"></i>Send via Gmail
                                                 </a>
                                                 <button type="button" 
-                                                        class="btn btn-sm btn-outline-secondary btn-invite-status" 
+                                                        class="btn btn-outline-secondary inv-action-btn icon-only btn-invite-status" 
                                                         data-id="<?= (int)$r['id'] ?>" 
                                                         data-status="Cancelled"
                                                         title="Mark as Cancelled">
                                                     <i class="bi bi-slash-circle"></i>
                                                 </button>
                                             <?php endif; ?>
-                                            <a href="invitation_print.php?id=<?= (int)$r['id'] ?>" target="_blank" class="btn btn-sm btn-outline-secondary" title="Print Official Invitation">
+                                            <a href="invitation_print.php?id=<?= (int)$r['id'] ?>" target="_blank" class="btn btn-outline-secondary inv-action-btn icon-only" title="Print Official Invitation">
                                                 <i class="bi bi-printer"></i>
                                             </a>
-                                            <a href="invitation_download.php?id=<?= (int)$r['id'] ?>" class="btn btn-sm btn-outline-secondary" title="Download Invitation HTML">
+                                            <a href="invitation_download.php?id=<?= (int)$r['id'] ?>" class="btn btn-outline-secondary inv-action-btn icon-only" title="Download Invitation HTML">
                                                 <i class="bi bi-download"></i>
                                             </a>
                                         </div>
@@ -1939,12 +1964,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const submitBtn = document.getElementById('btnSubmitBottom');
         const submitTopBtn = document.getElementById('btnSubmitTop');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitTopBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Creating ${checkedCbs.length} Invitation(s)...`;
+        const originalText = submitTopBtn ? submitTopBtn.innerHTML : '';
+        if (submitTopBtn) {
+            submitTopBtn.disabled = true;
+            submitTopBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Creating ${checkedCbs.length} Invitation(s)...`;
+        }
 
         try {
             const r = await appPostForm(APP_URL + '/modules/stakeholders/ajax_invite.php', inviteForm);
@@ -1992,9 +2017,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonColor: '#0b3d6e'
             });
         } finally {
-            submitBtn.disabled = false;
-            submitTopBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
+            if (submitTopBtn) {
+                submitTopBtn.disabled = false;
+                submitTopBtn.innerHTML = originalText;
+            }
         }
     };
 
