@@ -51,7 +51,7 @@ function lphBuildGmailComposeUrl(array $r, array $group): string {
     $id = (int)($r['id'] ?? 0);
 
     $baseUrl = (defined('APP_URL') && APP_URL) ? rtrim(APP_URL, '/') : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/legislative/lph');
-    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $id . '&code=' . rawurlencode($code);
+    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $id;
     $qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($code) . '&margin=6';
     $manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
 
@@ -73,13 +73,13 @@ function lphBuildGmailComposeUrl(array $r, array $group): string {
           . "• Session Venue  : {$venue}\n"
           . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
           . "🎫 YOUR OFFICIAL ATTENDANCE PASS & QR CODE:\n"
-          . "• Stakeholder Name  : {$name}\n"
+          . "• Stakeholder Name : {$name}\n"
           . "• Official Pass Code: {$code}\n\n"
-          . "📲 CLICK TO DISPLAY / SCAN YOUR QR CODE PASS:\n{$qrImageUrl}\n\n"
-          . "📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE (WITH QR PASS):\n{$printUrl}\n\n"
+          . "📱 SCAN / VIEW YOUR QR CODE BADGE:\n{$qrImageUrl}\n\n"
+          . "📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE:\n{$printUrl}\n\n"
           . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
           . "IMPORTANT INSTRUCTIONS FOR ATTENDEES:\n"
-          . "1. Please present this Official Pass Code or your digital QR Code upon arrival at the secretariat registration desk.\n"
+          . "1. Please present this Official Invitation Code or your digital QR Code upon arrival at the secretariat registration desk.\n"
           . "2. For on-site attendees, registration desk opens 30 minutes before the session starts.\n"
           . "3. Keep this email and QR pass accessible on your mobile phone or print a hard copy.\n"
           . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -962,7 +962,7 @@ include __DIR__ . '/../../layouts/header.php';
                                                         data-time="<?= e($group['hearing_time'] ?? '') ?>"
                                                         data-venue="<?= e($group['venue'] ?? '') ?>"
                                                         data-gmail-url="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>"
-                                                        title="Approve Stakeholder & Send Invitation via Gmail">
+                                                        title="Approve Stakeholder & Send Official Invitation Email">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Approve &amp; Send
                                                 </button>
                                                 <a href="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>" 
@@ -992,19 +992,28 @@ include __DIR__ . '/../../layouts/header.php';
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 me-1">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Approved &amp; Sent
                                                 </span>
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-primary btn-direct-send-email fw-semibold" 
+                                                        data-id="<?= (int)$r['id'] ?>" 
+                                                        data-sid="<?= (int)$r['stakeholder_id'] ?>"
+                                                        data-name="<?= e($r['full_name']) ?>"
+                                                        data-email="<?= e($r['email'] ?? '') ?>"
+                                                        data-code="<?= e($r['invitation_code']) ?>"
+                                                        data-title="<?= e($group['hearing_title'] ?? '') ?>"
+                                                        data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
+                                                        data-time="<?= e($group['hearing_time'] ?? '') ?>"
+                                                        data-venue="<?= e($group['venue'] ?? '') ?>"
+                                                        data-gmail-url="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>"
+                                                        onclick="handleResendInvitation(this, event)"
+                                                        title="Resend official invitation email directly to <?= e($r['email'] ?: 'stakeholder') ?>">
+                                                    <i class="bi bi-send me-1"></i>Resend
+                                                </button>
                                                 <a href="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>" 
                                                    target="_blank" 
                                                    rel="noopener noreferrer"
                                                    class="btn btn-sm btn-danger text-white fw-semibold shadow-sm" 
                                                    title="Open and send official invitation letter directly from your Gmail">
                                                     <i class="bi bi-google me-1"></i>Send via Gmail
-                                                </a>
-                                                <a href="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>" 
-                                                   target="_blank" 
-                                                   rel="noopener noreferrer"
-                                                   class="btn btn-sm btn-outline-primary fw-semibold" 
-                                                   title="Resend official invitation letter via Gmail">
-                                                    <i class="bi bi-send me-1"></i>Resend
                                                 </a>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-outline-secondary btn-invite-status" 
@@ -1197,7 +1206,7 @@ window.buildClientGmailUrl = function(email, name, code, title, date, time, venu
     const origin = window.location.origin;
     const pathname = window.location.pathname;
     const printUrl = id 
-        ? (origin + pathname.replace('invitations.php', 'invitation_print.php?id=' + encodeURIComponent(id) + '&code=' + encodeURIComponent(code))) 
+        ? (origin + pathname.replace('invitations.php', 'invitation_print.php?id=' + encodeURIComponent(id))) 
         : (origin + pathname.replace('invitations.php', 'index.php'));
     const qrImageUrl = code 
         ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(code)}&margin=6` 
@@ -1229,18 +1238,18 @@ LEGISLATIVE PUBLIC HEARING DETAILS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🎫 YOUR OFFICIAL ATTENDANCE PASS & QR CODE:
-• Stakeholder Name  : ${name}
+• Stakeholder Name : ${name}
 • Official Pass Code: ${code || 'LPH-SECURE'}
 
-📲 CLICK TO DISPLAY / SCAN YOUR QR CODE PASS:
+📱 SCAN / VIEW YOUR QR CODE BADGE:
 ${qrImageUrl}
 
-📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE (WITH QR PASS):
+📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE:
 ${printUrl}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 IMPORTANT INSTRUCTIONS FOR ATTENDEES:
-1. Please present this Official Pass Code or your digital QR Code upon arrival at the secretariat registration desk.
+1. Please present this Official Invitation Code or your digital QR Code upon arrival at the secretariat registration desk.
 2. For on-site attendees, registration desk opens 30 minutes before the session starts.
 3. Keep this email and QR pass accessible on your mobile phone or print a hard copy.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1254,121 +1263,32 @@ City Hall, Padre Burgos Ave, Ermita, Manila, Philippines`;
     return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 };
 
-window.copyRichInvitationToClipboard = async function(email, name, code, title, date, time, venue, id) {
-    name = name || 'Valued Stakeholder';
-    title = title || 'Legislative Public Hearing & Consultation';
-    date = date || 'Scheduled Session Date';
-    time = time ? ` at ${time}` : '';
-    venue = venue || 'City Hall Session Hall, City of Manila';
-
-    const origin = window.location.origin;
-    const pathname = window.location.pathname;
-    const printUrl = id 
-        ? (origin + pathname.replace('invitations.php', 'invitation_print.php?id=' + encodeURIComponent(id) + '&code=' + encodeURIComponent(code))) 
-        : (origin + pathname.replace('invitations.php', 'index.php'));
-    const qrImageUrl = code 
-        ? `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(code)}&margin=6` 
-        : '';
-    const manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
-
-    const htmlCard = `<div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 2px solid #c59b27; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-  <div style="background: linear-gradient(135deg, #071426 0%, #0f2137 60%, #1a3a5c 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
-    <img src="${manilaLogoUrl}" alt="City of Manila Seal" width="80" height="80" style="display: block; margin: 0 auto 10px auto;">
-    <div style="font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #d4af37; font-weight: 700; margin-bottom: 2px;">Republic of the Philippines</div>
-    <div style="font-size: 19px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; color: #ffffff;">City of Manila</div>
-    <div style="font-size: 14px; font-style: italic; color: #f7edd4; margin-bottom: 4px;">Sangguniang Panlungsod · Office of the City Council</div>
-    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8;">Legislative Public Hearing &amp; Consultation Management System</div>
-  </div>
-
-  <div style="padding: 24px 22px; color: #1e293b; line-height: 1.6;">
-    <p style="font-size: 16px; margin: 0 0 14px 0;">Dear <strong>${escapeHtml(name)}</strong>,</p>
-    <p style="font-size: 14px; margin: 0 0 16px 0; color: #334155;">
-      Warm greetings from the Office of the City Council of Manila! You are officially invited to attend and participate as an official stakeholder in the upcoming Legislative Public Hearing:
-    </p>
-
-    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0f2137; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
-      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Agenda / Hearing Title</div>
-      <div style="font-size: 15px; font-weight: 700; color: #0f2137; margin-bottom: 10px;">${escapeHtml(title)}</div>
-      <div style="font-size: 13px; color: #334155; margin-bottom: 4px;">📅 <strong>Date:</strong> ${escapeHtml(date)} ${escapeHtml(time)}</div>
-      <div style="font-size: 13px; color: #334155;">📍 <strong>Venue:</strong> ${escapeHtml(venue)}</div>
-    </div>
-
-    <!-- Official QR Code Badge -->
-    <div style="background: #ffffff; border: 1.5px dashed #c59b27; border-radius: 10px; padding: 18px; text-align: center; margin-bottom: 20px;">
-      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 4px;">Official Attendance Pass Code</div>
-      <div style="font-family: monospace; font-size: 18px; font-weight: 800; color: #071426; background: #fef9c3; display: inline-block; padding: 4px 14px; border-radius: 6px; border: 1px solid #facc15; margin-bottom: 12px; letter-spacing: 1.5px;">${escapeHtml(code)}</div>
-      <div style="margin: 0 auto 10px auto;">
-        <img src="${qrImageUrl}" alt="Attendance QR Pass" width="220" height="220" style="display: block; margin: 0 auto; border: 2px solid #0f2137; border-radius: 8px; background: #ffffff;">
-      </div>
-      <div style="font-size: 11px; color: #64748b;">Present this QR pass upon arrival at the secretariat registration desk.</div>
-    </div>
-
-    <div style="text-align: center; margin-bottom: 20px;">
-      <a href="${printUrl}" target="_blank" style="display: inline-block; background: #0f2137; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 22px; border-radius: 6px; border: 1px solid #c59b27;">
-        📜 View &amp; Print Official Executive Certificate
-      </a>
-    </div>
-
-    <div style="border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 12px; color: #475569;">
-      <strong>Office of the City Council &amp; Committee Secretariat</strong><br>
-      Sangguniang Panlungsod, City of Manila<br>
-      City Hall, Padre Burgos Ave, Ermita, Manila, Philippines
-    </div>
-  </div>
-</div>`;
-
-    try {
-        if (navigator.clipboard && window.ClipboardItem) {
-            const htmlBlob = new Blob([htmlCard], { type: 'text/html' });
-            const textBlob = new Blob([htmlCard.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
-            await navigator.clipboard.write([
-                new ClipboardItem({
-                    'text/html': htmlBlob,
-                    'text/plain': textBlob
-                })
-            ]);
-            return true;
-        }
-    } catch(err) {
-        console.warn('Clipboard write HTML failed:', err);
-    }
-    return false;
-};
-
-window.openGmailDirect = async function(email, name, code, title, date, time, venue, id) {
+window.openGmailDirect = function(email, name, code, title, date, time, venue, id) {
     if (!email) {
         Swal.fire('No Email Address', 'No email address registered for this stakeholder.', 'warning');
         return;
     }
     const gmailUrl = window.buildClientGmailUrl(email, name, code, title, date, time, venue, id);
-
-    // Auto copy the rich HTML invitation with actual logo & QR code image to clipboard
-    window.copyRichInvitationToClipboard(email, name, code, title, date, time, venue, id);
-
     const win = window.open(gmailUrl, '_blank');
 
-    await Swal.fire({
-        icon: 'info',
-        title: 'Gmail Invitation Ready!',
-        html: `
-            <div class="text-start small p-2 bg-light rounded border mb-3">
-                <div class="mb-1"><strong>Recipient:</strong> <span class="text-danger font-monospace">${escapeHtml(email)}</span></div>
-                <div><strong>Pass Code:</strong> <span class="badge bg-warning text-dark font-monospace">${escapeHtml(code)}</span></div>
-            </div>
-            <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mb-2" onclick="Swal.close()">
-                <i class="bi bi-google me-2"></i> Open in Gmail
-            </a>
-            <button type="button" class="btn btn-outline-dark w-100 fw-semibold mb-2" onclick="window.copyRichInvitationToClipboard('${escapeHtml(email)}', '${escapeHtml(name)}', '${escapeHtml(code)}', '${escapeHtml(title)}', '${escapeHtml(date)}', '${escapeHtml(time)}', '${escapeHtml(venue)}', '${escapeHtml(id)}').then(() => { if (typeof appToast==='function') appToast('success', 'Rich card with Manila seal and QR image copied! Press Ctrl+V in Gmail to paste.'); })">
-                <i class="bi bi-clipboard-check me-2"></i> Copy Rich Card (with Manila Logo &amp; QR Image)
-            </button>
-            <div class="alert alert-light border small text-muted text-start mt-2 mb-0">
-                <i class="bi bi-lightbulb-fill text-warning me-1"></i> <strong>Pro-Tip:</strong> The rich invitation card with the <strong>actual City Seal and QR Code Picture</strong> is already copied to your clipboard. Simply press <strong>Ctrl + V</strong> in Gmail to paste it!
-            </div>
-        `,
-        showConfirmButton: true,
-        confirmButtonText: 'Done',
-        confirmButtonColor: '#0b3d6e'
-    });
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+        Swal.fire({
+            icon: 'info',
+            title: 'Open Gmail Compose',
+            html: `
+                <p>Your browser blocked the automatic pop-up window. Click below to open Gmail:</p>
+                <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mt-2" onclick="Swal.close()">
+                    <i class="bi bi-google me-2"></i> Open in Gmail
+                </a>
+            `,
+            showConfirmButton: false,
+            showCloseButton: true
+        });
+    } else {
+        if (typeof appToast === 'function') {
+            appToast('success', `Opened Gmail compose for ${email}!`);
+        }
+    }
 
     if (id) {
         const fd = new FormData();
@@ -1407,11 +1327,75 @@ window.handleResendInvitation = async function(btn, event) {
     const name = btn.dataset.name || 'Stakeholder';
     const email = btn.dataset.email || '';
     const code = btn.dataset.code || '';
-    const title = btn.dataset.title || '';
-    const date = btn.dataset.date || '';
-    const time = btn.dataset.time || '';
-    const venue = btn.dataset.venue || '';
-    openGmailDirect(email, name, code, title, date, time, venue, id);
+
+    const confirm = await Swal.fire({
+        title: 'Resend Invitation Email?',
+        html: `Resend official hearing invitation notice (<strong>${escapeHtml(code)}</strong>) and attendance QR pass directly to:<br><span class="badge bg-primary fs-6 mt-2 font-monospace">${escapeHtml(email)}</span>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-send-fill me-1"></i> Send Email Now',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0b3d6e'
+    });
+    if (!confirm.isConfirmed) return;
+
+    Swal.fire({
+        title: 'Dispatching Invitation Email...',
+        html: `Sending official invitation notice and QR pass to <strong>${escapeHtml(email)}</strong>...`,
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    const fd = new FormData();
+    const token = document.querySelector('[name=csrf_token]')?.value || (typeof APP_CSRF_TOKEN !== 'undefined' ? APP_CSRF_TOKEN : '');
+    fd.append('csrf_token', token);
+    fd.append('id', id);
+
+    try {
+        const resp = await fetch(APP_URL + '/modules/stakeholders/ajax_invitation_send.php', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: fd
+        });
+        const rawText = await resp.text();
+        let res;
+        try { res = JSON.parse(rawText); } catch(pe) { throw new Error(rawText || 'Invalid response'); }
+
+        Swal.close();
+
+        if (res.success && res.email_sent) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Invitation Resent!',
+                html: `Official invitation notice and attendance QR pass were successfully delivered to <strong>${escapeHtml(email)}</strong>!`,
+                timer: 1800,
+                timerProgressBar: true,
+                showConfirmButton: false
+            });
+            setTimeout(() => location.reload(), 1600);
+        } else if (!res.email_sent) {
+            const openSetup = await Swal.fire({
+                icon: 'warning',
+                title: 'Email Dispatcher Notice',
+                html: `<div>${escapeHtml(res.message || 'Email dispatcher credentials are not configured yet.')}</div>`,
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-envelope-gear me-1"></i> Open Email Setup',
+                cancelButtonText: 'Later',
+                confirmButtonColor: '#0b3d6e'
+            });
+            if (openSetup.isConfirmed) {
+                document.getElementById('btnSmtpSetup')?.click();
+            }
+        } else {
+            Swal.fire('Delivery Error', res.message || 'Failed to dispatch email.', 'error');
+        }
+    } catch(err) {
+        Swal.close();
+        Swal.fire('Notice', err.message || 'An error occurred while communicating with the mail server.', 'error');
+    }
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1868,36 +1852,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (status === 'Accepted') {
             const confirm = await Swal.fire({
-                title: 'Approve & Send via Gmail?',
-                html: `Approve <strong>${escapeHtml(name)}</strong> and dispatch official invitation notice &amp; QR pass to:<br><span class="badge bg-danger fs-6 mt-2"><i class="bi bi-google me-1"></i>${escapeHtml(email)}</span>`,
+                title: 'Approve & Send Invitation Email?',
+                html: `Approve <strong>${escapeHtml(name)}</strong> and send official invitation notice &amp; QR pass directly to:<br><span class="badge bg-primary fs-6 mt-2 font-monospace">${escapeHtml(email)}</span>`,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: '<i class="bi bi-google me-1"></i> Approve &amp; Open Gmail',
+                confirmButtonText: '<i class="bi bi-send-fill me-1"></i> Approve &amp; Send Now',
                 cancelButtonText: 'Cancel',
-                confirmButtonColor: '#ea4335'
+                confirmButtonColor: '#198754'
             });
             if (!confirm.isConfirmed) return;
 
             Swal.fire({
-                title: 'Approving Stakeholder...',
-                html: `Processing approval and preparing official invitation for <strong>${escapeHtml(email)}</strong>...`,
+                title: 'Approving & Dispatching Email...',
+                html: `Processing approval and sending invitation to <strong>${escapeHtml(email)}</strong>...`,
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
         } else if (status === 'Sent') {
             const confirm = await Swal.fire({
-                title: 'Send Invitation via Gmail?',
-                html: `Send official invitation notice to:<br><strong class="text-danger font-monospace"><i class="bi bi-google me-1"></i>${escapeHtml(email)}</strong>`,
+                title: 'Send Invitation Email?',
+                html: `Send official invitation notice directly to:<br><strong class="text-primary font-monospace">${escapeHtml(email)}</strong>`,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: '<i class="bi bi-google me-1"></i> Open in Gmail',
+                confirmButtonText: '<i class="bi bi-send-fill me-1"></i> Yes, Send Email',
                 cancelButtonText: 'Cancel',
-                confirmButtonColor: '#ea4335'
+                confirmButtonColor: '#0b3d6e'
             });
             if (!confirm.isConfirmed) return;
 
-            openGmailDirect(email, name, code, title, date, time, venue, id);
-            return;
+            Swal.fire({
+                title: 'Dispatching Invitation Email...',
+                html: `Sending to <strong>${escapeHtml(email)}</strong>...`,
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
         }
 
         const fd = new FormData();
@@ -1938,39 +1926,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (r.success) {
-                if (status === 'Accepted') {
-                    const gmailUrl = b.dataset.gmailUrl || window.buildClientGmailUrl(email, name, code, title, date, time, venue, id);
-
-                    // Auto copy rich HTML card with actual logo and QR code picture
-                    window.copyRichInvitationToClipboard(email, name, code, title, date, time, venue, id);
-
-                    window.open(gmailUrl, '_blank');
-
-                    await Swal.fire({
-                        icon: 'success',
-                        title: 'Stakeholder Approved!',
-                        html: `
-                            <div class="text-center py-1">
-                                <p class="mb-2">Stakeholder <strong>${escapeHtml(name)}</strong> has been approved.</p>
-                                <p class="small text-muted mb-3">Target Email: <strong class="text-danger font-monospace">${escapeHtml(email)}</strong></p>
-                                <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mb-2" onclick="Swal.close(); setTimeout(()=>location.reload(), 500);">
-                                    <i class="bi bi-google me-2"></i> Open in Gmail &amp; Send Invitation
-                                </a>
-                                <button type="button" class="btn btn-outline-dark w-100 fw-semibold mb-2" onclick="window.copyRichInvitationToClipboard('${escapeHtml(email)}', '${escapeHtml(name)}', '${escapeHtml(code)}', '${escapeHtml(title)}', '${escapeHtml(date)}', '${escapeHtml(time)}', '${escapeHtml(venue)}', '${escapeHtml(id)}').then(() => { if (typeof appToast==='function') appToast('success', 'Rich card with Manila seal and QR image copied! Press Ctrl+V in Gmail to paste.'); })">
-                                    <i class="bi bi-clipboard-check me-2"></i> Copy Rich Card (with Manila Logo &amp; QR Image)
-                                </button>
-                                <div class="alert alert-light border small text-muted text-start mt-2 mb-0">
-                                    <i class="bi bi-lightbulb-fill text-warning me-1"></i> <strong>Pro-Tip:</strong> The rich invitation card with the <strong>actual City Seal and QR Code Picture</strong> is already copied to your clipboard. Simply press <strong>Ctrl + V</strong> in Gmail to paste it!
-                                </div>
-                            </div>
-                        `,
-                        showConfirmButton: true,
-                        confirmButtonText: '<i class="bi bi-arrow-clockwise me-1"></i> Done &amp; Refresh Page',
-                        confirmButtonColor: '#0b3d6e',
-                        allowOutsideClick: false
-                    });
-                    location.reload();
-                    return;
+                if (status === 'Accepted' || status === 'Sent') {
+                    if (r.email_sent) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Invitation Approved & Email Sent!',
+                            html: `Invitation approved and official invitation email successfully delivered to <strong>${escapeHtml(email)}</strong>!`,
+                            timer: 1800,
+                            timerProgressBar: true,
+                            showConfirmButton: false
+                        });
+                        setTimeout(() => location.reload(), 1600);
+                        return;
+                    } else {
+                        const askSetup = await Swal.fire({
+                            icon: 'warning',
+                            title: 'Approved (Email Dispatcher Notice)',
+                            html: `<div>${escapeHtml(r.message)}</div><div class="mt-2 small text-muted">You can configure Brevo API, Resend, or SMTP in Email Setup, or use the "Send via Gmail" button.</div>`,
+                            showCancelButton: true,
+                            confirmButtonText: '<i class="bi bi-envelope-gear me-1"></i> Open Email Setup',
+                            cancelButtonText: 'OK',
+                            confirmButtonColor: '#0b3d6e'
+                        });
+                        if (askSetup.isConfirmed) {
+                            document.getElementById('btnSmtpSetup')?.click();
+                            return;
+                        }
+                    }
                 }
 
                 if (typeof appToast === 'function') {
