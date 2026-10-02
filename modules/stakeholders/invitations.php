@@ -902,7 +902,12 @@ include __DIR__ . '/../../layouts/header.php';
                                                         data-status="Accepted"
                                                         data-name="<?= e($r['full_name']) ?>"
                                                         data-email="<?= e($r['email'] ?? '') ?>"
-                                                        title="Approve Stakeholder & Issue Pass">
+                                                        data-code="<?= e($r['invitation_code']) ?>"
+                                                        data-title="<?= e($group['hearing_title'] ?? '') ?>"
+                                                        data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
+                                                        data-time="<?= e($group['hearing_time'] ?? '') ?>"
+                                                        data-venue="<?= e($group['venue'] ?? '') ?>"
+                                                        title="Approve Stakeholder & Send Invitation via Gmail">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Approve &amp; Send
                                                 </button>
                                                 <button type="button" 
@@ -960,6 +965,10 @@ include __DIR__ . '/../../layouts/header.php';
                                                         data-name="<?= e($r['full_name']) ?>"
                                                         data-email="<?= e($r['email'] ?? '') ?>"
                                                         data-code="<?= e($r['invitation_code']) ?>"
+                                                        data-title="<?= e($group['hearing_title'] ?? '') ?>"
+                                                        data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
+                                                        data-time="<?= e($group['hearing_time'] ?? '') ?>"
+                                                        data-venue="<?= e($group['venue'] ?? '') ?>"
                                                         onclick="handleResendInvitation(this, event)"
                                                         title="Resend official invitation email to <?= e($r['email'] ?: 'stakeholder') ?>">
                                                     <i class="bi bi-send me-1"></i>Resend
@@ -1154,32 +1163,56 @@ window.openGmailDirect = function(email, name, code, title, date, time, venue, i
     const passCodeStr = code ? ` [Pass Code: ${code}]` : '';
     date = date || 'Scheduled Session Date';
     time = time ? ` at ${time}` : '';
-    venue = venue || 'City Hall Session Hall';
+    venue = venue || 'City Hall Session Hall, City of Manila';
 
-    const portalLink = window.location.origin + '/';
-    const subject = `Official Invitation: ${title}${passCodeStr}`;
-    const body = `Dear ${name},
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    const printUrl = id 
+        ? (origin + pathname.replace('invitations.php', 'invitation_print.php?id=' + encodeURIComponent(id))) 
+        : (origin + pathname.replace('invitations.php', 'index.php'));
+    const qrImageUrl = code 
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(code)}&margin=6` 
+        : '';
+    const manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
 
-Greetings from the Office of the City Council & Committee Secretariat!
+    const subject = `Official Invitation: ${title}${passCodeStr} · City of Manila`;
+    const body = `REPUBLIC OF THE PHILIPPINES
+CITY OF MANILA · SANGGUNIANG PANLUNGSOD
+Office of the City Council & Committee Secretariat
+Legislative Public Hearing & Consultation Management System
+
+🏛️ Official Manila Seal & Logo:
+${manilaLogoUrl}
+
+Dear ${name},
+
+Greetings from the Office of the City Council!
 
 You are cordially invited to participate in the upcoming official Legislative Public Hearing & Consultation:
 
-• Hearing / Agenda: ${title}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AGENDA / HEARING DETAILS:
+• Agenda / Title: ${title}
 • Date & Time: ${date}${time}
 • Venue: ${venue}
-${code ? `• Official Pass Code: ${code}\n` : ''}
-Please present your official Invitation Pass upon arrival at the secretariat desk or verify your digital badge online:
-${portalLink}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎫 OFFICIAL ATTENDANCE PASS & QR CODE:
+• Official Pass Code: ${code || 'LPH-SECURE'}
+${qrImageUrl ? `• View / Scan QR Code Badge: ${qrImageUrl}\n` : ''}• View & Print Official Executive Certificate: ${printUrl}
+
+Please present your Official Pass Code or QR badge upon arrival at the secretariat registration desk for priority entry and attendance verification.
 
 Respectfully yours,
-Office of the City Council & Committee Secretariat
-City of Manila`;
+
+OFFICE OF THE CITY COUNCIL & COMMITTEE SECRETARIAT
+City of Manila, Republic of the Philippines`;
 
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(gmailUrl, '_blank');
 
     if (typeof appToast === 'function') {
-        appToast('success', `Opened Gmail for ${email}!`);
+        appToast('success', `Opened Gmail compose window for ${email}!`);
     }
 
     if (id) {
@@ -1219,80 +1252,35 @@ window.handleResendInvitation = async function(btn, event) {
     const name = btn.dataset.name || 'Stakeholder';
     const email = btn.dataset.email || '';
     const code = btn.dataset.code || '';
+    const title = btn.dataset.title || '';
+    const date = btn.dataset.date || '';
+    const time = btn.dataset.time || '';
+    const venue = btn.dataset.venue || '';
 
     const confirm = await Swal.fire({
-        title: 'Resend Invitation?',
-        html: `Resend official invitation notice (<strong>${escapeHtml(code)}</strong>) and attendance QR pass to <strong>${escapeHtml(name)}</strong>?<br><span class="badge bg-primary fs-6 mt-2 font-monospace">${escapeHtml(email)}</span>`,
+        title: 'Resend via Gmail?',
+        html: `Resend official hearing invitation (<strong>${escapeHtml(code)}</strong>) and QR pass to <strong>${escapeHtml(name)}</strong>?<br><span class="badge bg-danger fs-6 mt-2"><i class="bi bi-google me-1"></i>${escapeHtml(email)}</span>`,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: '<i class="bi bi-send-fill me-1"></i> Send Now',
+        confirmButtonText: '<i class="bi bi-google me-1"></i> Open & Send in Gmail',
         cancelButtonText: 'Cancel',
-        confirmButtonColor: '#0b3d6e'
+        confirmButtonColor: '#ea4335'
     });
     if (!confirm.isConfirmed) return;
 
+    // Immediately open Gmail compose window with complete official invitation, Manila seal, and QR code!
+    openGmailDirect(email, name, code, title, date, time, venue, id);
+
     Swal.fire({
-        title: 'Resending Invitation...',
-        html: `Sending official invitation notice and QR pass to <strong>${escapeHtml(email)}</strong>...`,
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
+        icon: 'success',
+        title: 'Opening Gmail...',
+        html: `Opening Gmail compose window for <strong>${escapeHtml(email)}</strong>...`,
+        timer: 1800,
+        timerProgressBar: true,
+        showConfirmButton: false
     });
 
-    const fd = new FormData();
-    const token = document.querySelector('[name=csrf_token]')?.value || (typeof APP_CSRF_TOKEN !== 'undefined' ? APP_CSRF_TOKEN : '');
-    fd.append('csrf_token', token);
-    fd.append('id', id);
-
-    try {
-        const resp = await fetch(APP_URL + '/modules/stakeholders/ajax_invitation_send.php', {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            },
-            body: fd
-        });
-        const rawText = await resp.text();
-        let res;
-        try { res = JSON.parse(rawText); } catch(pe) { throw new Error(rawText || 'Invalid response'); }
-
-        Swal.close();
-
-        if (res.success && res.email_sent) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Invitation Resent!',
-                html: `Official invitation and QR pass were successfully resent to <strong>${escapeHtml(email)}</strong>!`,
-                timer: 1600,
-                timerProgressBar: true,
-                showConfirmButton: false
-            });
-            setTimeout(() => location.reload(), 1600);
-        } else if (!res.email_sent) {
-            const openChoice = await Swal.fire({
-                icon: 'info',
-                title: 'Send via Gmail',
-                html: `<div>${escapeHtml(res.message || 'Invitation record verified.')}</div><div class="mt-2 text-dark">Would you like to open and send this invitation directly from your own Gmail?</div>`,
-                showCancelButton: true,
-                showDenyButton: true,
-                confirmButtonText: '<i class="bi bi-google me-1"></i> Open in Gmail',
-                denyButtonText: '<i class="bi bi-envelope-gear me-1"></i> Email Setup',
-                cancelButtonText: 'Done',
-                confirmButtonColor: '#ea4335',
-                denyButtonColor: '#0b3d6e'
-            });
-            if (openChoice.isConfirmed) {
-                openGmailDirect(email, name, code, '', '', '', '', id);
-            } else if (openChoice.isDenied) {
-                document.getElementById('btnSmtpSetup')?.click();
-            }
-        } else {
-            Swal.fire('Delivery Error', res.message || 'Failed to dispatch email.', 'error');
-        }
-    } catch(err) {
-        Swal.close();
-        Swal.fire('Notice', err.message || 'An error occurred while communicating with the mail server.', 'error');
-    }
+    setTimeout(() => location.reload(), 1500);
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1736,48 +1724,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const status = b.dataset.status;
         const id = b.dataset.id;
-        const email = b.dataset.email || 'the stakeholder\'s email';
+        const email = b.dataset.email || '';
         const name = b.dataset.name || 'Stakeholder';
+        const code = b.dataset.code || '';
+        const title = b.dataset.title || '';
+        const date = b.dataset.date || '';
+        const time = b.dataset.time || '';
+        const venue = b.dataset.venue || '';
 
         let targetEmail = email;
         const sid = b.dataset.sid || '';
 
         if (status === 'Accepted') {
             const confirm = await Swal.fire({
-                title: 'Approve & Send Invitation?',
-                html: `Approve <strong>${escapeHtml(name)}</strong> and send the official invitation email to:<br><strong class="text-primary font-monospace">${escapeHtml(email)}</strong>`,
+                title: 'Approve & Send via Gmail?',
+                html: `Approve <strong>${escapeHtml(name)}</strong> and dispatch official invitation notice &amp; QR pass to:<br><span class="badge bg-danger fs-6 mt-2"><i class="bi bi-google me-1"></i>${escapeHtml(email)}</span>`,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: '<i class="bi bi-send-check-fill me-1"></i> Approve & Send Email Now',
+                confirmButtonText: '<i class="bi bi-google me-1"></i> Approve &amp; Open Gmail',
                 cancelButtonText: 'Cancel',
-                confirmButtonColor: '#198754'
+                confirmButtonColor: '#ea4335'
             });
             if (!confirm.isConfirmed) return;
 
             Swal.fire({
-                title: 'Approving & Sending Email...',
-                html: `Sending official invitation email to <strong>${escapeHtml(email)}</strong>...`,
+                title: 'Approving Stakeholder...',
+                html: `Processing approval and preparing official invitation for <strong>${escapeHtml(email)}</strong>...`,
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
         } else if (status === 'Sent') {
             const confirm = await Swal.fire({
-                title: 'Send Invitation Email?',
-                html: `Send official invitation notice to:<br><strong class="text-primary font-monospace">${escapeHtml(email)}</strong>`,
+                title: 'Send Invitation via Gmail?',
+                html: `Send official invitation notice to:<br><strong class="text-danger font-monospace"><i class="bi bi-google me-1"></i>${escapeHtml(email)}</strong>`,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: '<i class="bi bi-send-fill me-1"></i> Yes, Send Email',
+                confirmButtonText: '<i class="bi bi-google me-1"></i> Open in Gmail',
                 cancelButtonText: 'Cancel',
-                confirmButtonColor: '#0b3d6e'
+                confirmButtonColor: '#ea4335'
             });
             if (!confirm.isConfirmed) return;
 
-            Swal.fire({
-                title: 'Sending Invitation Email...',
-                html: `Sending to <strong>${escapeHtml(email)}</strong>...`,
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
+            openGmailDirect(email, name, code, title, date, time, venue, id);
+            return;
         }
 
         const fd = new FormData();
@@ -1818,41 +1807,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (r.success) {
-                if (status === 'Accepted' || status === 'Sent') {
-                    if (r.email_sent) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Invitation Approved & Email Sent!',
-                            html: `Invitation approved and email successfully sent to <strong>${escapeHtml(email)}</strong>!`,
-                            timer: 1600,
-                            timerProgressBar: true,
-                            showConfirmButton: false
-                        });
-                        setTimeout(() => location.reload(), 1600);
-                        return;
-                    } else {
-                        const askSetup = await Swal.fire({
-                            icon: 'info',
-                            title: 'Approved (Send via Gmail)',
-                            html: `<div>${escapeHtml(r.message)}</div><div class="mt-2 text-dark">Would you like to open and send this official invitation directly from your own Gmail?</div>`,
-                            showCancelButton: true,
-                            showDenyButton: true,
-                            confirmButtonText: '<i class="bi bi-google me-1"></i> Open in Gmail',
-                            denyButtonText: '<i class="bi bi-envelope-gear me-1"></i> Email Setup',
-                            cancelButtonText: 'Done',
-                            confirmButtonColor: '#ea4335',
-                            denyButtonColor: '#0b3d6e'
-                        });
-                        if (askSetup.isConfirmed) {
-                            openGmailDirect(email, name, '', '', '', '', '', id);
-                            setTimeout(() => location.reload(), 400);
-                            return;
-                        } else if (askSetup.isDenied) {
-                            document.getElementById('btnSmtpSetup')?.click();
-                            return;
-                        }
-                    }
-                } else {
+                if (status === 'Accepted') {
+                    // Auto-open Gmail immediately with official letter, Manila logo link, and QR pass!
+                    openGmailDirect(email, name, code, title, date, time, venue, id);
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Approved! Opening Gmail...',
+                        html: `Invitation approved for <strong>${escapeHtml(name)}</strong>!<br>Opening your Gmail compose window to send the official invitation and QR pass...`,
+                        timer: 2000,
+                        timerProgressBar: true,
+                        showConfirmButton: false
+                    });
+                    setTimeout(() => location.reload(), 1600);
+                    return;
+                }
                     if (typeof appToast === 'function') {
                         appToast('success', r.message);
                     }
