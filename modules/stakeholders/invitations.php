@@ -37,6 +37,60 @@ if ($filterKey !== '' && $filterKey !== '0') {
     if (isset($parts[2]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $parts[2])) $sessionDateFilter = $parts[2];
 }
 
+/**
+ * Builds a direct Gmail Web Compose URL with Manila letterhead, official seal, and QR code pass.
+ */
+function lphBuildGmailComposeUrl(array $r, array $group): string {
+    $email = trim((string)($r['email'] ?? ''));
+    $name = trim((string)($r['full_name'] ?? 'Stakeholder'));
+    $code = trim((string)($r['invitation_code'] ?? 'LPH-SECURE'));
+    $title = trim((string)($group['hearing_title'] ?? 'Legislative Public Hearing & Consultation'));
+    $date = !empty($r['session_date']) ? date('F j, Y', strtotime($r['session_date'])) : (!empty($group['hearing_date']) ? date('F j, Y', strtotime($group['hearing_date'])) : 'Scheduled Date');
+    $time = !empty($group['hearing_time']) ? date('g:i A', strtotime($group['hearing_time'])) : 'Scheduled Time';
+    $venue = !empty($group['venue']) ? $group['venue'] : 'City Hall Session Hall, City of Manila';
+    $id = (int)($r['id'] ?? 0);
+
+    $baseUrl = (defined('APP_URL') && APP_URL) ? rtrim(APP_URL, '/') : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/legislative/lph');
+    $printUrl = $baseUrl . '/modules/stakeholders/invitation_print.php?id=' . $id;
+    $qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($code) . '&margin=6';
+    $manilaLogoUrl = 'https://raw.githubusercontent.com/junarlove05/public_hearing/main/assets/images/manila.png';
+
+    $subject = "Official Invitation: {$title} [Pass Code: {$code}] · City of Manila";
+    $body = "REPUBLIC OF THE PHILIPPINES\n"
+          . "CITY OF MANILA · SANGGUNIANG PANLUNGSOD\n"
+          . "Office of the City Council & Committee Secretariat\n"
+          . "Legislative Public Hearing & Consultation Management System\n\n"
+          . "🏛️ OFFICIAL CITY SEAL / LOGO:\n{$manilaLogoUrl}\n\n"
+          . "Dear {$name},\n\n"
+          . "Warm greetings from the Office of the City Council of Manila!\n\n"
+          . "You are officially invited to attend and participate as an official stakeholder in the upcoming Legislative Public Hearing & Consultation:\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          . "LEGISLATIVE PUBLIC HEARING DETAILS\n"
+          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          . "• Agenda / Title : {$title}\n"
+          . "• Scheduled Date : {$date}\n"
+          . "• Session Time   : {$time}\n"
+          . "• Session Venue  : {$venue}\n"
+          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "🎫 YOUR OFFICIAL ATTENDANCE PASS & QR CODE:\n"
+          . "• Stakeholder Name : {$name}\n"
+          . "• Official Pass Code: {$code}\n\n"
+          . "📱 SCAN / VIEW YOUR QR CODE BADGE:\n{$qrImageUrl}\n\n"
+          . "📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE:\n{$printUrl}\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          . "IMPORTANT INSTRUCTIONS FOR ATTENDEES:\n"
+          . "1. Please present this Official Invitation Code or your digital QR Code upon arrival at the secretariat registration desk.\n"
+          . "2. For on-site attendees, registration desk opens 30 minutes before the session starts.\n"
+          . "3. Keep this email and QR pass accessible on your mobile phone or print a hard copy.\n"
+          . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "Respectfully yours,\n\n"
+          . "OFFICE OF THE CITY COUNCIL & COMMITTEE SECRETARIAT\n"
+          . "Sangguniang Panlungsod, City of Manila\n"
+          . "City Hall, Padre Burgos Ave, Ermita, Manila, Philippines";
+
+    return 'https://mail.google.com/mail/?view=cm&fs=1&to=' . rawurlencode($email) . '&su=' . rawurlencode($subject) . '&body=' . rawurlencode($body);
+}
+
 // Generate hearing session options for dropdowns (multi-day hearing sessions listed separately)
 $hearingSessionOptions = lphGetHearingSessionDropdownOptions($pdo, $hearings);
 $filterHearingSessionOptions = lphGetHearingSessionDropdownOptions($pdo, $filterHearings);
@@ -907,23 +961,17 @@ include __DIR__ . '/../../layouts/header.php';
                                                         data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
                                                         data-time="<?= e($group['hearing_time'] ?? '') ?>"
                                                         data-venue="<?= e($group['venue'] ?? '') ?>"
+                                                        data-gmail-url="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>"
                                                         title="Approve Stakeholder & Send Invitation via Gmail">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Approve &amp; Send
                                                 </button>
-                                                <button type="button" 
-                                                        class="btn btn-sm btn-outline-danger btn-open-gmail fw-semibold" 
-                                                        data-id="<?= (int)$r['id'] ?>"
-                                                        data-name="<?= e($r['full_name']) ?>"
-                                                        data-email="<?= e($r['email'] ?? '') ?>"
-                                                        data-code="<?= e($r['invitation_code']) ?>"
-                                                        data-title="<?= e($group['hearing_title'] ?? '') ?>"
-                                                        data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
-                                                        data-time="<?= e($group['hearing_time'] ?? '') ?>"
-                                                        data-venue="<?= e($group['venue'] ?? '') ?>"
-                                                        onclick="openGmailInvite(this, event)"
-                                                        title="Open & Send official invitation letter in Gmail">
+                                                <a href="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>" 
+                                                   target="_blank" 
+                                                   rel="noopener noreferrer"
+                                                   class="btn btn-sm btn-outline-danger fw-semibold" 
+                                                   title="Open & Send official invitation letter in Gmail">
                                                     <i class="bi bi-google me-1"></i>Gmail
-                                                </button>
+                                                </a>
                                                 <div class="btn-group btn-group-sm">
                                                     <button type="button" 
                                                             class="btn btn-outline-danger btn-invite-status <?= $r['status']==='Declined'?'active fw-bold':'' ?>" 
@@ -944,35 +992,20 @@ include __DIR__ . '/../../layouts/header.php';
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 me-1">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Approved &amp; Sent
                                                 </span>
-                                                <button type="button" 
-                                                        class="btn btn-sm btn-danger btn-open-gmail text-white fw-semibold" 
-                                                        data-id="<?= (int)$r['id'] ?>"
-                                                        data-name="<?= e($r['full_name']) ?>"
-                                                        data-email="<?= e($r['email'] ?? '') ?>"
-                                                        data-code="<?= e($r['invitation_code']) ?>"
-                                                        data-title="<?= e($group['hearing_title'] ?? '') ?>"
-                                                        data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
-                                                        data-time="<?= e($group['hearing_time'] ?? '') ?>"
-                                                        data-venue="<?= e($group['venue'] ?? '') ?>"
-                                                        onclick="openGmailInvite(this, event)"
-                                                        title="Open and send official invitation letter directly from your Gmail">
+                                                <a href="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>" 
+                                                   target="_blank" 
+                                                   rel="noopener noreferrer"
+                                                   class="btn btn-sm btn-danger text-white fw-semibold shadow-sm" 
+                                                   title="Open and send official invitation letter directly from your Gmail">
                                                     <i class="bi bi-google me-1"></i>Send via Gmail
-                                                </button>
-                                                <button type="button" 
-                                                        class="btn btn-sm btn-outline-primary btn-direct-send-email" 
-                                                        data-id="<?= (int)$r['id'] ?>" 
-                                                        data-sid="<?= (int)$r['stakeholder_id'] ?>"
-                                                        data-name="<?= e($r['full_name']) ?>"
-                                                        data-email="<?= e($r['email'] ?? '') ?>"
-                                                        data-code="<?= e($r['invitation_code']) ?>"
-                                                        data-title="<?= e($group['hearing_title'] ?? '') ?>"
-                                                        data-date="<?= e(!empty($r['session_date']) ? formatDate($r['session_date']) : formatDate($group['hearing_date'] ?? '')) ?>"
-                                                        data-time="<?= e($group['hearing_time'] ?? '') ?>"
-                                                        data-venue="<?= e($group['venue'] ?? '') ?>"
-                                                        onclick="handleResendInvitation(this, event)"
-                                                        title="Resend official invitation email to <?= e($r['email'] ?: 'stakeholder') ?>">
+                                                </a>
+                                                <a href="<?= e(lphBuildGmailComposeUrl($r, $group)) ?>" 
+                                                   target="_blank" 
+                                                   rel="noopener noreferrer"
+                                                   class="btn btn-sm btn-outline-primary fw-semibold" 
+                                                   title="Resend official invitation letter via Gmail">
                                                     <i class="bi bi-send me-1"></i>Resend
-                                                </button>
+                                                </a>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-outline-secondary btn-invite-status" 
                                                         data-id="<?= (int)$r['id'] ?>" 
@@ -1153,11 +1186,7 @@ function escapeHtml(str) {
 }
 window.escapeHtml = escapeHtml;
 
-window.openGmailDirect = function(email, name, code, title, date, time, venue, id) {
-    if (!email) {
-        Swal.fire('No Email Address', 'No email address registered for this stakeholder.', 'warning');
-        return;
-    }
+window.buildClientGmailUrl = function(email, name, code, title, date, time, venue, id) {
     name = name || 'Valued Stakeholder';
     title = title || 'Legislative Public Hearing & Consultation';
     const passCodeStr = code ? ` [Pass Code: ${code}]` : '';
@@ -1181,38 +1210,75 @@ CITY OF MANILA · SANGGUNIANG PANLUNGSOD
 Office of the City Council & Committee Secretariat
 Legislative Public Hearing & Consultation Management System
 
-🏛️ Official Manila Seal & Logo:
+🏛️ OFFICIAL CITY SEAL / LOGO:
 ${manilaLogoUrl}
 
 Dear ${name},
 
-Greetings from the Office of the City Council!
+Warm greetings from the Office of the City Council of Manila!
 
-You are cordially invited to participate in the upcoming official Legislative Public Hearing & Consultation:
+You are officially invited to attend and participate as an official stakeholder in the upcoming Legislative Public Hearing & Consultation:
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AGENDA / HEARING DETAILS:
-• Agenda / Title: ${title}
-• Date & Time: ${date}${time}
-• Venue: ${venue}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEGISLATIVE PUBLIC HEARING DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Agenda / Title : ${title}
+• Scheduled Date : ${date}
+• Session Time   : ${time}
+• Session Venue  : ${venue}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎫 OFFICIAL ATTENDANCE PASS & QR CODE:
+🎫 YOUR OFFICIAL ATTENDANCE PASS & QR CODE:
+• Stakeholder Name : ${name}
 • Official Pass Code: ${code || 'LPH-SECURE'}
-${qrImageUrl ? `• View / Scan QR Code Badge: ${qrImageUrl}\n` : ''}• View & Print Official Executive Certificate: ${printUrl}
 
-Please present your Official Pass Code or QR badge upon arrival at the secretariat registration desk for priority entry and attendance verification.
+📱 SCAN / VIEW YOUR QR CODE BADGE:
+${qrImageUrl}
+
+📜 VIEW & PRINT OFFICIAL EXECUTIVE CERTIFICATE:
+${printUrl}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT INSTRUCTIONS FOR ATTENDEES:
+1. Please present this Official Invitation Code or your digital QR Code upon arrival at the secretariat registration desk.
+2. For on-site attendees, registration desk opens 30 minutes before the session starts.
+3. Keep this email and QR pass accessible on your mobile phone or print a hard copy.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Respectfully yours,
 
 OFFICE OF THE CITY COUNCIL & COMMITTEE SECRETARIAT
-City of Manila, Republic of the Philippines`;
+Sangguniang Panlungsod, City of Manila
+City Hall, Padre Burgos Ave, Ermita, Manila, Philippines`;
 
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(gmailUrl, '_blank');
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
 
-    if (typeof appToast === 'function') {
-        appToast('success', `Opened Gmail compose window for ${email}!`);
+window.openGmailDirect = function(email, name, code, title, date, time, venue, id) {
+    if (!email) {
+        Swal.fire('No Email Address', 'No email address registered for this stakeholder.', 'warning');
+        return;
+    }
+    const gmailUrl = window.buildClientGmailUrl(email, name, code, title, date, time, venue, id);
+    const win = window.open(gmailUrl, '_blank');
+
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+        Swal.fire({
+            icon: 'info',
+            title: 'Open Gmail Compose',
+            html: `
+                <p>Your browser blocked the automatic pop-up window. Click below to open Gmail:</p>
+                <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mt-2" onclick="Swal.close()">
+                    <i class="bi bi-google me-2"></i> Open in Gmail
+                </a>
+            `,
+            showConfirmButton: false,
+            showCloseButton: true
+        });
+    } else {
+        if (typeof appToast === 'function') {
+            appToast('success', `Opened Gmail compose for ${email}!`);
+        }
     }
 
     if (id) {
@@ -1241,7 +1307,7 @@ window.openGmailInvite = function(btn, event) {
     openGmailDirect(email, name, code, title, date, time, venue, id);
 };
 
-window.handleResendInvitation = async function(btn, event) {
+window.handleResendInvitation = function(btn, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -1256,31 +1322,23 @@ window.handleResendInvitation = async function(btn, event) {
     const date = btn.dataset.date || '';
     const time = btn.dataset.time || '';
     const venue = btn.dataset.venue || '';
+    const gmailUrl = btn.dataset.gmailUrl || window.buildClientGmailUrl(email, name, code, title, date, time, venue, id);
 
-    const confirm = await Swal.fire({
-        title: 'Resend via Gmail?',
-        html: `Resend official hearing invitation (<strong>${escapeHtml(code)}</strong>) and QR pass to <strong>${escapeHtml(name)}</strong>?<br><span class="badge bg-danger fs-6 mt-2"><i class="bi bi-google me-1"></i>${escapeHtml(email)}</span>`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: '<i class="bi bi-google me-1"></i> Open & Send in Gmail',
-        cancelButtonText: 'Cancel',
-        confirmButtonColor: '#ea4335'
-    });
-    if (!confirm.isConfirmed) return;
-
-    // Immediately open Gmail compose window with complete official invitation, Manila seal, and QR code!
-    openGmailDirect(email, name, code, title, date, time, venue, id);
-
-    Swal.fire({
-        icon: 'success',
-        title: 'Opening Gmail...',
-        html: `Opening Gmail compose window for <strong>${escapeHtml(email)}</strong>...`,
-        timer: 1800,
-        timerProgressBar: true,
-        showConfirmButton: false
-    });
-
-    setTimeout(() => location.reload(), 1500);
+    const win = window.open(gmailUrl, '_blank');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+        Swal.fire({
+            icon: 'info',
+            title: 'Resend via Gmail',
+            html: `
+                <p>Click below to open Gmail and resend the official invitation with Manila seal and QR pass:</p>
+                <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mt-2" onclick="Swal.close()">
+                    <i class="bi bi-google me-2"></i> Open in Gmail
+                </a>
+            `,
+            showConfirmButton: false,
+            showCloseButton: true
+        });
+    }
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1808,22 +1866,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (r.success) {
                 if (status === 'Accepted') {
-                    // Auto-open Gmail immediately with official letter, Manila logo link, and QR pass!
-                    openGmailDirect(email, name, code, title, date, time, venue, id);
-                    Swal.fire({
+                    const gmailUrl = b.dataset.gmailUrl || window.buildClientGmailUrl(email, name, code, title, date, time, venue, id);
+                    window.open(gmailUrl, '_blank');
+
+                    await Swal.fire({
                         icon: 'success',
-                        title: 'Approved! Opening Gmail...',
-                        html: `Invitation approved for <strong>${escapeHtml(name)}</strong>!<br>Opening your Gmail compose window to send the official invitation and QR pass...`,
-                        timer: 2000,
-                        timerProgressBar: true,
-                        showConfirmButton: false
+                        title: 'Stakeholder Approved!',
+                        html: `
+                            <div class="text-center py-2">
+                                <p class="mb-2">Stakeholder <strong>${escapeHtml(name)}</strong> has been approved.</p>
+                                <p class="small text-muted mb-3">Target Email: <strong class="text-danger font-monospace">${escapeHtml(email)}</strong></p>
+                                <a href="${gmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm mb-2" onclick="Swal.close(); setTimeout(()=>location.reload(), 500);">
+                                    <i class="bi bi-google me-2"></i> Open in Gmail &amp; Send Invitation
+                                </a>
+                            </div>
+                        `,
+                        showConfirmButton: true,
+                        confirmButtonText: '<i class="bi bi-arrow-clockwise me-1"></i> Done &amp; Refresh Page',
+                        confirmButtonColor: '#0b3d6e',
+                        allowOutsideClick: false
                     });
-                    setTimeout(() => location.reload(), 1600);
+                    location.reload();
                     return;
                 }
-                    if (typeof appToast === 'function') {
-                        appToast('success', r.message);
-                    }
+
+                if (typeof appToast === 'function') {
+                    appToast('success', r.message);
                 }
                 setTimeout(() => location.reload(), 400);
             } else {
