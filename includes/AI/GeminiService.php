@@ -25,7 +25,7 @@ class GeminiService implements AIServiceInterface
         int $requestTimeout = 30
     ) {
         $this->apiKey = $apiKey ?? $this->resolveApiKey();
-        $this->model = $model ?? (defined('GEMINI_MODEL') ? GEMINI_MODEL : 'gemini-1.5-flash');
+        $this->model = $model ?? (defined('GEMINI_MODEL') ? GEMINI_MODEL : 'gemini-3.8-flash');
         $this->connectTimeout = defined('AI_CONNECT_TIMEOUT_SECONDS') ? (int)AI_CONNECT_TIMEOUT_SECONDS : $connectTimeout;
         $this->requestTimeout = defined('AI_REQUEST_TIMEOUT_SECONDS') ? (int)AI_REQUEST_TIMEOUT_SECONDS : $requestTimeout;
     }
@@ -108,8 +108,14 @@ class GeminiService implements AIServiceInterface
             );
         }
 
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . urlencode($this->model) . ':generateContent?key=' . urlencode($this->apiKey);
+        $modelsToTry = array_values(array_unique([
+            $this->model,
+            'gemini-3.5-flash',
+            'gemini-flash-latest',
+            'gemini-flash-lite-latest'
+        ]));
 
+        $lastError = 'Unknown Gemini API error';
         $payload = [
             'contents' => [
                 [
@@ -126,53 +132,66 @@ class GeminiService implements AIServiceInterface
             ]
         ];
 
-        $result = $this->curlRequest('POST', $url, $payload, $this->connectTimeout, $this->requestTimeout);
+        foreach ($modelsToTry as $currentModel) {
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . urlencode($currentModel) . ':generateContent?key=' . urlencode($this->apiKey);
+            $result = $this->curlRequest('POST', $url, $payload, $this->connectTimeout, $this->requestTimeout);
+            $durationMs = (int)round((microtime(true) - $startedAt) * 1000);
+
+            if (!$result['success']) {
+                $lastError = $this->friendlyError($result);
+                continue;
+            }
+
+            if (($result['http_status'] ?? 0) >= 400) {
+                $errBody = json_decode((string)$result['body'], true);
+                $lastError = $errBody['error']['message'] ?? ('HTTP error ' . (int)$result['http_status']);
+                // If model not found or high demand 503, try next candidate
+                if (in_array((int)$result['http_status'], [404, 503], true)) {
+                    continue;
+                }
+                break;
+            }
+
+            $responseObj = json_decode((string)$result['body'], true);
+            $rawCandidateText = $responseObj['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+            if (empty($rawCandidateText)) {
+                $lastError = 'Gemini returned an empty content candidate.';
+                continue;
+            }
+
+            // Clean possible markdown code fences
+            $cleaned = trim($rawCandidateText);
+            if (str_starts_with($cleaned, '```json')) {
+                $cleaned = substr($cleaned, 7);
+            } elseif (str_starts_with($cleaned, '```')) {
+                $cleaned = substr($cleaned, 3);
+            }
+            if (str_ends_with($cleaned, '```')) {
+                $cleaned = substr($cleaned, 0, -3);
+            }
+            $cleaned = trim($cleaned);
+
+            $parsedJson = json_decode($cleaned, true);
+            if (!is_array($parsedJson)) {
+                $lastError = 'Gemini response could not be parsed as valid JSON.';
+                continue;
+            }
+
+            $sanitized = $this->sanitizeAnalysis($parsedJson);
+            $sanitized['success'] = true;
+            $sanitized['raw_response'] = (string)$result['body'];
+            $sanitized['error'] = null;
+            $sanitized['http_status'] = (int)$result['http_status'];
+            $sanitized['duration_ms'] = $durationMs;
+            $sanitized['model_used'] = $currentModel;
+            $sanitized['provider'] = 'gemini';
+
+            return $sanitized;
+        }
+
         $durationMs = (int)round((microtime(true) - $startedAt) * 1000);
-
-        if (!$result['success']) {
-            return $this->fallbackAnalysis($text, $this->friendlyError($result), $durationMs);
-        }
-
-        if (($result['http_status'] ?? 0) >= 400) {
-            $errBody = json_decode((string)$result['body'], true);
-            $msg = $errBody['error']['message'] ?? ('HTTP error ' . (int)$result['http_status']);
-            return $this->fallbackAnalysis($text, 'Gemini API returned HTTP ' . (int)$result['http_status'] . ': ' . $msg, $durationMs);
-        }
-
-        $responseObj = json_decode((string)$result['body'], true);
-        $rawCandidateText = $responseObj['candidates'][0]['content']['parts'][0]['text'] ?? null;
-
-        if (empty($rawCandidateText)) {
-            return $this->fallbackAnalysis($text, 'Gemini returned an empty content candidate.', $durationMs);
-        }
-
-        // Clean possible markdown code fences if model enclosed in ```json
-        $cleaned = trim($rawCandidateText);
-        if (str_starts_with($cleaned, '```json')) {
-            $cleaned = substr($cleaned, 7);
-        } elseif (str_starts_with($cleaned, '```')) {
-            $cleaned = substr($cleaned, 3);
-        }
-        if (str_ends_with($cleaned, '```')) {
-            $cleaned = substr($cleaned, 0, -3);
-        }
-        $cleaned = trim($cleaned);
-
-        $parsedJson = json_decode($cleaned, true);
-        if (!is_array($parsedJson)) {
-            return $this->fallbackAnalysis($text, 'Gemini response could not be parsed as valid JSON.', $durationMs);
-        }
-
-        $sanitized = $this->sanitizeAnalysis($parsedJson);
-        $sanitized['success'] = true;
-        $sanitized['raw_response'] = (string)$result['body'];
-        $sanitized['error'] = null;
-        $sanitized['http_status'] = (int)$result['http_status'];
-        $sanitized['duration_ms'] = $durationMs;
-        $sanitized['model_used'] = $this->model;
-        $sanitized['provider'] = 'gemini';
-
-        return $sanitized;
+        return $this->fallbackAnalysis($text, $lastError, $durationMs);
     }
 
     private function buildPrompt(string $feedbackText): string
@@ -311,6 +330,13 @@ PROMPT;
         $sentiment = 'Neutral';
         if ($negCount > $posCount) $sentiment = 'Negative';
         elseif ($posCount > $negCount) $sentiment = 'Positive';
+
+        $urgency = 'Low';
+        if ($negCount >= 3) {
+            $urgency = 'High';
+        } elseif ($negCount >= 1) {
+            $urgency = 'Medium';
+        }
 
         // Extract meaningful words for keywords
         $cleanWords = preg_split('/[\s,\.\?!;:]+/', $lower);

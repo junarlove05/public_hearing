@@ -24,7 +24,7 @@ try {
 
 if ($action === 'get') {
     $geminiKey = '';
-    $geminiModel = defined('GEMINI_MODEL') ? GEMINI_MODEL : 'gemini-1.5-flash';
+    $geminiModel = defined('GEMINI_MODEL') ? GEMINI_MODEL : 'gemini-3.8-flash';
     $provider = defined('AI_PROVIDER') ? AI_PROVIDER : 'gemini';
 
     try {
@@ -72,7 +72,7 @@ requireCsrf();
 if ($action === 'save') {
     $provider = trim((string)($_POST['ai_provider'] ?? 'gemini'));
     $apiKey = trim((string)($_POST['gemini_api_key'] ?? ''));
-    $model = trim((string)($_POST['gemini_model'] ?? 'gemini-1.5-flash'));
+    $model = trim((string)($_POST['gemini_model'] ?? 'gemini-3.8-flash'));
 
     if (!in_array($provider, ['gemini', 'ollama'], true)) {
         $provider = 'gemini';

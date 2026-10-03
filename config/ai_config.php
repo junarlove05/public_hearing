@@ -37,7 +37,7 @@ if (!defined('GEMINI_API_KEY')) {
     define('GEMINI_API_KEY', (string)$envKey);
 }
 if (!defined('GEMINI_MODEL')) {
-    $envGeminiModel = getenv('GEMINI_MODEL') ?: ($_ENV['GEMINI_MODEL'] ?? ($dbAiSettings['gemini_model'] ?? 'gemini-1.5-flash'));
+    $envGeminiModel = getenv('GEMINI_MODEL') ?: ($_ENV['GEMINI_MODEL'] ?? ($dbAiSettings['gemini_model'] ?? 'gemini-3.8-flash'));
     define('GEMINI_MODEL', (string)$envGeminiModel);
 }
 

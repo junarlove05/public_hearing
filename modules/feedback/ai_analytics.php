@@ -957,9 +957,9 @@ body.sidebar-collapsed .orlms-sidebar-footer {
             <div class="mb-3">
               <label class="form-label fw-bold text-dark small">Gemini Model</label>
               <select class="form-select" name="gemini_model" id="cfgGeminiModel">
-                <option value="gemini-1.5-flash">gemini-1.5-flash (Fast, Recommended)</option>
-                <option value="gemini-2.0-flash">gemini-2.0-flash (Next-Gen Flash)</option>
-                <option value="gemini-1.5-pro">gemini-1.5-pro (High Quality)</option>
+                <option value="gemini-3.8-flash" selected>gemini-3.8-flash (Latest, Recommended)</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash (Fast)</option>
+                <option value="gemini-3-flash-preview">gemini-3-flash-preview (Preview)</option>
               </select>
             </div>
           </div>
