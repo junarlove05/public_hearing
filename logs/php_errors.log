@@ -268,3 +268,11 @@ Stack trace:
 Stack trace:
 #0 {main}
   thrown in C:\xampp\htdocs\legislative\scratch\test_ai_check.php on line 9
+[05-Oct-2026 08:01:39 Asia/Manila] [ajax_portal_rsvp] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'remarks' in 'field list'
+[05-Oct-2026 08:05:37 Asia/Manila] [ajax_portal_rsvp] Call to undefined function currentUserId()
+[05-Oct-2026 08:23:11 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'title' in 'field list' in C:\xampp\htdocs\legislative\lph\modules\stakeholders\portal.php:43
+Stack trace:
+#0 C:\xampp\htdocs\legislative\lph\modules\stakeholders\portal.php(43): PDO->query('\n    SELECT id,...')
+#1 C:\xampp\htdocs\legislative\lph\portal.php(3): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+  thrown in C:\xampp\htdocs\legislative\lph\modules\stakeholders\portal.php on line 43
