@@ -186,7 +186,7 @@ $subsystems = [
 <script>
 (function() {
     try {
-        if (localStorage.getItem('lph_sidebar_collapsed') === '1') {
+        if (window.innerWidth > 1050 && localStorage.getItem('lph_sidebar_collapsed') === '1') {
             document.documentElement.classList.add('sidebar-collapsed');
             document.addEventListener('DOMContentLoaded', function() {
                 if (document.body) document.body.classList.add('sidebar-collapsed');

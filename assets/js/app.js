@@ -8,7 +8,18 @@
  */
 
 /**
- * Global Sidebar Toggle function (handles desktop 74px collapse and mobile slide-in)
+ * Global Mobile Drawer Close Helper
+ */
+window.lphCloseSidebarMobile = function () {
+  var sidebar = document.getElementById('orlmsSidebar') || document.getElementById('sidebar');
+  var backdrop = document.getElementById('orlmsSidebarBackdrop') || document.getElementById('sidebarBackdrop');
+  if (sidebar) sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('show');
+  if (document.body) document.body.classList.remove('sidebar-open');
+};
+
+/**
+ * Global Sidebar Toggle function (desktop 74px collapse <-> mobile off-canvas drawer)
  */
 window.lphToggleSidebar = function (e) {
   if (e) {
@@ -17,28 +28,37 @@ window.lphToggleSidebar = function (e) {
   }
 
   var now = Date.now();
-  if (window._lphLastToggleTime && (now - window._lphLastToggleTime < 250)) {
+  if (window._lphLastToggleTime && (now - window._lphLastToggleTime < 200)) {
     return;
   }
   window._lphLastToggleTime = now;
 
-  var html = document.documentElement;
-  var body = document.body;
-  var isCollapsed = html.classList.toggle('sidebar-collapsed');
-  if (body) {
-    body.classList.toggle('sidebar-collapsed', isCollapsed);
-  }
-
   var sidebar = document.getElementById('orlmsSidebar') || document.getElementById('sidebar');
   var backdrop = document.getElementById('orlmsSidebarBackdrop') || document.getElementById('sidebarBackdrop');
-  if (window.innerWidth <= 1050 && sidebar) {
-    sidebar.classList.toggle('open');
-    if (backdrop) backdrop.classList.toggle('show');
-  }
 
-  try {
-    localStorage.setItem('lph_sidebar_collapsed', isCollapsed ? '1' : '0');
-  } catch (err) {}
+  if (window.innerWidth <= 1050) {
+    // Mobile / Tablet: toggle off-canvas slide-in drawer
+    if (sidebar) {
+      var isOpen = sidebar.classList.toggle('open');
+      if (backdrop) {
+        backdrop.classList.toggle('show', isOpen);
+      }
+      if (document.body) {
+        document.body.classList.toggle('sidebar-open', isOpen);
+      }
+    }
+  } else {
+    // Desktop: toggle compact icon-only mode (74px <-> 286px)
+    var html = document.documentElement;
+    var body = document.body;
+    var isCollapsed = html.classList.toggle('sidebar-collapsed');
+    if (body) {
+      body.classList.toggle('sidebar-collapsed', isCollapsed);
+    }
+    try {
+      localStorage.setItem('lph_sidebar_collapsed', isCollapsed ? '1' : '0');
+    } catch (err) {}
+  }
 };
 
 /* ==================================================================
@@ -364,11 +384,23 @@ document.addEventListener('DOMContentLoaded', function () {
   const backdrop = document.getElementById('orlmsSidebarBackdrop') || document.getElementById('sidebarBackdrop');
   if (backdrop) {
     backdrop.addEventListener('click', function () {
-      const sidebar = document.getElementById('orlmsSidebar') || document.getElementById('sidebar');
-      if (sidebar) sidebar.classList.remove('open');
-      backdrop.classList.remove('show');
+      window.lphCloseSidebarMobile();
     });
   }
+
+  // Dismiss mobile drawer on Escape key
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && window.innerWidth <= 1050) {
+      window.lphCloseSidebarMobile();
+    }
+  });
+
+  // Automatically close mobile drawer when resizing back to desktop
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 1050) {
+      window.lphCloseSidebarMobile();
+    }
+  });
 
   /* ---------- Generic "confirm delete" wiring ----------
      Any element with [data-confirm-delete] and [data-delete-url]

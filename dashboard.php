@@ -81,114 +81,298 @@ body {
     padding-top: 0 !important;
 }
 
-/* SIDEBAR OPEN (Default State: 286px Width) */
-.sidebar,
-.orlms-sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    bottom: 0 !important;
-    width: 286px !important;
-    z-index: 1030 !important;
-    padding-top: 0 !important;
-    transition: width 0.25s ease !important;
-}
-
-/* MAIN CONTENT ALIGNMENT (Beside Open Sidebar: margin-left 286px, minimal top padding 0.5rem) */
-.main-content,
-.orlms-main-content {
-    margin-left: 286px !important;
-    padding-top: 0.5rem !important;
-    padding-left: 1.5rem !important;
-    padding-right: 1.5rem !important;
-    min-height: 100vh !important;
+/* ==================================================================
+   SIDEBAR TOGGLE BUTTON (#sidebarToggleBtn)
+   - Positioned in-flow within .lph-top-controls flexbar
+   - Never fixed/floating over cards or data tables
+   ================================================================== */
+#sidebarToggleBtn,
+.topbar-menu-button {
     position: relative !important;
-    transition: margin-left 0.25s ease !important;
-}
-
-
-
-/* COLLAPSED SIDEBAR - ICON ONLY MODE (74px) */
-body.sidebar-collapsed {
-    --side: 74px !important;
-    --gov-sidebar-width: 74px !important;
-}
-
-body.sidebar-collapsed .sidebar,
-body.sidebar-collapsed .orlms-sidebar,
-.sidebar.collapsed,
-.orlms-sidebar.collapsed {
-    width: 74px !important;
-    min-width: 74px !important;
-    max-width: 74px !important;
-    transform: none !important;
-}
-
-body.sidebar-collapsed .main-content,
-body.sidebar-collapsed .orlms-main-content {
-    margin-left: 74px !important;
-}
-
-/* Hide brand text, text labels, badges, section titles, and footer details in collapsed mode */
-body.sidebar-collapsed .sidebar-brand div,
-body.sidebar-collapsed .orlms-sidebar-brand div,
-body.sidebar-collapsed .sidebar-navigation span,
-body.sidebar-collapsed .orlms-sidebar-nav span,
-body.sidebar-collapsed .orlms-sidebar-section,
-body.sidebar-collapsed .sidebar-section-title,
-body.sidebar-collapsed .orlms-sidebar-link > span,
-body.sidebar-collapsed .orlms-sidebar-link > em,
-body.sidebar-collapsed .orlms-sidebar-footer div {
-    display: none !important;
-}
-
-body.sidebar-collapsed .sidebar-brand,
-body.sidebar-collapsed .orlms-sidebar-brand {
-    padding: 0.8rem 0.4rem !important;
-    justify-content: center !important;
-}
-
-body.sidebar-collapsed .orlms-sidebar-logo,
-body.sidebar-collapsed .sidebar-logo {
-    width: 42px !important;
-    height: 42px !important;
-    max-width: 42px !important;
-    max-height: 42px !important;
-}
-
-body.sidebar-collapsed .sidebar-navigation a,
-body.sidebar-collapsed .orlms-sidebar-link {
-    display: flex !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 0.75rem 0 !important;
-    margin: 0.25rem 0.4rem !important;
-    text-align: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    border: 1px solid #dce5ee !important;
+    color: #071426 !important;
+    box-shadow: 0 1px 3px rgba(7, 20, 38, 0.06) !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    z-index: 10 !important;
+    touch-action: manipulation !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+#sidebarToggleBtn:hover,
+.topbar-menu-button:hover {
+    color: #a97900 !important;
+    border-color: #a97900 !important;
+    background: #fdf8ea !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(169, 121, 0, 0.18) !important;
+}
+#sidebarToggleBtn:active,
+.topbar-menu-button:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 4px rgba(169, 121, 0, 0.2) !important;
 }
 
-body.sidebar-collapsed .sidebar-navigation i,
-body.sidebar-collapsed .orlms-sidebar-link i {
-    font-size: 1.4rem !important;
-    margin: 0 !important;
-    display: inline-block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+/* ==================================================================
+   DESKTOP VIEWPORT (min-width: 1051px)
+   - Expanded state: 286px sidebar, content margin-left 286px
+   - Collapsed state: 74px icon-only bar, content margin-left 74px
+   ================================================================== */
+@media (min-width: 1051px) {
+    .sidebar,
+    .orlms-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 286px !important;
+        min-width: 286px !important;
+        max-width: 286px !important;
+        z-index: 1030 !important;
+        padding-top: 0 !important;
+        transform: none !important;
+        transition: width 0.25s ease !important;
+    }
+
+    .main-content,
+    .orlms-main-content {
+        margin-left: 286px !important;
+        padding-top: 0.5rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        min-height: 100vh !important;
+        position: relative !important;
+        transition: margin-left 0.25s ease !important;
+    }
+
+    /* Collapsed Sidebar - Icon Only Mode (74px) */
+    body.sidebar-collapsed {
+        --side: 74px !important;
+        --gov-sidebar-width: 74px !important;
+    }
+
+    body.sidebar-collapsed .sidebar,
+    body.sidebar-collapsed .orlms-sidebar,
+    .sidebar.collapsed,
+    .orlms-sidebar.collapsed {
+        width: 74px !important;
+        min-width: 74px !important;
+        max-width: 74px !important;
+        transform: none !important;
+    }
+
+    body.sidebar-collapsed .main-content,
+    body.sidebar-collapsed .orlms-main-content {
+        margin-left: 74px !important;
+    }
+
+    /* Hide brand text, text labels, badges, section titles, and footer details in collapsed mode */
+    body.sidebar-collapsed .sidebar-brand div,
+    body.sidebar-collapsed .orlms-sidebar-brand div,
+    body.sidebar-collapsed .sidebar-navigation span,
+    body.sidebar-collapsed .orlms-sidebar-nav span,
+    body.sidebar-collapsed .orlms-sidebar-section,
+    body.sidebar-collapsed .sidebar-section-title,
+    body.sidebar-collapsed .orlms-sidebar-link > span,
+    body.sidebar-collapsed .orlms-sidebar-link > em,
+    body.sidebar-collapsed .orlms-sidebar-link > b,
+    body.sidebar-collapsed .orlms-sidebar-footer div {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    body.sidebar-collapsed .sidebar-brand,
+    body.sidebar-collapsed .orlms-sidebar-brand {
+        padding: 0.8rem 0.4rem !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+
+    body.sidebar-collapsed .orlms-sidebar-logo,
+    body.sidebar-collapsed .sidebar-logo {
+        width: 40px !important;
+        height: 40px !important;
+        max-width: 40px !important;
+        max-height: 40px !important;
+        margin: 0 auto !important;
+    }
+
+    body.sidebar-collapsed .sidebar-navigation a,
+    body.sidebar-collapsed .orlms-sidebar-link {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0.75rem 0 !important;
+        margin: 0.25rem 0.4rem !important;
+        text-align: center !important;
+    }
+
+    body.sidebar-collapsed .sidebar-navigation i,
+    body.sidebar-collapsed .orlms-sidebar-link i {
+        font-size: 1.4rem !important;
+        margin: 0 !important;
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    body.sidebar-collapsed .orlms-sidebar-footer {
+        justify-content: center !important;
+        padding: 0.6rem 0 !important;
+    }
 }
 
-body.sidebar-collapsed .orlms-sidebar-footer {
-    justify-content: center !important;
-    padding: 0.6rem 0 !important;
-}
-
-/* Mobile Responsiveness */
+/* ==================================================================
+   MOBILE & TABLET VIEWPORT (max-width: 1050px)
+   - Sidebar is hidden off-screen by default (transform: translateX(-100%))
+   - When .open is added, slides in smoothly as a full-featured drawer
+   - Backdrop overlay blurs background and closes drawer on touch/click
+   - Main content takes 100% width with margin-left: 0
+   ================================================================== */
 @media (max-width: 1050px) {
     .main-content,
     .orlms-main-content,
     body.sidebar-collapsed .main-content,
     body.sidebar-collapsed .orlms-main-content {
         margin-left: 0 !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-top: 0.5rem !important;
+        padding-left: 0.9rem !important;
+        padding-right: 0.9rem !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        min-height: 100vh !important;
+    }
+
+    /* Sidebar Drawer Off-Screen */
+    .sidebar,
+    .orlms-sidebar,
+    body.sidebar-collapsed .sidebar,
+    body.sidebar-collapsed .orlms-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 286px !important;
+        min-width: 286px !important;
+        max-width: 86vw !important;
+        z-index: 1050 !important;
+        padding-top: 0 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        background: linear-gradient(180deg, #071426, #0f2137 55%, #1a3a5c) !important;
+        overflow-y: auto !important;
+    }
+
+    /* Sidebar Drawer Slide-In When Open */
+    .sidebar.open,
+    .orlms-sidebar.open,
+    body.sidebar-collapsed .sidebar.open,
+    body.sidebar-collapsed .orlms-sidebar.open {
+        transform: translateX(0) !important;
+        box-shadow: 0 0 45px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    /* Guarantee all text labels and icons are fully visible in mobile drawer */
+    body.sidebar-collapsed .sidebar-brand div,
+    body.sidebar-collapsed .orlms-sidebar-brand div,
+    body.sidebar-collapsed .sidebar-navigation span,
+    body.sidebar-collapsed .orlms-sidebar-nav span,
+    body.sidebar-collapsed .orlms-sidebar-section,
+    body.sidebar-collapsed .sidebar-section-title,
+    body.sidebar-collapsed .orlms-sidebar-link > span,
+    body.sidebar-collapsed .orlms-sidebar-link > em,
+    body.sidebar-collapsed .orlms-sidebar-footer div {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
+    body.sidebar-collapsed .orlms-sidebar-brand {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 0.9rem 1rem !important;
+        text-align: left !important;
+    }
+
+    body.sidebar-collapsed .orlms-sidebar-logo,
+    body.sidebar-collapsed .sidebar-logo {
+        width: 48px !important;
+        height: 48px !important;
+        max-width: 48px !important;
+        max-height: 48px !important;
+        margin: 0 !important;
+    }
+
+    body.sidebar-collapsed .sidebar-navigation a,
+    body.sidebar-collapsed .orlms-sidebar-link {
+        display: grid !important;
+        grid-template-columns: 26px minmax(0, 1fr) auto !important;
+        align-items: center !important;
+        text-align: left !important;
+        padding: 0.6rem 0.75rem !important;
+        margin: 0 !important;
+    }
+
+    body.sidebar-collapsed .sidebar-navigation i,
+    body.sidebar-collapsed .orlms-sidebar-link i {
+        font-size: 0.95rem !important;
+        margin: 0 !important;
+    }
+
+    body.sidebar-collapsed .orlms-sidebar-footer {
+        display: flex !important;
+        justify-content: flex-start !important;
+        padding: 0.7rem !important;
+        margin: 0.65rem !important;
+    }
+
+    /* Dimmed Backdrop Overlay */
+    .sidebar-backdrop,
+    .orlms-sidebar-backdrop {
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(7, 20, 38, 0.55) !important;
+        backdrop-filter: blur(2px) !important;
+        z-index: 1040 !important;
+        display: none !important;
+        opacity: 0 !important;
+        transition: opacity 0.25s ease !important;
+    }
+    .sidebar-backdrop.show,
+    .orlms-sidebar-backdrop.show {
+        display: block !important;
+        opacity: 1 !important;
+    }
+
+    /* Top Controls Bar Spacing */
+    .lph-top-controls {
+        padding-top: 0.25rem !important;
+        padding-bottom: 0.35rem !important;
     }
 }
 
@@ -274,10 +458,10 @@ body.sidebar-collapsed .orlms-sidebar-footer {
     <div class="card-body p-3">
         <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom" style="border-color: rgba(217, 119, 6, 0.2) !important;">
             <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-bell-fill me-1"></i> My Assigned Issues (Nakatoka sa Iyo)</span>
-                <span class="text-muted small">May <strong><?= count($myAssignedIssues) ?></strong> aktibong issue na naka-assign sa iyong account</span>
+                <span class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-bell-fill me-1"></i> My Assigned Issues</span>
+                <span class="text-muted small">You have <strong><?= count($myAssignedIssues) ?></strong> active issue(s) assigned to your account</span>
             </div>
-            <a href="<?= e(APP_URL) ?>/modules/issues/index.php" class="btn btn-sm btn-outline-dark py-0 px-2" style="font-size:0.75rem;">Tingnan Lahat</a>
+            <a href="<?= e(APP_URL) ?>/modules/issues/index.php" class="btn btn-sm btn-outline-dark py-0 px-2" style="font-size:0.75rem;">View All</a>
         </div>
         <div class="d-flex flex-column gap-2">
             <?php foreach ($myAssignedIssues as $mIss): ?>
@@ -292,7 +476,7 @@ body.sidebar-collapsed .orlms-sidebar-footer {
                     </div>
                     <div>
                         <a href="<?= e(APP_URL) ?>/modules/issues/view.php?id=<?= (int)$mIss['id'] ?>" class="btn btn-sm btn-primary py-1 px-3" style="background:#0F2137; border-color:#0F2137;">
-                            <i class="bi bi-box-arrow-up-right me-1"></i> Buksan ang Issue
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Open Issue
                         </a>
                     </div>
                 </div>

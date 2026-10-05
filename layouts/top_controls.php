@@ -69,7 +69,7 @@ $topNotifCount = count($topNotifItems);
   <!-- Standard Topbar Menu Button for Mobile/Desktop Toggle -->
   <button
     type="button"
-    class="topbar-menu-button orlms-menu-button"
+    class="topbar-menu-button"
     id="sidebarToggleBtn"
     onclick="lphToggleSidebar(event)"
     title="Toggle Sidebar Navigation"
@@ -83,7 +83,7 @@ $topNotifCount = count($topNotifItems);
     <!-- Subsystems Switcher Dropdown (Matched to VQDSS / ORLMS / LACMS) -->
     <div class="dropdown">
       <button class="orlms-system-switcher dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-        <span>Subsystems</span>
+        <i class="bi bi-grid-3x3-gap-fill me-1"></i><span>Subsystems</span>
       </button>
       <div class="dropdown-menu dropdown-menu-end orlms-subsystem-menu shadow-lg" style="max-height: 85vh; overflow-y: auto; z-index: 1060;">
         <a href="<?= e($portalBaseUrl . '/index.php') ?>" class="orlms-subsystem-item orlms-subsystem-item-portal">
@@ -119,7 +119,7 @@ $topNotifCount = count($topNotifItems);
         <?php if (empty($topNotifItems)): ?>
           <div class="p-3 text-center text-muted small">
             <i class="bi bi-check2-circle text-success fs-3 d-block mb-1"></i>
-            Wala kang bagong notification sa ngayon.
+            You have no new notifications at this time.
           </div>
         <?php else: ?>
           <div class="list-group list-group-flush">
