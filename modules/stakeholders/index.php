@@ -322,7 +322,7 @@ include __DIR__ . '/../../layouts/header.php';
 $defaultRegUrl = rtrim(APP_URL, '/') . '/modules/stakeholders/register.php';
 ?>
 <div class="modal fade" id="registrationQrModal" tabindex="-1" aria-labelledby="regQrModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
     <div class="modal-content border-0 shadow-lg text-center" style="border-radius: 20px; overflow: hidden;">
       <div class="modal-header text-white justify-content-between py-3 px-4" style="background: #0F2137; border-bottom: 4px solid #c89523;">
         <h5 class="modal-title fw-bold fs-5 mb-0" id="regQrModalLabel">
@@ -331,30 +331,15 @@ $defaultRegUrl = rtrim(APP_URL, '/') . '/modules/stakeholders/register.php';
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-4 bg-light">
-        <!-- QR Code Canvas Display -->
+        <!-- QR Code Canvas Display ONLY -->
         <div class="d-inline-block p-3 bg-white border border-2 border-dark rounded-4 shadow-sm mb-3">
-          <div id="modalQrCodeHolder" class="d-flex justify-content-center align-items-center" style="min-width: 240px; min-height: 240px;"></div>
+          <div id="modalQrCodeHolder" class="d-flex justify-content-center align-items-center" style="min-width: 250px; min-height: 250px;"></div>
         </div>
 
-        <div class="mb-3">
-          <span class="badge bg-dark px-3 py-2 text-uppercase fw-bold fs-6" style="letter-spacing: 1px;">QR REGISTRATION</span>
+        <div class="mb-2">
+          <span class="badge bg-dark px-3 py-2 text-uppercase fw-bold fs-6" style="letter-spacing: 1px;">SCAN TO REGISTER</span>
         </div>
-        <p class="text-muted small px-2 mb-3">Scan this QR code using a smartphone camera to open and fill out the official stakeholder registration form.</p>
-
-        <div class="d-flex gap-2 justify-content-center flex-wrap">
-          <a href="print_registration_qr.php" target="_blank" id="btnPrintStandeeUrl" class="btn btn-dark btn-sm px-3 fw-semibold">
-            <i class="bi bi-printer me-1"></i> Print / Download Standee
-          </a>
-          <a href="<?= e($defaultRegUrl) ?>" target="_blank" id="btnOpenRegUrl" class="btn btn-outline-primary btn-sm px-3 fw-semibold">
-            <i class="bi bi-box-arrow-up-right me-1"></i> Open Form
-          </a>
-          <a href="/legislative/stakeholder_portal/" target="_blank" class="btn btn-warning btn-sm px-3 fw-semibold text-dark shadow-sm">
-            <i class="bi bi-person-workspace me-1"></i> Stakeholder Portal
-          </a>
-        </div>
-      </div>
-      <div class="modal-footer bg-white py-2 px-3 border-top justify-content-center">
-        <button type="button" class="btn btn-sm btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+        <p class="text-muted small px-2 mb-0">I-scan ang QR code gamit ang smartphone camera para mag-register bilang opisyal na stakeholder.</p>
       </div>
     </div>
   </div>
@@ -480,26 +465,35 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   // ============================================================
-  // Registration QR Code Modal & Dynamic Domain/Railway Handler
+  // Registration QR Code Modal (Pure Scan QR, No Extra Buttons)
   // ============================================================
   const regQrModalEl = document.getElementById('registrationQrModal');
   const regQrModal = regQrModalEl ? new bootstrap.Modal(regQrModalEl) : null;
   const qrHolder = document.getElementById('modalQrCodeHolder');
-  const regUrlInput = document.getElementById('regQrUrlInput');
-  const btnOpenReg = document.getElementById('btnOpenRegUrl');
-  const btnPrintStandee = document.getElementById('btnPrintStandeeUrl');
-  const btnResetReg = document.getElementById('btnResetRegUrl');
   const defaultUrl = <?= json_encode($defaultRegUrl) ?>;
+
+  function getEffectiveRegUrl() {
+    try {
+      const origin = window.location.origin;
+      const pathName = window.location.pathname;
+      const lphIndex = pathName.indexOf('/modules/');
+      if (lphIndex !== -1) {
+        const basePath = pathName.substring(0, lphIndex);
+        return origin + basePath + '/modules/stakeholders/register.php';
+      }
+    } catch(e) {}
+    return defaultUrl;
+  }
 
   function renderRegQr(url) {
     if (!qrHolder) return;
     qrHolder.innerHTML = '';
-    const cleanUrl = (url || '').trim() || defaultUrl;
+    const cleanUrl = (url || '').trim() || getEffectiveRegUrl();
     try {
       new QRCode(qrHolder, {
         text: cleanUrl,
-        width: 220,
-        height: 220,
+        width: 250,
+        height: 250,
         colorDark: "#0F2137",
         colorLight: "#ffffff",
         correctLevel: (typeof QRCode !== 'undefined' && QRCode.CorrectLevel) ? QRCode.CorrectLevel.M : 0
@@ -508,15 +502,12 @@ document.addEventListener('DOMContentLoaded',function(){
       console.error('QRCode render error:', err);
       qrHolder.innerHTML = '<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Unable to generate QR: ' + escapeHtml(err.message) + '</div>';
     }
-
-    if (btnOpenReg) btnOpenReg.href = cleanUrl;
-    if (btnPrintStandee) btnPrintStandee.href = 'print_registration_qr.php?url=' + encodeURIComponent(cleanUrl);
   }
 
   const btnShowRegQr = document.getElementById('btnShowRegistrationQr');
   if (btnShowRegQr && regQrModal) {
     btnShowRegQr.addEventListener('click', function() {
-      renderRegQr(defaultUrl);
+      renderRegQr(getEffectiveRegUrl());
       regQrModal.show();
     });
   }
