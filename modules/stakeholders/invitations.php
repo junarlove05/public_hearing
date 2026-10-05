@@ -130,6 +130,16 @@ function lphBuildGmailComposeUrl(array $r, array $group): string {
 $hearingSessionOptions = lphGetHearingSessionDropdownOptions($pdo, $hearings);
 $filterHearingSessionOptions = lphGetHearingSessionDropdownOptions($pdo, $filterHearings);
 
+// Fetch all active stakeholders in directory (to allow direct selection even if not yet pre-registered)
+$allMasterStakeholders = $pdo->query(
+    "SELECT s.id AS stakeholder_id, s.full_name, s.email, s.organization, s.status, sc.name AS category_name,
+            (SELECT code_value FROM qr_codes q WHERE q.stakeholder_id=s.id LIMIT 1) AS code_value
+     FROM stakeholders s
+     LEFT JOIN stakeholder_categories sc ON sc.id = s.category_id
+     WHERE s.deleted_at IS NULL
+     ORDER BY s.full_name ASC"
+)->fetchAll();
+
 $registeredStakeholders = $pdo->query(
     "SELECT r.id AS registration_id, r.hearing_id, r.session_day_id, r.session_date, r.stakeholder_id, r.registration_status, r.attendance_type, r.registered_at,
             s.full_name, s.email, s.organization, s.status, sc.name AS category_name,
@@ -139,6 +149,27 @@ $registeredStakeholders = $pdo->query(
      LEFT JOIN stakeholder_categories sc ON sc.id = s.category_id
      ORDER BY s.full_name ASC"
 )->fetchAll();
+
+// Index registrations for quick lookup: [hearing_id . '_' . stakeholder_id => regData]
+$registeredStakeholderMap = [];
+foreach ($registeredStakeholders as $rs) {
+    $hid = (int)$rs['hearing_id'];
+    $sid = (int)$rs['stakeholder_id'];
+    $sdid = (int)($rs['session_day_id'] ?? 0);
+    $sdate = (string)($rs['session_date'] ?? '');
+    
+    $registeredStakeholderMap["{$hid}_{$sid}"] = [
+        'registration_id' => (int)$rs['registration_id'],
+        'attendance_type' => $rs['attendance_type'] ?: 'On-site',
+        'registration_status' => $rs['registration_status'] ?: 'Registered'
+    ];
+    if ($sdid > 0) {
+        $registeredStakeholderMap["{$hid}_{$sdid}_{$sid}"] = $registeredStakeholderMap["{$hid}_{$sid}"];
+    }
+    if ($sdate !== '') {
+        $registeredStakeholderMap["{$hid}_{$sdate}_{$sid}"] = $registeredStakeholderMap["{$hid}_{$sid}"];
+    }
+}
 
 // Map registered stakeholder count per hearing session
 $sessionRegCounts = [];
@@ -445,6 +476,9 @@ include __DIR__ . '/../../layouts/header.php';
         <p class="mb-0">Create single or bulk invitations, issue invitation codes, track delivery-ready state and responses.</p>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap" style="white-space: nowrap;">
+        <a class="btn btn-warning btn-sm text-dark fw-bold text-nowrap shadow-sm" href="portal.php" target="_blank" title="Open Public Stakeholder Self-Service Portal">
+            <i class="bi bi-globe me-1"></i> Public Stakeholder Portal
+        </a>
         <a class="btn btn-outline-success btn-sm text-nowrap" href="export_csv.php?type=invitations<?= $hearingFilter > 0 ? '&hearing_id='.$hearingFilter : '' ?>" title="Export current invitations to CSV">
             <i class="bi bi-filetype-csv me-1"></i> Export CSV
         </a>
@@ -471,18 +505,21 @@ include __DIR__ . '/../../layouts/header.php';
             </div>
             <div>
                 <h5 class="mb-0 fw-bold text-dark" style="font-size:1.05rem;">Create Invitations</h5>
-                <small class="text-muted">Select an upcoming hearing and pick stakeholders to issue official invitations</small>
+                <small class="text-muted">Select an upcoming hearing and pick stakeholders from directory or pre-registrations</small>
             </div>
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
-                <i class="bi bi-people-fill text-primary me-1"></i> <span id="totalStakeholderCount">0</span> Registered for this Hearing
+                <i class="bi bi-book-half text-secondary me-1"></i> <span id="totalDirectoryCount"><?= count($allMasterStakeholders) ?></span> in Directory
+            </span>
+            <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                <i class="bi bi-people-fill me-1"></i> <span id="totalStakeholderCount">0</span> Pre-Registered
             </span>
         </div>
     </div>
 
     <div class="card-body p-3 p-md-4">
-        <form id="inviteForm" novalidate>
+        <form id="inviteForm" method="POST" action="javascript:void(0);" onsubmit="return false;" novalidate>
             <?= csrfField() ?>
             
             <!-- UPPER FORM: Hearing & Top Action -->
@@ -539,11 +576,17 @@ include __DIR__ . '/../../layouts/header.php';
                             <i class="bi bi-check2-circle me-1"></i>0 selected
                         </span>
 
-                        <!-- Status Filter Buttons -->
+                        <!-- Filter Buttons: Directory vs Pre-Registered vs Eligible -->
                         <div class="btn-group btn-group-sm ms-md-2" role="group" aria-label="Filter status">
-                            <button type="button" class="btn btn-outline-secondary active btn-filter-status" data-filter="all">All</button>
-                            <button type="button" class="btn btn-outline-secondary btn-filter-status" data-filter="Verified">Verified</button>
-                            <button type="button" class="btn btn-outline-secondary btn-filter-status" data-filter="Pending">Pending</button>
+                            <button type="button" class="btn btn-outline-secondary active btn-filter-status" data-filter="all" title="View all stakeholders in the city council directory">
+                                All Directory (<?= count($allMasterStakeholders) ?>)
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-filter-status" data-filter="registered" title="View only stakeholders who pre-registered for this hearing">
+                                <i class="bi bi-people-fill me-1"></i>Pre-Registered
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-filter-status" data-filter="eligible" title="View stakeholders not yet invited for this session">
+                                <i class="bi bi-check2-circle me-1"></i>Eligible to Invite
+                            </button>
                         </div>
                     </div>
 
@@ -576,11 +619,11 @@ include __DIR__ . '/../../layouts/header.php';
                                 <th class="custom-checkbox-cell py-2.5">
                                     <input type="checkbox" id="masterCheckbox" class="form-check-input" title="Select / Deselect all visible">
                                 </th>
-                                <th class="py-2.5">Registered Stakeholder</th>
+                                <th class="py-2.5">Stakeholder</th>
                                 <th class="py-2.5">Organization / Sector</th>
                                 <th class="py-2.5">Email Contact</th>
-                                <th class="py-2.5">Registration Info</th>
-                                <th class="py-2.5 text-center" style="width: 150px;">Hearing Status</th>
+                                <th class="py-2.5">Hearing Status</th>
+                                <th class="py-2.5 text-center" style="width: 150px;">Invitation Eligibility</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -588,51 +631,42 @@ include __DIR__ . '/../../layouts/header.php';
                             <tr id="promptSelectHearingRow">
                                 <td colspan="6" class="text-center py-5 text-muted">
                                     <i class="bi bi-calendar2-event text-primary fs-1 d-block mb-2"></i>
-                                    <h6 class="fw-bold text-dark mb-1">Select a Hearing First</h6>
-                                    <p class="small text-muted mb-0">Please choose a target hearing above to view its registered stakeholders.</p>
+                                    <h6 class="fw-bold text-dark mb-1">Select a Hearing Above</h6>
+                                    <p class="small text-muted mb-0">Please choose a target hearing session above to view stakeholders and issue invitations.</p>
                                 </td>
                             </tr>
 
-                            <!-- Empty state if selected hearing has 0 registrations -->
+                            <!-- Empty state if search has 0 results -->
                             <tr id="noRegisteredRow" class="d-none">
                                 <td colspan="6" class="text-center py-5 text-muted">
                                     <i class="bi bi-person-x fs-1 d-block mb-2 text-secondary"></i>
-                                    <h6 class="fw-bold text-dark mb-1">No Stakeholders Assigned for this Hearing</h6>
-                                    <p class="small text-muted mb-3">Stakeholders must first be assigned to this hearing before an invitation can be issued.</p>
-                                    <a id="btnGoToRegister" href="registrations.php" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-person-plus-fill me-1"></i> Assign Stakeholders on this Hearing
-                                    </a>
+                                    <h6 class="fw-bold text-dark mb-1">No Stakeholders Found</h6>
+                                    <p class="small text-muted mb-3">No stakeholders found matching your filter criteria. Switch to "All Directory" to view all available stakeholders.</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="resetToAllDirectory()">
+                                        <i class="bi bi-arrow-repeat me-1"></i> View All Directory Stakeholders
+                                    </button>
                                 </td>
                             </tr>
 
-                            <?php foreach ($registeredStakeholders as $s): 
+                            <?php foreach ($allMasterStakeholders as $s): 
                                 $sId = (int)$s['stakeholder_id'];
-                                $hId = (int)$s['hearing_id'];
                                 $fullName = $s['full_name'] ?? '';
                                 $email = $s['email'] ?? '';
                                 $org = $s['organization'] ?? '';
                                 $category = $s['category_name'] ?? '';
                                 $status = $s['status'] ?? 'Pending';
-                                $attendanceType = $s['attendance_type'] ?: 'On-site';
-                                $regStatus = $s['registration_status'] ?: 'Registered';
                                 $initials = lphInitials($fullName);
                                 $avatarStyle = lphAvatarStyle($fullName);
                             ?>
-                                <?php
-                                    $rowSdid = (int)($s['session_day_id'] ?? 0);
-                                    $rowSdate = (string)($s['session_date'] ?? '');
-                                    $rowKey = "{$hId}_{$rowSdid}_{$rowSdate}";
-                                ?>
                                 <tr class="stakeholder-row d-none" 
+                                    id="stk_row_<?= $sId ?>"
                                     data-sid="<?= $sId ?>" 
-                                    data-hearing-id="<?= $hId ?>"
-                                    data-session-day-id="<?= $rowSdid ?>"
-                                    data-session-date="<?= e($rowSdate) ?>"
-                                    data-session-key="<?= e($rowKey) ?>"
                                     data-status="<?= e($status) ?>"
                                     data-name="<?= e(strtolower($fullName)) ?>"
                                     data-email="<?= e(strtolower($email)) ?>"
-                                    data-org="<?= e(strtolower($org . ' ' . $category)) ?>">
+                                    data-org="<?= e(strtolower($org . ' ' . $category)) ?>"
+                                    data-is-registered="0"
+                                    data-is-invited="0">
                                     
                                     <!-- Checkbox -->
                                     <td class="custom-checkbox-cell" onclick="event.stopPropagation()">
@@ -640,7 +674,7 @@ include __DIR__ . '/../../layouts/header.php';
                                                name="stakeholder_ids[]" 
                                                value="<?= $sId ?>" 
                                                class="form-check-input stakeholder-cb" 
-                                               id="cb_stk_<?= $hId ?>_<?= $rowSdid ?>_<?= $sId ?>">
+                                               id="cb_stk_<?= $sId ?>">
                                     </td>
 
                                     <!-- Stakeholder Name + Avatar -->
@@ -650,7 +684,7 @@ include __DIR__ . '/../../layouts/header.php';
                                                 <?= e($initials) ?>
                                             </div>
                                             <div>
-                                                <label for="cb_stk_<?= $hId ?>_<?= $sId ?>" class="fw-bold text-dark mb-0 d-block cursor-pointer">
+                                                <label for="cb_stk_<?= $sId ?>" class="fw-bold text-dark mb-0 d-block cursor-pointer">
                                                     <?= e($fullName) ?>
                                                 </label>
                                                 <?php if (!empty($category)): ?>
@@ -678,27 +712,24 @@ include __DIR__ . '/../../layouts/header.php';
 
                                     <!-- Email -->
                                     <td>
-                                        <div class="small text-dark font-monospace">
-                                            <i class="bi bi-envelope me-1 text-secondary"></i><?= e($email) ?>
-                                        </div>
+                                        <?php if (!empty($email)): ?>
+                                            <div class="small text-dark font-monospace">
+                                                <i class="bi bi-envelope me-1 text-secondary"></i><?= e($email) ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="text-muted small fst-italic">No email provided</span>
+                                        <?php endif; ?>
                                     </td>
 
-                                    <!-- Registration Info: Attendance Type & Status -->
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1 flex-wrap">
-                                            <span class="badge <?= $attendanceType === 'Online' ? 'bg-info-subtle text-info border' : 'bg-primary-subtle text-primary border' ?> rounded-pill px-2 py-0.5" style="font-size:0.68rem;">
-                                                <i class="bi <?= $attendanceType === 'Online' ? 'bi-camera-video' : 'bi-geo-alt-fill' ?> me-1"></i><?= e($attendanceType) ?>
-                                            </span>
-                                            <span class="badge bg-success-subtle text-success-emphasis border rounded-pill px-2 py-0.5" style="font-size:0.68rem;">
-                                                <i class="bi bi-patch-check-fill me-1"></i><?= e($regStatus) ?>
-                                            </span>
-                                        </div>
+                                    <!-- Hearing Attendance / Registration Status -->
+                                    <td class="reg-info-cell">
+                                        <span class="badge bg-light text-muted border px-2 py-1"><i class="bi bi-building me-1"></i>Directory Stakeholder</span>
                                     </td>
 
                                     <!-- Live Hearing Eligibility / Invitation Status -->
                                     <td class="text-center hearing-status-cell">
-                                        <span class="badge badge-subtle-secondary rounded-pill hearing-eligibility-badge" style="font-size:0.72rem;">
-                                            <i class="bi bi-arrow-right-circle me-1"></i>Select Hearing
+                                        <span class="badge badge-subtle-success rounded-pill" style="font-size:0.72rem;">
+                                            <i class="bi bi-check2 me-1"></i>Eligible
                                         </span>
                                     </td>
                                 </tr>
@@ -1261,6 +1292,9 @@ const APP_URL = <?= json_encode(rtrim(APP_URL, '/')) ?>;
 const APP_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
 // Pre-loaded hearing invitation map: { hearingId: { stakeholderId: status } }
 const HEARING_INVITED_MAP = <?= json_encode($hearingInvitedMap, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;
+// Pre-loaded registered stakeholders map: { [hearingId + '_' + sid]: regData }
+const REGISTERED_STAKEHOLDERS_MAP = <?= json_encode($registeredStakeholderMap, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;
+
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -1743,44 +1777,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 5. Live Check of Existing Invitations when Hearing Session is Selected
-    function updateHearingEligibility() {
-        const selectedOption = hearingSelect && hearingSelect.selectedIndex >= 0 ? hearingSelect.options[hearingSelect.selectedIndex] : null;
-        const sessionKey = hearingSelect ? (hearingSelect.value || '') : '';
-        const hearingId = selectedOption ? parseInt(selectedOption.dataset.hearingId || '0', 10) : parseInt(sessionKey, 10);
-        const sessionDate = selectedOption ? (selectedOption.dataset.sessionDate || '') : '';
+    window.resetToAllDirectory = function() {
+        if (searchInput) searchInput.value = '';
+        currentStatusFilter = 'all';
+        document.querySelectorAll('.btn-filter-status').forEach(b => b.classList.toggle('active', b.dataset.filter === 'all'));
+        filterRows();
+    };
 
-        let invitedMap = {};
-        if (sessionKey && HEARING_INVITED_MAP[sessionKey]) {
-            invitedMap = HEARING_INVITED_MAP[sessionKey];
-        } else if (hearingId > 0 && sessionDayId > 0 && HEARING_INVITED_MAP[hearingId + '_' + sessionDayId]) {
-            invitedMap = HEARING_INVITED_MAP[hearingId + '_' + sessionDayId];
-        } else if (hearingId > 0 && sessionDate && HEARING_INVITED_MAP[hearingId + '_' + sessionDate]) {
-            invitedMap = HEARING_INVITED_MAP[hearingId + '_' + sessionDate];
-        }
-
-        stakeholderRows.forEach(row => {
-            if (row.classList.contains('d-none')) return;
-            const sid = parseInt(row.dataset.sid, 10);
-            const statusCell = row.querySelector('.hearing-status-cell');
-            if (!statusCell) return;
-
-            if (invitedMap[sid]) {
-                const inviteStatus = invitedMap[sid];
-                row.classList.add('row-already-invited');
-                statusCell.innerHTML = `<span class="badge bg-secondary-subtle text-secondary border rounded-pill" style="font-size:0.72rem;" title="Already invited for this session date">
-                    <i class="bi bi-check-circle-fill text-secondary me-1"></i>Invited (${inviteStatus})
-                </span>`;
-            } else {
-                row.classList.remove('row-already-invited');
-                statusCell.innerHTML = `<span class="badge badge-subtle-success rounded-pill" style="font-size:0.72rem;">
-                    <i class="bi bi-check2 me-1"></i>Eligible
-                </span>`;
-            }
-        });
-    }
-
-    // 6. Live Search & Filter (Only among registered stakeholders of the selected session day)
+    // 5 & 6. Live Search, Filter & Eligibility Evaluation
     function filterRows() {
         const selectedOption = hearingSelect && hearingSelect.selectedIndex >= 0 ? hearingSelect.options[hearingSelect.selectedIndex] : null;
         const sessionKey = hearingSelect ? (hearingSelect.value || '') : '';
@@ -1811,7 +1815,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btnGoToRegister.href = regLink;
         }
 
-        // Case 1: No hearing session selected
+        // Case 1: No hearing session selected yet
         if (!sessionKey || hearingId === 0) {
             if (promptSelectHearingRow) promptSelectHearingRow.classList.remove('d-none');
             if (noRegisteredRow) noRegisteredRow.classList.add('d-none');
@@ -1831,42 +1835,85 @@ document.addEventListener('DOMContentLoaded', function() {
         // Case 2: Hearing session is selected
         if (promptSelectHearingRow) promptSelectHearingRow.classList.add('d-none');
 
+        // Resolve invitations map for this hearing session
+        let invitedMap = {};
+        if (sessionKey && HEARING_INVITED_MAP[sessionKey]) {
+            invitedMap = HEARING_INVITED_MAP[sessionKey];
+        } else if (hearingId > 0 && sessionDayId > 0 && HEARING_INVITED_MAP[hearingId + '_' + sessionDayId]) {
+            invitedMap = HEARING_INVITED_MAP[hearingId + '_' + sessionDayId];
+        } else if (hearingId > 0 && sessionDate && HEARING_INVITED_MAP[hearingId + '_' + sessionDate]) {
+            invitedMap = HEARING_INVITED_MAP[hearingId + '_' + sessionDate];
+        } else if (hearingId > 0 && HEARING_INVITED_MAP[hearingId]) {
+            invitedMap = HEARING_INVITED_MAP[hearingId];
+        }
+
         let hearingRegCount = 0;
         let visibleCount = 0;
+        const totalDirectoryCount = stakeholderRows.length;
 
         stakeholderRows.forEach(row => {
-            const rowHearingId = parseInt(row.dataset.hearingId, 10) || 0;
-            const rowSessionDayId = parseInt(row.dataset.sessionDayId, 10) || 0;
-            const rowSessionDate = row.dataset.sessionDate || '';
+            const sid = parseInt(row.dataset.sid, 10);
 
-            // Match exact session day
-            let matchesSession = false;
-            if (rowHearingId === hearingId) {
-                if (sessionDayId > 0 && rowSessionDayId > 0) {
-                    matchesSession = (rowSessionDayId === sessionDayId);
-                } else if (sessionDate && rowSessionDate) {
-                    matchesSession = (rowSessionDate === sessionDate);
+            // Check if stakeholder pre-registered for this hearing
+            const regData = (sessionDayId > 0 && REGISTERED_STAKEHOLDERS_MAP[hearingId + '_' + sessionDayId + '_' + sid]) 
+                         || (sessionDate && REGISTERED_STAKEHOLDERS_MAP[hearingId + '_' + sessionDate + '_' + sid]) 
+                         || REGISTERED_STAKEHOLDERS_MAP[hearingId + '_' + sid]
+                         || null;
+            
+            const isRegistered = !!regData;
+            if (isRegistered) {
+                hearingRegCount++;
+            }
+            row.dataset.isRegistered = isRegistered ? '1' : '0';
+
+            // 1. Update Attendance / Registration Status Cell
+            const regCell = row.querySelector('.reg-info-cell');
+            if (regCell) {
+                if (isRegistered) {
+                    const attType = regData.attendance_type || 'On-site';
+                    regCell.innerHTML = `<span class="badge bg-primary-subtle text-primary border px-2 py-1" title="Pre-registered for this hearing">
+                        <i class="bi bi-people-fill me-1"></i>Pre-Registered (${escapeHtml(attType)})
+                    </span>`;
                 } else {
-                    matchesSession = true;
+                    regCell.innerHTML = `<span class="badge bg-light text-muted border px-2 py-1">
+                        <i class="bi bi-building me-1"></i>Directory Stakeholder
+                    </span>`;
                 }
             }
 
-            if (!matchesSession) {
-                row.classList.add('d-none');
-                const cb = row.querySelector('.stakeholder-cb');
-                if (cb) cb.checked = false;
-                return;
+            // 2. Update Live Hearing Eligibility / Invitation Status Cell
+            const inviteStatus = invitedMap[sid];
+            const isInvited = !!inviteStatus;
+            row.dataset.isInvited = isInvited ? '1' : '0';
+
+            const statusCell = row.querySelector('.hearing-status-cell');
+            if (statusCell) {
+                if (isInvited) {
+                    row.classList.add('row-already-invited');
+                    statusCell.innerHTML = `<span class="badge bg-secondary-subtle text-secondary border rounded-pill" style="font-size:0.72rem;" title="Already invited for this session date">
+                        <i class="bi bi-check-circle-fill text-secondary me-1"></i>Invited (${escapeHtml(inviteStatus)})
+                    </span>`;
+                } else {
+                    row.classList.remove('row-already-invited');
+                    statusCell.innerHTML = `<span class="badge badge-subtle-success rounded-pill" style="font-size:0.72rem;">
+                        <i class="bi bi-check2 me-1"></i>Eligible
+                    </span>`;
+                }
             }
 
-            hearingRegCount++;
+            // 3. Filter check: currentStatusFilter ('all', 'registered', 'eligible')
+            let matchesStatus = true;
+            if (currentStatusFilter === 'registered') {
+                matchesStatus = isRegistered;
+            } else if (currentStatusFilter === 'eligible') {
+                matchesStatus = !isInvited;
+            }
 
+            // 4. Query text search
             const name = row.dataset.name || '';
             const email = row.dataset.email || '';
             const org = row.dataset.org || '';
-            const status = row.dataset.status || '';
-
             const matchesQuery = query === '' || name.includes(query) || email.includes(query) || org.includes(query);
-            const matchesStatus = currentStatusFilter === 'all' || status === currentStatusFilter;
 
             if (matchesQuery && matchesStatus) {
                 row.classList.remove('d-none');
@@ -1878,19 +1925,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        if (totalStakeholderCountEl) totalStakeholderCountEl.textContent = hearingRegCount;
+        // Update counters
+        if (totalStakeholderCountEl) totalStakeholderCountEl.textContent = totalDirectoryCount;
         if (totalHearingRegCountEl) totalHearingRegCountEl.textContent = hearingRegCount;
         if (visibleRowCountEl) visibleRowCountEl.textContent = visibleCount;
 
-        if (hearingRegCount === 0) {
+        // Update pre-registered pill count
+        const btnFilterReg = document.querySelector('.btn-filter-status[data-filter="registered"]');
+        if (btnFilterReg) {
+            btnFilterReg.innerHTML = `<i class="bi bi-people-fill me-1"></i>Pre-Registered (${hearingRegCount})`;
+        }
+
+        if (visibleCount === 0) {
             if (noRegisteredRow) noRegisteredRow.classList.remove('d-none');
             if (noMatchMessage) noMatchMessage.classList.add('d-none');
         } else {
             if (noRegisteredRow) noRegisteredRow.classList.add('d-none');
-            if (noMatchMessage) noMatchMessage.classList.toggle('d-none', visibleCount > 0);
+            if (noMatchMessage) noMatchMessage.classList.add('d-none');
         }
 
-        updateHearingEligibility();
         updateSelectionState();
     }
 
