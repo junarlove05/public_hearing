@@ -111,7 +111,15 @@ include __DIR__ . '/../../layouts/header.php';
     ['Pending',$stats['pending'] ?? 0,'bi-hourglass-split'],
     ['Inactive',$stats['inactive'] ?? 0,'bi-person-x'],
 ] as [$label,$value,$icon]): ?>
-<div class="col-6 col-lg-3"><div class="lphx-stat"><i class="bi <?= e($icon) ?>"></i><div><strong id="stat_count_<?= strtolower($label) ?>"><?= (int)$value ?></strong><small><?= e($label) ?></small></div></div></div>
+<div class="col-6 col-lg-3">
+  <div class="lphx-stat stat-clickable" data-status-filter="<?= strtolower($label) ?>" style="cursor: pointer; transition: all 0.2s ease;" title="Click to filter by <?= e($label) ?>">
+    <i class="bi <?= e($icon) ?>"></i>
+    <div>
+      <strong id="stat_count_<?= strtolower($label) ?>"><?= (int)$value ?></strong>
+      <small><?= e($label) ?></small>
+    </div>
+  </div>
+</div>
 <?php endforeach; ?>
 </div>
 
@@ -361,11 +369,16 @@ $defaultRegUrl = rtrim(APP_URL, '/') . '/modules/stakeholders/register.php';
           <!-- Loaded via JS -->
         </div>
       </div>
-      <div class="modal-footer py-2 px-3 bg-white border-top d-flex justify-content-between">
+      <div class="modal-footer py-2 px-3 bg-white border-top d-flex justify-content-between align-items-center">
         <a id="btnOpenIdOriginal" href="#" target="_blank" class="btn btn-sm btn-outline-secondary">
           <i class="bi bi-arrows-fullscreen me-1"></i> View Full File
         </a>
-        <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">Close</button>
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-sm btn-success fw-semibold shadow-sm" id="btnModalApproveStakeholder" style="display: none;">
+            <i class="bi bi-patch-check-fill me-1"></i> Approve &amp; Verify
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
@@ -415,6 +428,8 @@ document.addEventListener('DOMContentLoaded',function(){
   const noMatches = document.getElementById('noMatchesRow');
   const countBadge = document.getElementById('stakeholderCountBadge');
 
+  let activeStatusFilter = '';
+
   function applyFilters() {
     const q = (searchInput?.value || '').toLowerCase().trim();
     const cat = catFilter?.value || '';
@@ -423,7 +438,8 @@ document.addEventListener('DOMContentLoaded',function(){
     rows.forEach(r => {
       const matchSearch = !q || (r.dataset.search || '').includes(q);
       const matchCat = !cat || r.dataset.categoryId === cat;
-      if (matchSearch && matchCat) {
+      const matchStatus = !activeStatusFilter || (r.dataset.status || '').toLowerCase() === activeStatusFilter;
+      if (matchSearch && matchCat && matchStatus) {
         r.classList.remove('d-none');
         visible++;
       } else {
@@ -443,12 +459,35 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   }
 
+  // Clickable KPI Status Card filters
+  document.querySelectorAll('.stat-clickable').forEach(card => {
+    card.addEventListener('click', function() {
+      const f = (this.dataset.statusFilter || '').toLowerCase();
+      if (f === 'total' || activeStatusFilter === f) {
+        activeStatusFilter = '';
+      } else {
+        activeStatusFilter = f;
+      }
+      document.querySelectorAll('.stat-clickable').forEach(c => {
+        const isSelected = (c.dataset.statusFilter || '').toLowerCase() === activeStatusFilter && activeStatusFilter !== '';
+        c.style.borderColor = isSelected ? '#a97900' : '';
+        c.style.boxShadow = isSelected ? '0 0 0 2px #a97900' : '';
+      });
+      applyFilters();
+    });
+  });
+
   if (searchInput) searchInput.addEventListener('input', applyFilters);
   if (catFilter) catFilter.addEventListener('change', applyFilters);
   if (resetBtn) {
     resetBtn.addEventListener('click', function() {
       if (searchInput) searchInput.value = '';
       if (catFilter) catFilter.value = '';
+      activeStatusFilter = '';
+      document.querySelectorAll('.stat-clickable').forEach(c => {
+        c.style.borderColor = '';
+        c.style.boxShadow = '';
+      });
       applyFilters();
     });
   }
@@ -513,16 +552,21 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   // ============================================================
-  // Valid ID Preview Modal Handler
+  // Valid ID Preview Modal Handler & In-Modal Approval
   // ============================================================
   const validIdModalEl = document.getElementById('validIdPreviewModal');
   const validIdModal = validIdModalEl ? new bootstrap.Modal(validIdModalEl) : null;
+  const modalApproveBtn = document.getElementById('btnModalApproveStakeholder');
+  let currentPreviewSid = null;
+  let currentPreviewName = null;
+
   document.addEventListener('click', function(e) {
     const btn = e.target.closest('.btn-preview-valid-id');
     if (!btn || !validIdModal) return;
     e.preventDefault();
 
-    const name = btn.dataset.name || 'Stakeholder';
+    currentPreviewSid = btn.dataset.id;
+    currentPreviewName = btn.dataset.name || 'Stakeholder';
     const org = btn.dataset.org || '';
     const status = btn.dataset.status || '';
     const idUrl = btn.dataset.idUrl || '';
@@ -531,8 +575,14 @@ document.addEventListener('DOMContentLoaded',function(){
     const containerEl = document.getElementById('validIdImageContainer');
     const origLink = document.getElementById('btnOpenIdOriginal');
 
+    if (modalApproveBtn) {
+      modalApproveBtn.style.display = (status === 'Pending') ? 'inline-flex' : 'none';
+      modalApproveBtn.disabled = false;
+      modalApproveBtn.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i> Approve & Verify';
+    }
+
     if (detailsEl) {
-      detailsEl.innerHTML = `<strong>${escapeHtml(name)}</strong> &bull; <span class="text-muted">${escapeHtml(org)}</span> &bull; Status: <span class="badge ${status === 'Verified' ? 'bg-success' : 'bg-warning'}">${escapeHtml(status)}</span>`;
+      detailsEl.innerHTML = `<strong>${escapeHtml(currentPreviewName)}</strong> &bull; <span class="text-muted">${escapeHtml(org)}</span> &bull; Status: <span class="badge ${status === 'Verified' ? 'bg-success' : 'bg-warning'}">${escapeHtml(status)}</span>`;
     }
     if (origLink) origLink.href = idUrl;
 
@@ -546,6 +596,41 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     validIdModal.show();
   });
+
+  if (modalApproveBtn) {
+    modalApproveBtn.addEventListener('click', async function() {
+      if (!currentPreviewSid) return;
+      modalApproveBtn.disabled = true;
+      modalApproveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verifying...';
+
+      try {
+        const fd = new FormData();
+        fd.append('csrf_token', document.querySelector('[name=csrf_token]')?.value || '');
+        fd.append('id', currentPreviewSid);
+        fd.append('status', 'Verified');
+
+        const res = await fetch('ajax_status.php', { method: 'POST', body: fd }).then(r => r.json());
+        if (res.success) {
+          updateRowInPlace(currentPreviewSid, {
+            status: 'Verified',
+            code_value: res.code_value,
+            qr_url: res.qr_url
+          });
+          validIdModal.hide();
+          appToast('success', `${currentPreviewName} has been approved and verified! Attendance QR pass issued.`);
+        } else {
+          modalApproveBtn.disabled = false;
+          modalApproveBtn.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i> Approve & Verify';
+          Swal.fire('Verification Failed', res.message || 'Error updating status.', 'error');
+        }
+      } catch(err) {
+        modalApproveBtn.disabled = false;
+        modalApproveBtn.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i> Approve & Verify';
+        console.error('Verify error:', err);
+        Swal.fire('Error', 'Unable to complete verification request.', 'error');
+      }
+    });
+  }
 
   // In-place row update without page reload (screen stays exactly where the user is!)
   function updateRowInPlace(sid, data) {
