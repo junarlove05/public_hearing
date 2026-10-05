@@ -24,14 +24,16 @@ $success = false;
 $submittedData = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fullName     = clean($_POST['full_name'] ?? '');
-    $email        = clean($_POST['email'] ?? '');
-    $phone        = clean($_POST['phone'] ?? '');
-    $organization = clean($_POST['organization'] ?? '');
-    $sector       = clean($_POST['sector'] ?? '');
-    $categoryId   = (int)($_POST['category_id'] ?? 0) ?: null;
-    $address      = clean($_POST['address'] ?? '');
-    $consent      = !empty($_POST['consent']);
+    $fullName        = clean($_POST['full_name'] ?? '');
+    $email           = clean($_POST['email'] ?? '');
+    $password        = (string)($_POST['password'] ?? '');
+    $passwordConfirm = (string)($_POST['password_confirm'] ?? '');
+    $phone           = clean($_POST['phone'] ?? '');
+    $organization    = clean($_POST['organization'] ?? '');
+    $sector          = clean($_POST['sector'] ?? '');
+    $categoryId      = (int)($_POST['category_id'] ?? 0) ?: null;
+    $address         = clean($_POST['address'] ?? '');
+    $consent         = !empty($_POST['consent']);
 
     $submittedData = [
         'full_name'    => $fullName,
@@ -48,6 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'A valid email address is required for official hearing notifications.';
+    }
+    if (strlen($password) < 6) {
+        $errors[] = 'Password must be at least 6 characters long.';
+    } elseif ($password !== $passwordConfirm) {
+        $errors[] = 'Password and Confirm Password do not match.';
     }
     if ($organization === '') {
         $errors[] = 'Organization, agency, or office name is required.';
@@ -66,15 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Check duplicate email
     if (empty($errors) && $email !== '') {
-        $dupStmt = $pdo->prepare('SELECT id, status FROM stakeholders WHERE email = :email LIMIT 1');
-        $dupStmt->execute([':email' => $email]);
+        $dupStmt = $pdo->prepare('SELECT id, status FROM stakeholders WHERE LOWER(email) = :email LIMIT 1');
+        $dupStmt->execute([':email' => strtolower($email)]);
         $existing = $dupStmt->fetch();
         if ($existing) {
-            if ($existing['status'] === 'Verified') {
-                $errors[] = 'An active verified stakeholder is already registered with this email address. Please contact the administrator.';
-            } else {
-                $errors[] = 'A registration with this email is currently ' . $existing['status'] . '. Please wait for Administrator approval.';
-            }
+            $errors[] = 'An account with this email address (' . htmlspecialchars($email) . ') is already registered. If you already have an account, please sign in to the Stakeholder Portal.';
         }
     }
 
@@ -85,9 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once __DIR__ . '/../../includes/functions.php';
         }
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
-        $uploadResult = function_exists('uploadFile')
-            ? uploadFile($_FILES['valid_id'], 'stakeholder_ids', $allowedExtensions, 10 * 1024 * 1024)
-            : handleUpload($_FILES['valid_id'], 'stakeholder_ids');
+        $uploadResult = uploadFile($_FILES['valid_id'], 'stakeholder_ids', $allowedExtensions, 10 * 1024 * 1024);
         if (!$uploadResult['success']) {
             $errors[] = $uploadResult['message'] ?? 'Failed to upload Valid ID.';
         } else {
@@ -96,25 +97,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Save Record
+    $generatedQrCode = '';
     if (empty($errors) && $validIdPath) {
         try {
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+
             $insert = $pdo->prepare(
                 'INSERT INTO stakeholders 
-                 (full_name, email, phone, organization, sector, category_id, address, valid_id_path, status, created_at, updated_at)
-                 VALUES (:name, :email, :phone, :org, :sector, :cat, :addr, :id_path, "Pending", NOW(), NOW())'
+                 (full_name, email, password, phone, organization, sector, category_id, address, valid_id_path, status, created_at, updated_at)
+                 VALUES (:name, :email, :password, :phone, :org, :sector, :cat, :addr, :id_path, "Pending", NOW(), NOW())'
             );
             $insert->execute([
-                ':name'    => $fullName,
-                ':email'   => $email,
-                ':phone'   => $phone ?: null,
-                ':org'     => $organization,
-                ':sector'  => $sector ?: null,
-                ':cat'     => $categoryId,
-                ':addr'    => $address ?: null,
-                ':id_path' => $validIdPath,
+                ':name'     => $fullName,
+                ':email'    => $email,
+                ':password' => $passwordHash,
+                ':phone'    => $phone ?: null,
+                ':org'      => $organization,
+                ':sector'   => $sector ?: null,
+                ':cat'      => $categoryId,
+                ':addr'     => $address ?: null,
+                ':id_path'  => $validIdPath,
             ]);
 
             $newId = (int)$pdo->lastInsertId();
+
+            // Generate standard STK-XXXXXXXX Attendance QR Code credential
+            $generatedQrCode = 'STK-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+            $pdo->prepare('INSERT INTO qr_codes (stakeholder_id, code_value, status, created_at) VALUES (:sid, :code, "Active", NOW())')
+                ->execute([':sid' => $newId, ':code' => $generatedQrCode]);
+
             $success = true;
         } catch (PDOException $e) {
             error_log('Public stakeholder register error: ' . $e->getMessage());
@@ -249,40 +260,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <i class="bi bi-check2-circle fs-1"></i>
           </div>
           <h4 class="fw-bold text-dark">Registration Successfully Submitted!</h4>
-          <p class="text-muted mb-4" style="max-width: 520px; margin: 0 auto; font-size: 0.95rem;">
-            Thank you, <strong><?= e($fullName) ?></strong>. Your registration and Valid ID have been received and are currently under 
+          <p class="text-muted mb-4" style="max-width: 540px; margin: 0 auto; font-size: 0.95rem;">
+            Thank you, <strong><?= e($fullName) ?></strong>. Your stakeholder registration and Valid ID have been received and are currently under 
             <span class="badge bg-warning text-dark px-2.5 py-1.5"><i class="bi bi-hourglass-split me-1"></i>Pending Verification</span>.
           </p>
 
-          <div class="card bg-light border-0 text-start p-3.5 mb-4 mx-auto" style="max-width: 520px; border-radius: 10px;">
+          <div class="card bg-light border-0 text-start p-3.5 mb-4 mx-auto" style="max-width: 540px; border-radius: 12px;">
+            <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+              <span class="small text-muted">Assigned Stakeholder Code:</span>
+              <span class="font-monospace fw-bold text-primary"><i class="bi bi-qr-code me-1"></i><?= e($generatedQrCode) ?></span>
+            </div>
             <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
               <span class="small text-muted">Organization / Agency:</span>
               <span class="small fw-bold text-dark"><?= e($organization) ?></span>
             </div>
             <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
-              <span class="small text-muted">Email Address:</span>
+              <span class="small text-muted">Email / Sign-In Account:</span>
               <span class="small fw-semibold text-dark"><?= e($email) ?></span>
             </div>
             <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
-              <span class="small text-muted">Status:</span>
+              <span class="small text-muted">Account Status:</span>
               <span class="badge bg-warning text-dark">Pending Admin Approval</span>
             </div>
             <div class="d-flex justify-content-between">
-              <span class="small text-muted">Valid ID:</span>
+              <span class="small text-muted">Valid ID Upload:</span>
               <span class="small text-success fw-semibold"><i class="bi bi-file-earmark-check-fill me-1"></i>Uploaded for Review</span>
             </div>
           </div>
 
-          <div class="alert alert-info border-0 d-flex align-items-start gap-2 mb-4 mx-auto text-start" style="max-width: 520px; font-size: 0.85rem;">
+          <div class="alert alert-info border-0 d-flex align-items-start gap-2 mb-4 mx-auto text-start" style="max-width: 540px; font-size: 0.85rem;">
             <i class="bi bi-info-circle-fill text-info fs-5 mt-0.5"></i>
             <div>
-              <strong>Notice:</strong> The Administrator will review your submitted Valid ID. Once approved, your official Attendance QR Code pass will be issued for public hearings.
+              <strong>Stakeholder Portal Access:</strong> You can now sign in to your dedicated <strong>Stakeholder Portal</strong> using your email and password to view upcoming public hearings and session calendars.
             </div>
           </div>
 
-          <a href="<?= e(APP_URL . '/login.php') ?>" class="btn btn-outline-dark px-4 fw-semibold">
-            <i class="bi bi-arrow-left me-1"></i> Return to Portal
-          </a>
+          <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <a href="/legislative/stakeholder_portal/login.php" class="btn btn-primary px-4 fw-bold shadow-sm">
+              <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to Stakeholder Portal
+            </a>
+            <a href="register.php" class="btn btn-outline-secondary px-3 fw-semibold">
+              <i class="bi bi-person-plus me-1"></i> Register Another
+            </a>
+          </div>
         </div>
       <?php else: ?>
 
@@ -300,11 +320,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         <?php endif; ?>
 
-        <div class="alert alert-light border border-secondary border-opacity-25 d-flex align-items-start gap-2.5 mb-4 py-2.5 px-3">
-          <i class="bi bi-shield-check text-primary fs-5 mt-0.5"></i>
-          <div class="small text-muted">
-            <strong class="text-dark">Public Registration Notice:</strong> All self-registered stakeholders must upload a <strong>Valid ID</strong>. Records are submitted as <strong>Pending</strong> and require Administrator review and approval before activation.
+        <div class="d-flex justify-content-between align-items-center bg-warning bg-opacity-10 border border-warning border-opacity-50 rounded-3 p-3 mb-4 flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-person-workspace text-warning fs-4"></i>
+            <div>
+              <div class="fw-bold text-dark small">Already have an accredited account?</div>
+              <div class="text-muted" style="font-size: 0.78rem;">Sign in directly to access your hearing dashboard and QR accreditation.</div>
+            </div>
           </div>
+          <a href="/legislative/stakeholder_portal/login.php" class="btn btn-sm btn-dark fw-bold px-3">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+          </a>
         </div>
 
         <form method="POST" enctype="multipart/form-data" id="publicRegForm">
@@ -317,6 +343,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <label class="form-label">Email Address <span class="text-danger">*</span></label>
               <input type="email" name="email" class="form-control" placeholder="official@manila.gov.ph or personal email" value="<?= e($submittedData['email'] ?? '') ?>" required>
             </div>
+
+            <!-- SECURE PASSWORD FIELDS -->
+            <div class="col-md-6">
+              <label class="form-label">Account Password <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-lock-fill text-muted"></i></span>
+                <input type="password" name="password" id="regPassword" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+                <button class="btn btn-outline-secondary" type="button" onclick="togglePass('regPassword', this)"><i class="bi bi-eye"></i></button>
+              </div>
+              <div class="form-text small text-muted" style="font-size: 0.75rem;">Used to log in to the Stakeholder Portal.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-shield-lock-fill text-muted"></i></span>
+                <input type="password" name="password_confirm" id="regPasswordConfirm" class="form-control" placeholder="Repeat your password" minlength="6" required>
+                <button class="btn btn-outline-secondary" type="button" onclick="togglePass('regPasswordConfirm', this)"><i class="bi bi-eye"></i></button>
+              </div>
+              <div class="form-text small text-muted" style="font-size: 0.75rem;">Must match the password entered above.</div>
+            </div>
+
             <div class="col-md-6">
               <label class="form-label">Contact / Phone Number <span class="text-muted small">(Optional)</span></label>
               <input type="text" name="phone" class="form-control" placeholder="0917-xxxxxxx / (02) 8521-7505" value="<?= e($submittedData['phone'] ?? '') ?>">
@@ -450,6 +497,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+function togglePass(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isPass = input.type === 'password';
+  input.type = isPass ? 'text' : 'password';
+  const icon = btn.querySelector('i');
+  if (icon) {
+    icon.className = isPass ? 'bi bi-eye-slash' : 'bi bi-eye';
+  }
+}
 </script>
 </body>
 </html>

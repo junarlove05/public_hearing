@@ -505,7 +505,7 @@ function uploadFile(array $file, string $subfolder, ?array $allowedExtensions = 
     $safeName = (function_exists('generateCode') ? generateCode() : strtoupper(bin2hex(random_bytes(6)))) . '_' . time() . '.' . $ext;
     $destination = $targetDir . $safeName;
 
-    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+    if (!move_uploaded_file($file['tmp_name'], $destination) && !@copy($file['tmp_name'], $destination)) {
         return ['success' => false, 'message' => 'Failed to save uploaded file. Check folder permissions.'];
     }
 

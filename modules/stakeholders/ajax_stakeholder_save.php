@@ -109,16 +109,17 @@ try {
         logActivity(currentUserId(), 'Update Stakeholder', "Updated stakeholder {$fullName} ({$email}).");
         $message = $isVerified ? 'Stakeholder updated successfully. Attendance QR code is active.' : 'Stakeholder updated successfully. Status is Pending (QR code is issued upon verification).';
     } else {
+        $defaultPassword = password_hash('Stakeholder@2026', PASSWORD_DEFAULT);
         $stmt = $pdo->prepare(
             'INSERT INTO stakeholders
-             (user_id,full_name,email,phone,organization,category_id,status,address,sector,
+             (user_id,full_name,email,password,phone,organization,category_id,status,address,sector,
               verified_at,verified_by,created_at,updated_at)
              VALUES
-             (NULL,:full_name,:email,:phone,:organization,:category_id,:status,:address,:sector,
+             (NULL,:full_name,:email,:password,:phone,:organization,:category_id,:status,:address,:sector,
               :verified_at,:verified_by,NOW(),NOW())'
         );
         $stmt->execute([
-            ':full_name'=>$fullName, ':email'=>$email, ':phone'=>$phone ?: null,
+            ':full_name'=>$fullName, ':email'=>$email, ':password'=>$defaultPassword, ':phone'=>$phone ?: null,
             ':organization'=>$organization ?: null, ':category_id'=>$categoryId,
             ':status'=>$status, ':address'=>$address ?: null, ':sector'=>$sector ?: null,
             ':verified_at'=>$verifiedAt, ':verified_by'=>$verifiedBy,

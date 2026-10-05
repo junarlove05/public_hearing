@@ -341,12 +341,15 @@ $defaultRegUrl = rtrim(APP_URL, '/') . '/modules/stakeholders/register.php';
         </div>
         <p class="text-muted small px-2 mb-3">Scan this QR code using a smartphone camera to open and fill out the official stakeholder registration form.</p>
 
-        <div class="d-flex gap-2 justify-content-center">
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
           <a href="print_registration_qr.php" target="_blank" id="btnPrintStandeeUrl" class="btn btn-dark btn-sm px-3 fw-semibold">
             <i class="bi bi-printer me-1"></i> Print / Download Standee
           </a>
           <a href="<?= e($defaultRegUrl) ?>" target="_blank" id="btnOpenRegUrl" class="btn btn-outline-primary btn-sm px-3 fw-semibold">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open Form
+          </a>
+          <a href="/legislative/stakeholder_portal/" target="_blank" class="btn btn-warning btn-sm px-3 fw-semibold text-dark shadow-sm">
+            <i class="bi bi-person-workspace me-1"></i> Stakeholder Portal
           </a>
         </div>
       </div>
