@@ -291,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="alert alert-info border-0 d-flex align-items-start gap-2 mb-4 mx-auto text-start" style="max-width: 540px; font-size: 0.85rem;">
             <i class="bi bi-info-circle-fill text-info fs-5 mt-0.5"></i>
             <div>
-              <strong>Stakeholder Portal Access:</strong> You can now sign in to your dedicated <strong>Stakeholder Portal</strong> using your email and password to view upcoming public hearings and session calendars.
+              <strong>Stakeholder Portal Access:</strong> Maaari na kayong mag-sign in sa <strong>Stakeholder Portal</strong> gamit ang inyong email at password. Ang listahan ng mga public hearings, invitations, at session passes ay awtomatikong bubuksan sa inyong account kapag na-aprubahan na ng Administrator ang inyong rehistrasyon.
             </div>
           </div>
 
