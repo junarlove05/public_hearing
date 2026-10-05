@@ -66,15 +66,9 @@ $menuItems = [
 ?>
 
 <aside class="orlms-sidebar sidebar" id="orlmsSidebar">
-  <div class="orlms-sidebar-brand sidebar-brand d-flex align-items-center justify-content-between">
-    <div class="d-flex align-items-center gap-2">
-      <img src="<?= e(APP_URL . '/assets/images/logo.png') ?>" alt="City of Manila Seal" class="orlms-sidebar-logo sidebar-logo" style="width:52px !important;height:52px !important;max-width:52px !important;max-height:52px !important;object-fit:contain;">
-      <div><strong>LPH-CMS</strong><small>Legislative Public Hearing Management</small></div>
-    </div>
-    <!-- Mobile Dismiss Button -->
-    <button type="button" class="btn btn-sm btn-link text-white-50 d-lg-none p-1 border-0" onclick="window.lphCloseSidebarMobile && window.lphCloseSidebarMobile()" aria-label="Close menu" style="font-size: 1.25rem; text-decoration: none; line-height: 1;">
-      <i class="bi bi-x-lg"></i>
-    </button>
+  <div class="orlms-sidebar-brand sidebar-brand">
+    <img src="<?= e(APP_URL . '/assets/images/logo.png') ?>" alt="City of Manila Seal" class="orlms-sidebar-logo sidebar-logo" style="width:60px !important;height:60px !important;max-width:60px !important;max-height:60px !important;object-fit:contain;">
+    <div><strong>LPH-CMS</strong><small>Legislative Public Hearing Management</small></div>
   </div>
 
   <nav class="orlms-sidebar-nav sidebar-navigation">

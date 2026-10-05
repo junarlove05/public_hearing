@@ -207,10 +207,10 @@ body {
 
     body.sidebar-collapsed .orlms-sidebar-logo,
     body.sidebar-collapsed .sidebar-logo {
-        width: 40px !important;
-        height: 40px !important;
-        max-width: 40px !important;
-        max-height: 40px !important;
+        width: 42px !important;
+        height: 42px !important;
+        max-width: 42px !important;
+        max-height: 42px !important;
         margin: 0 auto !important;
     }
 
@@ -310,22 +310,59 @@ body {
         height: auto !important;
     }
 
-    body.sidebar-collapsed .orlms-sidebar-brand {
+    body.sidebar-collapsed .sidebar-brand,
+    body.sidebar-collapsed .orlms-sidebar-brand,
+    .sidebar-brand,
+    .orlms-sidebar-brand {
         display: flex !important;
         flex-direction: row !important;
-        justify-content: space-between !important;
         align-items: center !important;
-        padding: 0.9rem 1rem !important;
+        gap: 0.7rem !important;
+        padding: 1rem !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
         text-align: left !important;
+        justify-content: flex-start !important;
     }
 
     body.sidebar-collapsed .orlms-sidebar-logo,
-    body.sidebar-collapsed .sidebar-logo {
-        width: 48px !important;
-        height: 48px !important;
-        max-width: 48px !important;
-        max-height: 48px !important;
+    body.sidebar-collapsed .sidebar-logo,
+    .orlms-sidebar-logo,
+    .sidebar-logo {
+        width: 60px !important;
+        height: 60px !important;
+        max-width: 60px !important;
+        max-height: 60px !important;
+        object-fit: contain !important;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
         margin: 0 !important;
+        flex-shrink: 0 !important;
+    }
+
+    body.sidebar-collapsed .sidebar-brand > div,
+    body.sidebar-collapsed .orlms-sidebar-brand > div,
+    .sidebar-brand > div,
+    .orlms-sidebar-brand > div {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    body.sidebar-collapsed .sidebar-brand strong,
+    body.sidebar-collapsed .orlms-sidebar-brand strong,
+    .sidebar-brand strong,
+    .orlms-sidebar-brand strong {
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
+        line-height: 1.2 !important;
+    }
+
+    body.sidebar-collapsed .sidebar-brand small,
+    body.sidebar-collapsed .orlms-sidebar-brand small,
+    .sidebar-brand small,
+    .orlms-sidebar-brand small {
+        color: rgba(255, 255, 255, 0.45) !important;
+        font-size: 0.54rem !important;
+        margin-top: 0.1rem !important;
     }
 
     body.sidebar-collapsed .sidebar-navigation a,
